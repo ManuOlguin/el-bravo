@@ -69,16 +69,23 @@ export default async function GroupPage() {
     include: {
       members: {
         where: { leftAt: null },
-        include: { user: { select: { id: true, name: true, email: true, photoUrl: true } } },
+        select: {
+          id: true,
+          userId: true,
+          role: true,
+          user: { select: { id: true, name: true, email: true, photoUrl: true } },
+        },
       },
       seasons: {
         orderBy: { startDate: "desc" },
-        include: { members: { include: { user: { select: { id: true, name: true, email: true, photoUrl: true } } } } },
+        include: { members: { where: { leftAt: null }, include: { user: { select: { id: true, name: true, email: true, photoUrl: true } } } } },
       },
     },
   });
 
   if (!group) redirect("/dashboard");
+
+  const isAdmin = membership?.role === "admin";
 
   // collect recent activities of members
   const memberIds = group.members.map((m) => m.userId);
@@ -102,9 +109,10 @@ export default async function GroupPage() {
   // flatten activities (already fetched)
   const actData = activities.map((a) => ({ id: a.id, type: a.type, notes: a.notes, startedAt: a.startedAt, user: a.user }));
 
-  const activeSeason = group.seasons.find((s) => s.status === "active") ?? null;
-  const upcomingSeason = group.seasons.find((s) => s.status === "waiting") ?? null;
-  const pastSeasons = group.seasons.filter((s) => s.status !== "active" && s.status !== "waiting");
+  const now = new Date();
+  const activeSeason = group.seasons.find((s) => new Date(s.startDate) <= now && new Date(s.endDate) >= now) ?? null;
+  const upcomingSeason = group.seasons.find((s) => new Date(s.startDate) > now) ?? null;
+  const pastSeasons = group.seasons.filter((s) => new Date(s.endDate) < now);
 
   return (
     <main className="min-h-screen bg-gray-900 p-6 text-white">
@@ -119,6 +127,13 @@ export default async function GroupPage() {
                 <div className="w-full h-full flex items-center justify-center text-gray-300 text-2xl">{group.name.charAt(0)}</div>
               )}
             </div>
+
+            {isAdmin && (
+              <div className="mt-4 sm:mt-0 sm:ml-4 flex gap-2">
+                <a href="/group/edit" className="px-3 py-2 bg-gray-700 rounded-md text-white hover:bg-gray-600">Editar grupo</a>
+                <a href="/create-season" className="px-3 py-2 bg-indigo-600 rounded-md text-white hover:bg-indigo-500">Crear temporada</a>
+              </div>
+            )}
 
             <div className="flex-1">
               <h1 className="text-2xl font-semibold">{group.name}</h1>

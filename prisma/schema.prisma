@@ -15,11 +15,6 @@ enum GroupRole {
   member
 }
 
-enum SeasonStatus {
-  waiting
-  active
-  finished
-}
 
 enum ActivityType {
   gym
@@ -86,7 +81,6 @@ model Season {
   description String?      @db.Text
   startDate   DateTime
   endDate     DateTime
-  status      SeasonStatus
   createdAt   DateTime     @default(now())
 
   // Relations
