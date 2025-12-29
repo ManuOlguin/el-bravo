@@ -15,7 +15,6 @@ enum GroupRole {
   member
 }
 
-
 enum ActivityType {
   gym
   run
@@ -29,22 +28,23 @@ enum ActivityType {
 ////////////////////
 
 model User {
-  id               String   @id @default(cuid())
-  email            String   @unique
-  passwordHash     String
-  name             String?
-  photoUrl         String?  @db.VarChar(2048)
+  id           String  @id @default(cuid())
+  email        String  @unique
+  passwordHash String
+  name         String?
+  photoUrl     String? @db.VarChar(2048)
 
-  emailVerifiedAt  DateTime?
-  isActive         Boolean  @default(true)
+  emailVerifiedAt DateTime?
+  isActive        Boolean   @default(true)
 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  groupMembers     GroupMember[]
-  seasonMembers    SeasonMember[]
-  activities       Activity[]
+  groupMembers  GroupMember[]
+  seasonMembers SeasonMember[]
+  activities    Activity[]
+  routines      Routine[]
 }
 
 model Group {
@@ -60,12 +60,12 @@ model Group {
 }
 
 model GroupMember {
-  id        String    @id @default(cuid())
-  groupId   String
-  userId    String
-  role      GroupRole
-  joinedAt  DateTime  @default(now())
-  leftAt    DateTime?
+  id       String    @id @default(cuid())
+  groupId  String
+  userId   String
+  role     GroupRole
+  joinedAt DateTime  @default(now())
+  leftAt   DateTime?
 
   // Relations
   group Group @relation(fields: [groupId], references: [id])
@@ -75,13 +75,13 @@ model GroupMember {
 }
 
 model Season {
-  id          String       @id @default(cuid())
+  id          String   @id @default(cuid())
   groupId     String
   name        String
-  description String?      @db.Text
+  description String?  @db.Text
   startDate   DateTime
   endDate     DateTime
-  createdAt   DateTime     @default(now())
+  createdAt   DateTime @default(now())
 
   // Relations
   group   Group          @relation(fields: [groupId], references: [id])
@@ -89,11 +89,11 @@ model Season {
 }
 
 model SeasonMember {
-  id        String   @id @default(cuid())
-  seasonId  String
-  userId    String
-  joinedAt  DateTime @default(now())
-  leftAt    DateTime?
+  id       String    @id @default(cuid())
+  seasonId String
+  userId   String
+  joinedAt DateTime  @default(now())
+  leftAt   DateTime?
 
   // Relations
   season Season @relation(fields: [seasonId], references: [id])
@@ -103,18 +103,19 @@ model SeasonMember {
 }
 
 model Exercise {
-  id        String @id @default(cuid())
-  name      String
+  id   String @id @default(cuid())
+  name String
 
   // Relations
-  muscles   ExerciseMuscle[]
+  muscles  ExerciseMuscle[]
+  routines RoutineExercise[] // 👈 ESTE ES EL CAMPO QUE FALTABA
 
   @@unique([name])
 }
 
 model Muscle {
-  id        String @id @default(cuid())
-  name      String
+  id   String @id @default(cuid())
+  name String
 
   // Relations
   exercises ExerciseMuscle[]
@@ -125,7 +126,7 @@ model Muscle {
 model ExerciseMuscle {
   exerciseId String
   muscleId   String
-  percentage Int 
+  percentage Int
 
   exercise Exercise @relation(fields: [exerciseId], references: [id])
   muscle   Muscle   @relation(fields: [muscleId], references: [id])
@@ -134,17 +135,42 @@ model ExerciseMuscle {
 }
 
 model Activity {
-  id        String        @id @default(cuid())
+  id        String       @id @default(cuid())
   userId    String
   type      ActivityType
   startedAt DateTime
   endedAt   DateTime
-  notes     String?       @db.Text
-  createdAt DateTime      @default(now())
+  notes     String?      @db.Text
+  createdAt DateTime     @default(now())
 
   // Relations
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId, startedAt])
   @@index([startedAt])
+}
+
+model Routine {
+  id   String @id @default(cuid())
+  name String
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  exercises RoutineExercise[]
+}
+
+model RoutineExercise {
+  id String @id @default(cuid())
+
+  routineId  String
+  exerciseId String
+
+  sets Int
+  reps Int
+
+  routine  Routine  @relation(fields: [routineId], references: [id])
+  exercise Exercise @relation(fields: [exerciseId], references: [id])
+
+  @@unique([routineId, exerciseId])
 }
