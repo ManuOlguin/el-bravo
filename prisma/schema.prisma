@@ -108,6 +108,37 @@ model SeasonMember {
   @@unique([seasonId, userId])
 }
 
+model Exercise {
+  id        String @id @default(cuid())
+  name      String
+
+  // Relations
+  muscles   ExerciseMuscle[]
+
+  @@unique([name])
+}
+
+model Muscle {
+  id        String @id @default(cuid())
+  name      String
+
+  // Relations
+  exercises ExerciseMuscle[]
+
+  @@unique([name])
+}
+
+model ExerciseMuscle {
+  exerciseId String
+  muscleId   String
+  percentage int 
+
+  exercise Exercise @relation(fields: [exerciseId], references: [id])
+  muscle   Muscle   @relation(fields: [muscleId], references: [id])
+
+  @@id([exerciseId, muscleId])
+}
+
 model Activity {
   id        String        @id @default(cuid())
   userId    String
