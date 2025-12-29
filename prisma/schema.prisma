@@ -131,7 +131,7 @@ model Muscle {
 model ExerciseMuscle {
   exerciseId String
   muscleId   String
-  percentage int 
+  percentage Int 
 
   exercise Exercise @relation(fields: [exerciseId], references: [id])
   muscle   Muscle   @relation(fields: [muscleId], references: [id])
