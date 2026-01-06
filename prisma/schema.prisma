@@ -158,6 +158,8 @@ model Routine {
   user   User   @relation(fields: [userId], references: [id])
 
   exercises RoutineExercise[]
+
+  createdAt DateTime @default(now())
 }
 
 model RoutineExercise {

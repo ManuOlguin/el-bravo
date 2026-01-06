@@ -41,16 +41,43 @@ export default async function DashboardPage() {
           <a href="/load" className="w-full sm:w-auto px-4 py-2 bg-indigo-600 rounded-md text-white text-center hover:bg-indigo-500">Cargar entrenamiento</a>
 
           {group ? (
-            <a href="/group" className="w-full sm:w-auto px-4 py-2 bg-gray-700 rounded-md text-white text-center hover:bg-gray-600">Ir al grupo</a>
+            <>
+              <a
+                href="/group"
+                className="w-full sm:w-auto px-4 py-2 bg-gray-700 rounded-md text-white text-center hover:bg-gray-600"
+              >
+                Ir al grupo
+              </a>
+
+              <a
+                href="/routine"
+                className="w-full sm:w-auto px-4 py-2 bg-indigo-500 rounded-md text-white text-center hover:bg-indigo-400"
+              >
+                Mis rutinas
+              </a>
+            </>
           ) : (
             <>
               <div className="w-full sm:w-auto">
                 <JoinGroupModal />
               </div>
 
-              <a href="/create-group" className="w-full sm:w-auto px-3 py-2 bg-green-600 rounded-md text-white text-center hover:bg-green-500">Crear grupo</a>
+              <a
+                href="/create-group"
+                className="w-full sm:w-auto px-3 py-2 bg-green-600 rounded-md text-white text-center hover:bg-green-500"
+              >
+                Crear grupo
+              </a>
+
+              <a
+                href="/routine"
+                className="w-full sm:w-auto px-4 py-2 bg-indigo-500 rounded-md text-white text-center hover:bg-indigo-400"
+              >
+                Mis rutinas
+              </a>
             </>
           )}
+
 
           <form action="/api/auth/logout" method="POST" className="w-full sm:w-auto">
             <button type="submit" className="w-full sm:w-auto px-3 py-2 bg-red-600 rounded-md text-white hover:bg-red-500">Logout</button>
