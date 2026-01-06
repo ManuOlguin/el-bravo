@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import RoutineForm from "../../../components/RoutineForm";
+import RoutineForm from "@/src/components/RoutineForm";
 
 export default function EditRoutinePage() {
   const params = useParams();

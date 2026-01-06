@@ -1,4 +1,4 @@
-import RoutineForm from "../components/RoutineForm";
+import RoutineForm from "@/src/components/RoutineForm";
 
 export default function CreateRoutinePage() {
   return (
