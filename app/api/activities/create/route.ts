@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { startedAt, endedAt, notes } = body ?? {};
+    const { startedAt, endedAt, notes, routineId, type } = body ?? {};
     if (!startedAt || !endedAt) return NextResponse.json({ error: 'Start and end required' }, { status: 400 });
     const s = new Date(startedAt);
     const e = new Date(endedAt);
