@@ -65,7 +65,7 @@ export default function CreateSeasonPage() {
             </div>
           </div>
 
-          <form onSubmit={handleCreate} className="space-y-4">
+          <form onSubmit={(e) => { if (step !== 3) { e.preventDefault(); return; } handleCreate(e); }}  className="space-y-4">
             {step === 0 && (
               <div>
                 <label className="block text-sm text-gray-200 mb-1">Nombre de la temporada</label>
@@ -89,7 +89,7 @@ export default function CreateSeasonPage() {
             {step === 2 && (
               <div>
                 <label className="block text-sm text-gray-200 mb-1">Objetivo (entrenos mínimos por semana)</label>
-                <input type="number" min={1} value={minPerWeek} onChange={(e) => setMinPerWeek(Number(e.target.value))} className="w-28 px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md" />
+                <input type="number" min={1} value={minPerWeek} onChange={(e) => setMinPerWeek(Number(e.target.value))} onKeyDown={(e) => e.key === "Enter" && e.preventDefault()} className="w-28 px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md"/>
               </div>
             )}
 
