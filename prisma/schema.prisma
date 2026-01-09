@@ -174,5 +174,5 @@ model RoutineExercise {
   routine  Routine  @relation(fields: [routineId], references: [id])
   exercise Exercise @relation(fields: [exerciseId], references: [id])
 
-  @@unique([routineId, exerciseId])
+  @@unique([routineId])
 }
