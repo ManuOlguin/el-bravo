@@ -116,7 +116,8 @@ export default async function GroupPage() {
 
   return (
     <main className="min-h-screen bg-gray-900 p-6 text-white">
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto max-w-4xl space-y-4">
+        <a href="/dashboard" className="inline-flex items-center px-3 py-2 bg-gray-700 rounded-md text-sm hover:bg-gray-600">← Volver al dashboard</a>
         <div className="bg-gray-800 rounded-lg p-6">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
             <div className="w-28 h-28 rounded-full bg-gray-700 overflow-hidden">

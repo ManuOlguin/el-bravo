@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     const e = new Date(endedAt);
     if (isNaN(s.getTime()) || isNaN(e.getTime()) || s >= e) return NextResponse.json({ error: 'Invalid dates' }, { status: 400 });
 
-    const created = await prisma.activity.create({ data: { userId: user.id, startedAt: s, endedAt: e, notes: notes ?? null } });
+    const created = await prisma.activity.create({ data: { userId: user.id, startedAt: s, endedAt: e, notes: notes ?? null, type: "gym" } });
 
     return NextResponse.json({ id: created.id }, { status: 201 });
   } catch (err) {
