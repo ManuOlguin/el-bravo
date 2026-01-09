@@ -137,6 +137,7 @@ model ExerciseMuscle {
 model Activity {
   id        String       @id @default(cuid())
   userId    String
+  routineId String?
   type      ActivityType
   startedAt DateTime
   endedAt   DateTime
@@ -145,6 +146,7 @@ model Activity {
 
   // Relations
   user User @relation(fields: [userId], references: [id])
+  routine Routine? @relation(fields: [routineId], references: [id])
 
   @@index([userId, startedAt])
   @@index([startedAt])
@@ -158,6 +160,7 @@ model Routine {
   user   User   @relation(fields: [userId], references: [id])
 
   exercises RoutineExercise[]
+  activities Activity[]
 
   createdAt DateTime @default(now())
 }
