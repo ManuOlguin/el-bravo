@@ -6,7 +6,7 @@ import { z } from "zod";
 
 export async function POST(req: Request) {
   try {
-    // 1️⃣ Leer body correctamente
+    // 1️⃣ Leer body
     const body = await req.json();
 
     // 2️⃣ Validar con Zod
@@ -21,21 +21,27 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4️⃣ Validar que los ejercicios existan
-    const exerciseIds = exercises.map(e => e.exerciseId);
+    // 4️⃣ Validar SOLO ejercicios existentes (ignora "__new" y duplicados)
+    const exerciseIds = Array.from(
+      new Set(
+        exercises
+          .map(e => e.exerciseId)
+          .filter(id => id && id !== "__new")
+      )
+    );
 
-    const existingExercises = await prisma.exercise.findMany({
-      where: {
-        id: { in: exerciseIds }
-      },
-      select: { id: true }
-    });
+    if (exerciseIds.length > 0) {
+      const existingExercises = await prisma.exercise.findMany({
+        where: { id: { in: exerciseIds } },
+        select: { id: true }
+      });
 
-    if (existingExercises.length !== exerciseIds.length) {
-      return NextResponse.json(
-        { error: "One or more exercises do not exist" },
-        { status: 400 }
-      );
+      if (existingExercises.length !== exerciseIds.length) {
+        return NextResponse.json(
+          { error: "One or more exercises do not exist" },
+          { status: 400 }
+        );
+      }
     }
 
     // 5️⃣ Crear rutina
