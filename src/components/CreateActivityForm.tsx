@@ -23,7 +23,7 @@ export default function CreateActivityForm(): any {
   const [saving, setSaving] = useState(false);
   const [activityType, setActivityType] = useState<string>('other');
   const [routines, setRoutines] = useState<any[]>([]);
-  const [selectedRoutineId, setSelectedRoutineId] = u seState<string | null>(null);
+  const [selectedRoutineId, setSelectedRoutineId] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
