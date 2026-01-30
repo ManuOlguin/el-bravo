@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/src/lib/currentUser";
+import LogoutButton from "@/src/components/LogoutButton";
 import { prisma } from "@/src/lib/db";
 
 function getWeekKey(d: Date) {
@@ -65,10 +66,19 @@ export default async function ProfilePage() {
   return (
     <main className="min-h-screen bg-gray-900 p-6 text-white">
       <div className="mx-auto max-w-4xl">
-        <div className="mb-4 flex items-center gap-2">
-          <a href="/dashboard" className="inline-flex items-center px-3 py-2 bg-gray-700 rounded-md text-sm hover:bg-gray-600">← Volver al dashboard</a>
-          <a href="/profile/edit" className="inline-flex items-center px-3 py-2 bg-indigo-600 rounded-md text-sm hover:bg-indigo-500">Editar perfil</a>
+        <div className="mb-4 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <a href="/dashboard" className="inline-flex items-center px-3 py-2 bg-gray-700 rounded-md text-sm hover:bg-gray-600">
+            ← Volver al dashboard
+          </a>
+          <a href="/profile/edit" className="inline-flex items-center px-3 py-2 bg-indigo-600 rounded-md text-sm hover:bg-indigo-500">
+            Editar perfil
+          </a>
         </div>
+
+        <LogoutButton />
+      </div>
+
 
         <div className="bg-gray-800 rounded-lg p-6">
           <h1 className="text-2xl font-semibold mb-4">Perfil</h1>

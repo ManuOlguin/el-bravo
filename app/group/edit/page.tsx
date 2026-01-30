@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/src/lib/currentUser";
 import { prisma } from "@/src/lib/db";
 import EditGroupForm from "@/src/components/EditGroupForm";
+import LogoutButton from "@/src/components/LogoutButton";
 
 export default async function EditGroupPage() {
   const user = await getCurrentUser();
@@ -19,6 +20,13 @@ export default async function EditGroupPage() {
   return (
     <main className="min-h-screen bg-gray-900 p-6 text-white">
       <div className="mx-auto max-w-3xl">
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <a href="/group" className="inline-flex items-center px-3 py-2 bg-gray-700 rounded-md text-sm hover:bg-gray-600">
+            ← Volver al grupo
+          </a>
+          <LogoutButton />
+        </div>
+
         <div className="bg-gray-800 rounded-lg p-6">
           <h1 className="text-2xl font-semibold mb-4">Editar grupo</h1>
           <EditGroupForm group={group} />

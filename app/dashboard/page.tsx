@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/src/lib/currentUser";
+import LogoutButton from "@/src/components/LogoutButton";
 import JoinGroupModal from "@/src/components/JoinGroupModal";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
 
   if (!user) {
-    redirect("/login");
+    redirect("/login"); 
   }
 
   const membership = user?.groupMembers && user.groupMembers.length > 0 ? user.groupMembers[0] : null;
@@ -35,6 +36,11 @@ export default async function DashboardPage() {
           </div>
 
           <div className="hidden sm:flex items-center" />
+
+          <div className="hidden sm:flex items-center">
+            <LogoutButton />
+          </div>
+
         </header>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
@@ -77,11 +83,6 @@ export default async function DashboardPage() {
               </a>
             </>
           )}
-
-
-          <form action="/api/auth/logout" method="POST" className="w-full sm:w-auto">
-            <button type="submit" className="w-full sm:w-auto px-3 py-2 bg-red-600 rounded-md text-white hover:bg-red-500">Logout</button>
-          </form>
         </div>
 
         <section className="bg-gray-800 rounded-lg p-6 shadow">
