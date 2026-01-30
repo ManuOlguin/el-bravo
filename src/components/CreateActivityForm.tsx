@@ -23,14 +23,14 @@ export default function CreateActivityForm(): any {
   const [saving, setSaving] = useState(false);
   const [activityType, setActivityType] = useState<string>('other');
   const [routines, setRoutines] = useState<any[]>([]);
-  const [selectedRoutineId, setSelectedRoutineId] = useState<string | null>(null);
+  const [selectedRoutineId, setSelectedRoutineId] = u seState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
         const res = await fetch('/api/routine/list');
-        const data = await res.json();
+        const data = await res.json() ;
         if (!res.ok) return;
         if (!mounted) return;
         setRoutines(Array.isArray(data) ? data : data.routines || []);

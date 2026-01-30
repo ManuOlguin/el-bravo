@@ -12,8 +12,18 @@ export default function CreateGroupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const next = () => setStep((s) => Math.min(s + 1, 3));
-  const back = () => setStep((s) => Math.max(s - 1, 0));
+  const next = () => {
+	setError(null);
+	if (step === 0 && !name.trim()) {
+		setError("El nombre del grupo es requerido");
+		return;
+		}
+	setStep((s) => Math.min(s + 1, 3));
+  };
+  const back = () => {
+    setError(null);
+    setStep((s) => Math.max(s - 1, 0));
+  };
 
   async function handleCreate(e?: React.FormEvent) {
     e?.preventDefault();
@@ -52,7 +62,6 @@ export default function CreateGroupPage() {
       <div className="w-full max-w-xl">
         <div className="bg-gray-800 rounded-lg shadow p-6">
           <h1 className="text-2xl font-semibold mb-4">Crear grupo</h1>
-
           <div className="mb-4">
             <div className="flex items-center gap-2">
               <StepDot active={step >= 0} label="Detalles" />
@@ -64,8 +73,8 @@ export default function CreateGroupPage() {
               <StepDot active={step >= 3} label="Confirmar" />
             </div>
           </div>
-
-          <form onSubmit={handleCreate} className="space-y-4">
+          {/*<form onSubmit={(e) => { if (step < 3) { e.preventDefault(); next(); return; } handleCreate(e); }} className="space-y-4">*/}
+          <div className="space-y-4">
             {step === 0 && (
               <div>
                 <label className="block text-sm text-gray-200 mb-1">Nombre del grupo</label>
@@ -143,16 +152,26 @@ export default function CreateGroupPage() {
                   Siguiente
                 </button>
               ) : (
-                <button type="submit" disabled={loading} className="px-4 py-2 bg-green-600 rounded-md text-white disabled:opacity-50">
+                <button
+                  type="button"
+                  onClick={() => handleCreate()}
+                  disabled={loading}
+                  className="px-4 py-2 bg-green-600 rounded-md text-white disabled:opacity-50"
+                >
                   {loading ? "Creando..." : "Crear grupo"}
-                </button>
+              </button>
               )}
+
+              {/*<button type="submit" disabled={loading} className="px-4 py-2 bg-green-600 rounded-md text-white disabled:opacity-50">
+                  {loading ? "Creando..." : "Crear grupo"}
+                </button>*/}
 
               <button type="button" onClick={() => router.push("/dashboard")} className="ml-auto px-3 py-2 bg-gray-600 rounded-md text-white">
                 Cancelar
               </button>
             </div>
-          </form>
+            </div>
+          {/*</form>*/}
         </div>
       </div>
     </main>
