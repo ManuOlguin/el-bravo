@@ -54,6 +54,9 @@ model Group {
   createdBy String
   createdAt DateTime @default(now())
 
+  inviteCode          String?   @unique @db.VarChar(12)
+  inviteCodeExpiresAt DateTime?
+
   // Relations
   members GroupMember[]
   seasons Season[]

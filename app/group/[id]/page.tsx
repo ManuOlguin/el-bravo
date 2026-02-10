@@ -5,6 +5,7 @@ import LogoutButton from "@/src/components/LogoutButton";
 import GroupTabs from "@/src/components/GroupTabs";
 import LeaveGroupButton from "@/src/components/LeaveGroupButton";
 import DeleteGroupButton from "@/src/components/DeleteGroupButton";
+import GroupInviteCodePanel from "@/src/components/GroupInviteCodePanel";
 
 function getWeekKey(d: Date) {
   const target = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -164,6 +165,12 @@ export default async function GroupByIdPage({
         </div>
 
         <div className="bg-gray-800 rounded-lg p-6">
+          {isAdmin && (
+              <div className="mt-4">
+                <GroupInviteCodePanel groupId={group.id} />
+              </div>
+            )}
+            
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
             <div className="w-28 h-28 rounded-full bg-gray-700 overflow-hidden">
               {group.photoUrl ? (
@@ -175,7 +182,7 @@ export default async function GroupByIdPage({
                 </div>
               )}
             </div>
-
+            
             {isAdmin && (
               <div className="mt-4 sm:mt-0 sm:ml-4 flex gap-2">
                 <a
