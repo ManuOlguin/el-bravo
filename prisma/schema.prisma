@@ -86,6 +86,8 @@ model Season {
   endDate     DateTime
   createdAt   DateTime @default(now())
 
+  minPerWeek  Int      @default(2)
+
   // Relations
   group   Group          @relation(fields: [groupId], references: [id])
   members SeasonMember[]

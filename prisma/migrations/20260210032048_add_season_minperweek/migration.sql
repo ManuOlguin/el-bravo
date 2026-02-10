@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `season` ADD COLUMN `minPerWeek` INTEGER NOT NULL DEFAULT 2;

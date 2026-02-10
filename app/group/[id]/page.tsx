@@ -192,10 +192,7 @@ export default async function GroupByIdPage({
                   Editar grupo
                 </a>
                 {/* Por ahora lo dejamos como estaba, pero idealmente debería ser /group/:id/create-season */}
-                <a
-                  href="/create-season"
-                  className="px-3 py-2 bg-indigo-600 rounded-md text-white hover:bg-indigo-500"
-                >
+                <a href={`/group/${group.id}/create-season`} className="px-3 py-2 bg-indigo-600 rounded-md text-white hover:bg-indigo-500">
                   Crear temporada
                 </a>
               </div>
@@ -213,17 +210,35 @@ export default async function GroupByIdPage({
             </div>
           </div>
 
+          <div className="mt-4">
+          {activeSeason ? (
+            <div className="bg-gray-900 p-4 rounded-md border border-gray-700">
+              <div className="text-sm text-gray-300">Temporada activa</div>
+              <div className="text-lg font-semibold">{activeSeason.name}</div>
+              <div className="text-sm text-gray-400">
+                {new Date(activeSeason.startDate).toLocaleDateString()} — {new Date(activeSeason.endDate).toLocaleDateString()}
+              </div>
+            </div>
+          ) : (
+            <div className="text-sm text-gray-400">No hay temporada activa.</div>
+          )}
+
+          {upcomingSeason && (
+            <div className="mt-3 text-sm text-gray-300">
+              Próxima: <span className="font-medium">{upcomingSeason.name}</span> (arranca {new Date(upcomingSeason.startDate).toLocaleDateString()})
+            </div>
+          )}
+        </div>
+
           <div className="mt-6">
             <GroupTabs
               activities={actData}
               members={membersWithStats}
-              activeSeason={upcomingSeason}
-              pastSeasons={pastSeasons}
+              seasons={group.seasons}
+              groupId={group.id}
+              isAdmin={isAdmin}
             />
           </div>
-
-          {/* Si querés mantener el bloque especial para activeSeason, lo volvemos a agregar,
-              pero tu versión actual tenía un bug: pasabas upcomingSeason como activeSeason */}
         </div>
       </div>
     </main>
