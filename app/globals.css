@@ -4,6 +4,9 @@
   --background: #ffffff;
   --foreground: #171717;
 }
+@theme {
+  --font-sans: var(--font-montserrat);
+}
 
 @theme inline {
   --color-background: var(--background);
@@ -11,7 +14,10 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
-
+@theme {
+  --color-surface: #262626;
+  --color-surfacehover: #3A3A3A;
+}
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
