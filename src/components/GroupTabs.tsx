@@ -147,7 +147,7 @@ export default function GroupTabs({ activities, members, seasons, groupId, isAdm
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
                     <div className="font-medium">{a.user?.name ?? a.user?.email}</div>
-                    <div className="text-sm text-gray-400">{new Date(a.startedAt).toLocaleString()}</div>
+                    <div className="text-sm text-gray-400"></div>
                   </div>
                   <div className="text-sm text-gray-300">
                     {a.type} · {a.notes ?? ""}

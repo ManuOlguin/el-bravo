@@ -17,6 +17,7 @@
 @theme {
   --color-surface: #262626;
   --color-surfacehover: #3A3A3A;
+  --color-surface2: #1A1A1A;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -30,3 +31,49 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* CONTENEDOR */
+.minimal-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+/* WEBKIT (Chrome, Edge, Safari) */
+.minimal-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+/* 🔥 Oculta COMPLETAMENTE los botones (flechas) */
+.minimal-scrollbar::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0;
+  height: 0;
+}
+
+/* Sin fondo */
+.minimal-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Thumb invisible por defecto */
+.minimal-scrollbar::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 999px;
+  transition: background-color 0.2s ease;
+}
+
+/* 👇 SOLO aparece al hover del contenedor */
+.minimal-scrollbar:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Hover sobre la barra */
+.minimal-scrollbar:hover::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.45);
+}
+
+/* Firefox */
+.minimal-scrollbar:hover {
+  scrollbar-color: rgba(255,255,255,0.25) transparent;
+}
+
