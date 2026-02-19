@@ -1,7 +1,7 @@
 // app/group/[id]/GroupPageClient.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Navbar from "@/src/components/Navbar";
 import UserActiveStats from "@/src/components/UserActiveStats";
 import GroupUserCalendar from "@/src/components/GroupUserCalendar";
@@ -23,6 +23,14 @@ type GroupPageClientProps = {
   pastSeasons: any[];
 };
 
+type MeResponse = {
+  user: {
+    id: string;
+    name?: string | null;
+    image?: string | null;
+  } | null;
+};
+
 export default function GroupPageClient({
   group,
   isAdmin,
@@ -31,17 +39,66 @@ export default function GroupPageClient({
   activeSeason,
   upcomingSeason,
 }: GroupPageClientProps) {
+  console.log("GroupPageClient render", { group, isAdmin, activities, membersWithStats, activeSeason, upcomingSeason }); // 👈 DEBUG
   const [invitePopupOpen, setInvitePopupOpen] = useState(false);
-  const [settingsPopupOpen, setSettingsPopupOpen] = useState(false); // 👈 nuevo
+  const [settingsPopupOpen, setSettingsPopupOpen] = useState(false);
+
+  const [me, setMe] = useState<MeResponse["user"]>(null);
+  const [meLoading, setMeLoading] = useState(true);
+  const [meError, setMeError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadMe() {
+      try {
+        setMeLoading(true);
+        setMeError(null);
+
+        const res = await fetch("/api/auth/me", {
+          method: "GET",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+        });
+
+        if (!res.ok) {
+          throw new Error(`GET /api/auth/me failed (${res.status})`);
+        }
+
+        const data = (await res.json()) as MeResponse;
+
+        console.log("Fetched /api/auth/me:", data);
+
+        if (!alive) return;
+        setMe(data.user ?? null);
+      } catch (err) {
+        if (!alive) return;
+        setMe(null);
+        setMeError(err instanceof Error ? err.message : "Unknown error");
+      } finally {
+        if (!alive) return;
+        setMeLoading(false);
+      }
+    }
+
+    loadMe();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
 
   return (
     <>
       <header>
-        <Navbar userName="Manu" photoUrl="https://i.pravatar.cc/100" />
+        <Navbar
+          userName={me?.name ?? "—"}
+          photoUrl={me?.image ?? "https://i.pravatar.cc/100"}
+        />
       </header>
+
       <main className="min-h-screen bg-black-900 p-6 text-white">
         <div className="mx-auto max-w-7xl space-y-4">
-          {/* Top bar */}
           <div className="flex items-center justify-between gap-2">
             <a
               href="/dashboard"
@@ -51,7 +108,7 @@ export default function GroupPageClient({
             </a>
           </div>
 
-          <div className=" rounded-lg m">
+          <div className="rounded-lg">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
               <div className="w-20 h-20 rounded-lg bg-gray-700 overflow-hidden">
                 {group.photoUrl ? (
@@ -71,12 +128,12 @@ export default function GroupPageClient({
               <div className="flex-1 ml-2">
                 <h1 className="text-3xl font-semibold">{group.name}</h1>
 
-                {/* Ojo: group.description hoy NO existe en schema; si te rompe, borrá esta línea */}
                 {"description" in group && (group as any).description && (
                   <p className="text-sm text-gray-300 mt-2">
                     {(group as any).description}
                   </p>
                 )}
+
                 <div className="flex items-center gap-2 mt-3">
                   <img
                     src="https://i.pravatar.cc/100"
@@ -88,13 +145,11 @@ export default function GroupPageClient({
                     className="h-6 w-6 rounded-full"
                     alt="Group Members"
                   />
-
                   <img
                     src="https://i.pravatar.cc/102"
                     className="h-6 w-6 rounded-full"
                     alt="Group Members"
                   />
-
                   <img
                     src="https://i.pravatar.cc/103"
                     className="h-6 w-6 rounded-full"
@@ -102,12 +157,11 @@ export default function GroupPageClient({
                   />
                 </div>
               </div>
+
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2">
                   {isAdmin && (
-                    <InviteGroupButton
-                      setPopupInviteOpen={setInvitePopupOpen}
-                    />
+                    <InviteGroupButton setPopupInviteOpen={setInvitePopupOpen} />
                   )}
 
                   <button
@@ -116,7 +170,6 @@ export default function GroupPageClient({
                     className="inline-flex items-center px-2 py-1 bg-surface rounded-md text-sm hover:bg-surfacehover"
                     aria-label="Configuración del grupo"
                   >
-                    {/* Podés reemplazar esto por un ícono SVG si querés algo más prolijo */}
                     <span className="text-lg">⚙️</span>
                   </button>
                 </div>
@@ -128,6 +181,7 @@ export default function GroupPageClient({
               open={invitePopupOpen}
               onClose={() => setInvitePopupOpen(false)}
             />
+
             <GroupSettingsPopup
               open={settingsPopupOpen}
               onClose={() => setSettingsPopupOpen(false)}
@@ -137,38 +191,55 @@ export default function GroupPageClient({
               activeMemberCount={group.members.length}
               createdAt={group.createdAt}
             />
+
             <div className="mt-4">
               {activeSeason ? (
                 <>
                   <div className="bg-[linear-gradient(to_right,#4EBEA3,#86D18A,#B7E272)] p-4 rounded-xl border border-gray-700 flex justify-between items-center">
-                    <div className="text-2xl font-semibold">
-                      {activeSeason.name}
-                    </div>
+                    <div className="text-2xl font-semibold">{activeSeason.name}</div>
                     <div className="text-2xl font-semibold text-black/28">
                       {new Date(activeSeason.startDate).toLocaleDateString()} -{" "}
                       {new Date(activeSeason.endDate).toLocaleDateString()}
                     </div>
                   </div>
+
                   <UserActiveStats />
-                  <GroupUserCalendar />
+
+                  {/* Optional: tiny state handling so it doesn’t crash / feel weird */}
+                  {meLoading ? (
+                    <div className="text-sm text-gray-400 mt-2">Cargando usuario…</div>
+                  ) : meError ? (
+                    <div className="text-sm text-red-400 mt-2">
+                      Error cargando usuario: {meError}
+                    </div>
+                  ) : !me ? (
+                    <div className="text-sm text-gray-400 mt-2">
+                      No hay usuario logueado.
+                    </div>
+                  ) : (
+                    <GroupUserCalendar
+                      seasonStart={activeSeason.startDate}
+                      seasonEnd={activeSeason.endDate}
+                      weeklyRequired={activeSeason.minPerWeek}
+                      workouts={activities.filter((a) => a.user.id === me.id) ?? []}
+                    />
+                  )}
+
                   <div className="flex gap-2 mt-2">
                     <GroupSeasonActivities activities={activities} />
                     <GroupSeasonMembers members={membersWithStats} />
                   </div>
+
                   <GroupSeasonRank />
                 </>
               ) : (
-                <div className="text-sm text-gray-400">
-                  No hay temporada activa.
-                </div>
+                <div className="text-sm text-gray-400">No hay temporada activa.</div>
               )}
 
               {upcomingSeason && (
                 <div className="mt-3 text-sm text-gray-300">
-                  Próxima:{" "}
-                  <span className="font-medium">{upcomingSeason.name}</span>{" "}
-                  (arranca{" "}
-                  {new Date(upcomingSeason.startDate).toLocaleDateString()})
+                  Próxima: <span className="font-medium">{upcomingSeason.name}</span>{" "}
+                  (arranca {new Date(upcomingSeason.startDate).toLocaleDateString()})
                 </div>
               )}
             </div>

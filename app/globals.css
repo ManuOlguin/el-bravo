@@ -18,6 +18,13 @@
   --color-surface: #262626;
   --color-surfacehover: #3A3A3A;
   --color-surface2: #1A1A1A;
+  --color-calendarweek: #202020;
+  --color-calendarweekcommonstreak: #2E2E2E;
+  --color-calendarweekgoldenstreak: #303323;
+  --color-calendargreen: linear-gradient(to bottom, #8AC617, #63710B);
+  --color-calendargray: #838383;
+  --color-graytext: #606060;
+
 }
 @media (prefers-color-scheme: dark) {
   :root {

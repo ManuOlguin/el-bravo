@@ -9,7 +9,6 @@ type Props = {
 
 export default function GroupSeasonActivitiesCard({ activity }: Props) {
   const router = useRouter();
-  console.log("Activities in GroupSeasonActivitiesCard:", activity);
   return (
     <div  className="bg-surface2 rounded-lg w-full flex min-h-[170px]">
       <div className="bg-surfacehover  h-full w-[150px] min-w-[150px] rounded-l-lg">{/* aca va foto del entrenamiento */}</div>
