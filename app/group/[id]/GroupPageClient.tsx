@@ -87,7 +87,14 @@ export default function GroupPageClient({
     };
   }, []);
 
-
+// 🔹 Actividades SOLO del usuario actual
+  const myActivities = useMemo(
+    () =>
+      me
+        ? activities.filter((a) => (a as any).user?.id === me.id)
+        : [],
+    [activities, me]
+  );
   return (
     <>
       <header>
@@ -203,7 +210,8 @@ export default function GroupPageClient({
                     </div>
                   </div>
 
-                  <UserActiveStats />
+                  <UserActiveStats activities={myActivities}
+                  weeklyRequired={activeSeason.minPerWeek} />
 
                   {/* Optional: tiny state handling so it doesn’t crash / feel weird */}
                   {meLoading ? (
@@ -227,7 +235,7 @@ export default function GroupPageClient({
 
                   <div className="flex gap-2 mt-2">
                     <GroupSeasonActivities activities={activities} />
-                    <GroupSeasonMembers members={membersWithStats} />
+                    <GroupSeasonMembers members={membersWithStats} weeklyRequired={activeSeason.minPerWeek} />
                   </div>
 
                   <GroupSeasonRank />

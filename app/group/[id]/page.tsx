@@ -29,6 +29,9 @@ function computeStreaks(
   goldenThresh = 2
 ) {
   const now = new Date();
+  const currentWeekKey = getWeekKey(now); // 🔹 semana actual (ISO / lunes-based)
+
+  // Generamos las keys de las últimas N semanas para calcular las rachas
   const weekKeys: string[] = [];
   for (let i = 0; i < weeksLookback; i++) {
     const d = new Date(now);
@@ -36,6 +39,7 @@ function computeStreaks(
     weekKeys.push(getWeekKey(d));
   }
 
+  // Contamos cuántos entrenos hay por semana
   const counts: Record<string, number> = {};
   activities.forEach((a) => {
     const k = getWeekKey(new Date(a.startedAt));
@@ -45,19 +49,24 @@ function computeStreaks(
   let common = 0;
   let golden = 0;
 
+  // 🔹 Racha común: semanas seguidas con >= 1 entreno
   for (const k of weekKeys) {
     const c = counts[k] || 0;
     if (c >= 1) common += 1;
     else break;
   }
 
+  // 🔹 Racha golden: semanas seguidas con >= goldenThresh entrenos
   for (const k of weekKeys) {
     const c = counts[k] || 0;
     if (c >= goldenThresh) golden += 1;
     else break;
   }
 
-  return { commonStreak: common, goldenStreak: golden };
+  // 🔹 Entrenamientos en la semana ACTUAL
+  const currentWeekCount = counts[currentWeekKey] || 0;
+
+  return { commonStreak: common, goldenStreak: golden, currentWeekCount };
 }
 
 export default async function GroupByIdPage({

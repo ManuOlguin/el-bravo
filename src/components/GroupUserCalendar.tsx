@@ -151,6 +151,7 @@ export default function GroupUserCalendar({
   }, [weeks]);
 
   function getWeekKind(weekWorkouts: number): WeekKind {
+    console.log("weekWorkouts", weekWorkouts, "weeklyRequired", weeklyRequired);
     if (weekWorkouts >= weeklyRequired) return "golden";
     if (weekWorkouts >= 1 && weekWorkouts < weeklyRequired) return "common";
     return "none";
@@ -335,9 +336,9 @@ export default function GroupUserCalendar({
 
           {/* semanas reales */}
           {weeks.map((week, weekIdx) => {
-            const weekWorkouts = week.filter((day) =>
-              workoutDays.some((wd) => isSameLocalDay(wd, day))
-            ).length;
+            const weekWorkouts = workoutDays.filter((wd) =>
+  week.some((day) => isSameLocalDay(wd, day))
+).length;
 
             const kind = getWeekKind(weekWorkouts);
 
