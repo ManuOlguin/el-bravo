@@ -113,7 +113,8 @@ model Exercise {
 
   // Relations
   muscles  ExerciseMuscle[]
-  routines RoutineExercise[] // 👈 ESTE ES EL CAMPO QUE FALTABA
+  routines RoutineExercise[]
+  activities ActivityExercise[]
 
   @@unique([name])
 }
@@ -149,9 +150,9 @@ model Activity {
   notes     String?      @db.Text
   createdAt DateTime     @default(now())
 
-  // Relations
   user User @relation(fields: [userId], references: [id])
-  routine Routine? @relation(fields: [routineId], references: [id])
+
+  exercises ActivityExercise[]
 
   @@index([userId, startedAt])
   @@index([startedAt])
@@ -165,7 +166,6 @@ model Routine {
   user   User   @relation(fields: [userId], references: [id])
 
   exercises RoutineExercise[]
-  activities Activity[]
 
   createdAt DateTime @default(now())
 }
@@ -182,4 +182,19 @@ model RoutineExercise {
   routine  Routine  @relation(fields: [routineId], references: [id])
   exercise Exercise @relation(fields: [exerciseId], references: [id])
 
+}
+
+model ActivityExercise {
+  id String @id @default(cuid())
+
+  activityId String
+  exerciseId String
+
+  sets Int
+  reps Int
+
+  activity Activity @relation(fields: [activityId], references: [id])
+  exercise Exercise @relation(fields: [exerciseId], references: [id])
+
+  @@index([activityId])
 }
