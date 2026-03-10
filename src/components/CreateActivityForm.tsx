@@ -225,7 +225,7 @@ export default function CreateActivityForm(): any {
           </select>
       </div>
 
-      {routineExercises.length > 0 && (
+      {(
         <div className="bg-gray-800 p-3 rounded space-y-2">
 
           <h3>Ejercicios</h3>
