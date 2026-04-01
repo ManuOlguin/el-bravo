@@ -7,12 +7,15 @@ const COOKIE_NAME = process.env.JWT_COOKIE_NAME || "elbravo_token";
 export async function getCurrentUser() {
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
-  if (!token) return null;
+
+  if (!token) {
+    return null;
+  }
 
   try {
     const { userId } = await verifyAuthToken(token);
 
-    return await prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
         id: true,
@@ -20,17 +23,17 @@ export async function getCurrentUser() {
         name: true,
         photoUrl: true,
         createdAt: true,
-        groupMembers: {
-          where: { leftAt: null },
-          include: {
-            group: {
-              select: { id: true, name: true },
-            },
-          },
-        },
       },
     });
-  } catch {
+
+    if (!user) {
+      console.error("[getCurrentUser] user not found for token userId:", userId);
+      return null;
+    }
+
+    return user;
+  } catch (error) {
+    console.error("[getCurrentUser] failed:", error);
     return null;
   }
 }

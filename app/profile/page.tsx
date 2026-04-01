@@ -3,165 +3,586 @@ import { getCurrentUser } from "@/src/lib/currentUser";
 import LogoutButton from "@/src/components/LogoutButton";
 import { prisma } from "@/src/lib/db";
 
-function getWeekKey(d: Date) {
-  const target = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const dayNr = (target.getUTCDay() + 6) % 7;
-  target.setUTCDate(target.getUTCDate() - dayNr + 3);
-  const firstThursday = target.valueOf();
-  target.setUTCMonth(target.getUTCMonth(), 1);
-  if (target.getUTCDay() !== 4) {
-    target.setUTCMonth(0, 1 + ((4 - target.getUTCDay()) + 7) % 7);
+type ActivityExerciseItem = {
+  id: string;
+  sets: number;
+  reps: number;
+  exercise: {
+    id: string;
+    name: string;
+  };
+};
+
+type ActivityForStats = {
+  id: string;
+  type: string;
+  notes: string | null;
+  startedAt: Date;
+  endedAt: Date;
+  durationMinutes: number | null;
+  exercises: ActivityExerciseItem[];
+};
+
+type MembershipItem = {
+  id: string;
+  joinedAt: Date;
+  role: string;
+  groupId: string;
+  group: {
+    id: string;
+    name: string;
+    photoUrl: string | null;
+  };
+};
+
+type RoutineItem = {
+  id: string;
+  name: string;
+  exercises: {
+    id: string;
+    exercise: {
+      id: string;
+      name: string;
+    };
+  }[];
+};
+
+type AwardItem = {
+  id: string;
+  earnedAt: Date;
+  award: {
+    id: string;
+    name: string;
+  };
+};
+
+function getActivityDurationMinutes(activity: {
+  startedAt: Date;
+  endedAt: Date;
+  durationMinutes: number | null;
+}) {
+  if (typeof activity.durationMinutes === "number" && activity.durationMinutes > 0) {
+    return activity.durationMinutes;
   }
-  const week = 1 + Math.round((firstThursday - target.valueOf()) / (7 * 24 * 3600 * 1000));
-  return `${d.getUTCFullYear()}-W${week}`;
+
+  const started = new Date(activity.startedAt).getTime();
+  const ended = new Date(activity.endedAt).getTime();
+  const diff = ended - started;
+
+  if (Number.isNaN(diff) || diff <= 0) return 0;
+
+  return Math.round(diff / 60000);
 }
 
-function computeStreaks(activities: any[], weeksLookback = 16, goldenThresh = 2) {
-  const now = new Date();
-  const weekKeys: string[] = [];
-  for (let i = 0; i < weeksLookback; i++) {
-    const d = new Date(now);
-    d.setDate(now.getDate() - i * 7);
-    weekKeys.push(getWeekKey(d));
-  }
+function getWeekStart(date: Date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
 
-  const counts: Record<string, number> = {};
-  activities.forEach((a) => {
-    const k = getWeekKey(new Date(a.startedAt));
-    counts[k] = (counts[k] || 0) + 1;
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+
+function getWeekKey(date: Date) {
+  return getWeekStart(date).toISOString().slice(0, 10);
+}
+
+function formatMinutes(totalMinutes: number) {
+  if (!totalMinutes || totalMinutes <= 0) return "0m";
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h`;
+  return `${minutes}m`;
+}
+
+function formatDateLabel(date: Date) {
+  return new Date(date).toLocaleDateString("es-AR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
   });
+}
 
-  let common = 0;
-  let golden = 0;
-  for (const k of weekKeys) {
-    const c = counts[k] || 0;
-    if (c >= 1) {
-      common += 1;
-    } else break;
-  }
-  for (const k of weekKeys) {
-    const c = counts[k] || 0;
-    if (c >= goldenThresh) {
-      golden += 1;
-    } else break;
+function formatDateTimeLabel(date: Date) {
+  return new Date(date).toLocaleString("es-AR");
+}
+
+function computeProfileStats(activities: ActivityForStats[], weeklyGoal: number) {
+  const now = new Date();
+  const currentWeekKey = getWeekKey(now);
+
+  const weekCounts = new Map<string, number>();
+  const weekMinutes = new Map<string, number>();
+
+  let totalMinutes = 0;
+  let longestWorkoutMinutes = 0;
+
+  for (const activity of activities) {
+    const minutes = getActivityDurationMinutes(activity);
+    const weekKey = getWeekKey(activity.startedAt);
+
+    totalMinutes += minutes;
+    longestWorkoutMinutes = Math.max(longestWorkoutMinutes, minutes);
+
+    weekCounts.set(weekKey, (weekCounts.get(weekKey) ?? 0) + 1);
+    weekMinutes.set(weekKey, (weekMinutes.get(weekKey) ?? 0) + minutes);
   }
 
-  return { commonStreak: common, goldenStreak: golden };
+  const sortedWeekStarts = Array.from(
+    new Set(
+      activities.map((activity: ActivityForStats) => getWeekStart(activity.startedAt).getTime())
+    )
+  )
+    .sort((a, b) => a - b)
+    .map((time) => new Date(time));
+
+  let longestActiveStreak = 0;
+  let currentStreak = 0;
+  let previousWeekStart: Date | null = null;
+
+  for (const weekStart of sortedWeekStarts) {
+    if (!previousWeekStart) {
+      currentStreak = 1;
+    } else {
+      const diffDays =
+        (weekStart.getTime() - previousWeekStart.getTime()) / (1000 * 60 * 60 * 24);
+
+      if (diffDays === 7) {
+        currentStreak += 1;
+      } else {
+        currentStreak = 1;
+      }
+    }
+
+    longestActiveStreak = Math.max(longestActiveStreak, currentStreak);
+    previousWeekStart = weekStart;
+  }
+
+  const activeWeeks = weekCounts.size;
+  const workoutsThisWeek = weekCounts.get(currentWeekKey) ?? 0;
+  const perfectWeeks = Array.from(weekCounts.values()).filter(
+    (count) => count >= weeklyGoal
+  ).length;
+  const maxWeeklyMinutes = Math.max(0, ...Array.from(weekMinutes.values()));
+  const averageMinutes =
+    activities.length > 0 ? Math.round(totalMinutes / activities.length) : 0;
+
+  return {
+    activeWeeks,
+    workoutsThisWeek,
+    perfectWeeks,
+    longestActiveStreak,
+    maxWeeklyMinutes,
+    longestWorkoutMinutes,
+    totalMinutes,
+    averageMinutes,
+  };
+}
+
+function getTypeLabel(type: string) {
+  switch (type) {
+    case "gym":
+      return "Gym";
+    case "run":
+      return "Run";
+    case "sport":
+      return "Deporte";
+    case "mobility":
+      return "Movilidad";
+    default:
+      return "Otro";
+  }
+}
+
+function ProfileStatCard({
+  label,
+  value,
+  highlight = false,
+  subtitle,
+}: {
+  label: string;
+  value: string | number;
+  highlight?: boolean;
+  subtitle?: string;
+}) {
+  return (
+    <div
+      className={`rounded-xl p-5 ${
+        highlight ? "bg-lime-600 text-white" : "bg-slate-700 text-white"
+      }`}
+    >
+      <div className="text-4xl font-bold leading-none">{value}</div>
+      <div className="mt-3 text-sm font-medium opacity-90">{label}</div>
+      {subtitle ? <div className="mt-1 text-xs opacity-75">{subtitle}</div> : null}
+    </div>
+  );
 }
 
 export default async function ProfilePage() {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) redirect("/login");
 
-  const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { id: true, name: true, email: true, photoUrl: true, createdAt: true } });
-  if (!dbUser) redirect('/dashboard');
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
+  });
 
-  const activities = await prisma.activity.findMany({ where: { userId: user.id }, orderBy: { startedAt: 'desc' }, take: 200 });
-  const memberships = await prisma.groupMember.findMany({ where: { userId: user.id }, include: { group: true } });
+  if (!dbUser) redirect("/dashboard");
 
-  const totalActivities = activities.length;
-  const lastActivity = activities[0]?.startedAt ?? null;
-  const streaks = computeStreaks(activities.map(a => ({ startedAt: a.startedAt })), 16, 2);
+  const [activitiesRaw, membershipsRaw, routinesRaw, awardsRaw] = await Promise.all([
+    prisma.activity.findMany({
+      where: { userId: user.id },
+      include: {
+        exercises: {
+          include: {
+            exercise: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { startedAt: "desc" },
+      take: 50,
+    }),
+    prisma.groupMember.findMany({
+      where: {
+        userId: user.id,
+        leftAt: null,
+      },
+      include: {
+        group: {
+          select: {
+            id: true,
+            name: true,
+            photoUrl: true,
+          },
+        },
+      },
+      orderBy: { joinedAt: "desc" },
+    }),
+    prisma.routine.findMany({
+      where: { userId: user.id },
+      include: {
+        exercises: {
+          include: {
+            exercise: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+    }),
+    Promise.resolve([]),
+  ]);
+
+  const activities = activitiesRaw as unknown as ActivityForStats[];
+  const memberships = membershipsRaw as unknown as MembershipItem[];
+  const routines = routinesRaw as unknown as RoutineItem[];
+  const awards = awardsRaw as unknown as AwardItem[];
+
+const profileWeeklyGoal =
+  (dbUser as typeof dbUser & { weeklyGoal?: number | null }).weeklyGoal ?? 3;
+  const stats = computeProfileStats(activities, profileWeeklyGoal);
 
   return (
-    <main className="min-h-screen bg-gray-900 p-6 text-white">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-4 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <a href="/dashboard" className="inline-flex items-center px-3 py-2 bg-gray-700 rounded-md text-sm hover:bg-gray-600">
-            ← Volver al dashboard
-          </a>
-          <a href="/profile/edit" className="inline-flex items-center px-3 py-2 bg-indigo-600 rounded-md text-sm hover:bg-indigo-500">
-            Editar perfil
-          </a>
+    <main className="min-h-screen bg-[#08142d] p-6 text-white">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <a
+              href="/dashboard"
+              className="inline-flex items-center rounded-md bg-slate-600 px-4 py-2 text-sm font-medium hover:bg-slate-500"
+            >
+              ← Volver al dashboard
+            </a>
+           <a
+              href="/profile/edit"
+              className="inline-flex items-center rounded-lg bg-gradient-to-b from-lime-600 to-lime-800 px-4 py-2 text-sm font-semibold text-white shadow-md hover:from-lime-500 hover:to-lime-700"
+            >
+              Editar perfil
+            </a>
+          </div>
+
+          <LogoutButton />
         </div>
 
-        <LogoutButton />
-      </div>
+        <section className="rounded-2xl bg-slate-800 p-6 shadow-lg">
+          <div className="space-y-5">
+            <div className="rounded-2xl bg-slate-900/60 p-5">
+              <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-5">
+                  <div className="h-24 w-24 overflow-hidden rounded-3xl bg-slate-700">
+                    {dbUser.photoUrl ? (
+                      <img
+                        src={dbUser.photoUrl}
+                        alt={dbUser.name ?? dbUser.email}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-4xl text-slate-200">
+                        {(dbUser.name || dbUser.email || "U").charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
 
+                  <div>
+                    <h1 className="text-4xl font-bold leading-tight">
+                      {dbUser.name ?? "Sin nombre"}
+                    </h1>
+                    <p className="mt-1 text-sm text-slate-400">{dbUser.email}</p>
+                    <p className="mt-3 text-xs text-slate-400">
+                      Objetivo semanal:{" "}
+                      <span className="font-semibold text-slate-200">
+                        {profileWeeklyGoal} entrenamientos
+                      </span>
+                    </p>
+                  </div>
+                </div>
 
-        <div className="bg-gray-800 rounded-lg p-6">
-          <h1 className="text-2xl font-semibold mb-4">Perfil</h1>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div className="col-span-1 flex flex-col items-center gap-3">
-              <div className="w-28 h-28 rounded-full bg-gray-700 overflow-hidden">
-                {dbUser.photoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={dbUser.photoUrl} alt={dbUser.name ?? dbUser.email} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-300 text-2xl">{(dbUser.name || dbUser.email || 'U').charAt(0)}</div>
-                )}
-              </div>
-              <div className="text-center">
-                <div className="font-medium">{dbUser.name ?? 'Sin nombre'}</div>
-                <div className="text-sm text-gray-400">{dbUser.email}</div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:min-w-[420px]">
+                  <ProfileStatCard label="semanas activas" value={stats.activeWeeks} />
+                  <ProfileStatCard
+                    label="entrenamientos esta semana"
+                    value={stats.workoutsThisWeek}
+                  />
+                  <ProfileStatCard
+                    label="semanas perfectas"
+                    value={stats.perfectWeeks}
+                    highlight
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="col-span-2">
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="bg-gray-700 rounded p-4">
-                  <div className="text-sm text-gray-400">Creado</div>
-                  <div className="font-medium">{new Date(dbUser.createdAt).toLocaleDateString()}</div>
-                </div>
-                <div className="bg-gray-700 rounded p-4">
-                  <div className="text-sm text-gray-400">Actividades</div>
-                  <div className="font-medium">{totalActivities}</div>
-                </div>
-                <div className="bg-gray-700 rounded p-4">
-                  <div className="text-sm text-gray-400">Última actividad</div>
-                  <div className="font-medium">{lastActivity ? new Date(lastActivity).toLocaleString() : '—'}</div>
-                </div>
-                <div className="bg-gray-700 rounded p-4">
-                  <div className="text-sm text-gray-400">Rachas (golden / common)</div>
-                  <div className="font-medium">{streaks.goldenStreak} / {streaks.commonStreak}</div>
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.4fr_1fr]">
+              <div className="rounded-2xl bg-slate-900/70 p-5">
+                <div className="grid grid-cols-2 gap-4">
+                  <ProfileStatCard
+                    label="racha activa más larga"
+                    value={stats.longestActiveStreak}
+                    subtitle="semanas consecutivas"
+                  />
+                  <ProfileStatCard
+                    label="más minutos en una semana"
+                    value={formatMinutes(stats.maxWeeklyMinutes)}
+                  />
+                  <ProfileStatCard
+                    label="entrenamiento más largo"
+                    value={formatMinutes(stats.longestWorkoutMinutes)}
+                  />
+                  <ProfileStatCard
+                    label="minutos totales"
+                    value={formatMinutes(stats.totalMinutes)}
+                    subtitle={`promedio ${formatMinutes(stats.averageMinutes)}`}
+                  />
                 </div>
               </div>
 
-              <div className="bg-gray-700 rounded p-4">
-                <h2 className="text-lg font-semibold mb-2">Miembro en grupos</h2>
-                <div className="space-y-2">
-                  {memberships.map((m) => (
-                    <div key={m.id} className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gray-600 overflow-hidden">
-                          {m.group.photoUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={m.group.photoUrl} alt={m.group.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-300">{m.group.name.charAt(0)}</div>
-                          )}
+              <div className="rounded-2xl bg-slate-900/70 p-5">
+                <div className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-300">
+                  Badges / awards
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  {Array.from({ length: 6 }).map((_, index: number) => {
+                    const earned = awards[index];
+
+                    return (
+                      <div key={index} className="flex flex-col items-center gap-2">
+                        <div
+                          className={`flex h-16 w-16 items-center justify-center rounded-full border-4 ${
+                            earned
+                              ? "border-lime-500 bg-slate-800 text-lime-300"
+                              : "border-slate-600 bg-slate-800 text-slate-500"
+                          }`}
+                        >
+                          <span className="px-1 text-center text-xs font-bold">
+                            {earned ? earned.award.name.slice(0, 10) : "—"}
+                          </span>
                         </div>
-                        <div>
-                          <div className="font-medium">{m.group.name}</div>
-                          <div className="text-xs text-gray-400">Role: {m.role}</div>
+                        <span className="text-center text-[11px] text-slate-400">
+                          {earned ? earned.award.name : "Vacío"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-slate-900/70 p-5">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="text-lg font-semibold">Rutinas</div>
+                <a
+                  href="/routine"
+                  className="rounded-lg bg-gradient-to-b from-lime-600 to-lime-800 px-4 py-2 text-sm font-semibold text-white shadow-md hover:from-lime-500 hover:to-lime-700"
+                >
+                  Ver mis rutinas
+                </a>
+              </div>
+
+              {routines.length === 0 ? (
+                <div className="rounded-xl bg-slate-800 p-4 text-sm text-slate-400">
+                  Todavía no tenés rutinas creadas.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  {routines.map((routine: RoutineItem) => (
+                    <div
+                      key={routine.id}
+                      className="rounded-xl bg-gradient-to-r from-red-700/80 to-violet-700/80 p-[1px]"
+                    >
+                      <div className="rounded-xl bg-slate-900 px-4 py-5">
+                        <div className="text-lg font-bold">{routine.name}</div>
+                        <div className="mt-2 text-sm text-slate-300">
+                          {routine.exercises.length} ejercicio
+                          {routine.exercises.length === 1 ? "" : "s"}
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {routine.exercises
+                            .slice(0, 3)
+                            .map((item: RoutineItem["exercises"][number]) => (
+                              <span
+                                key={item.id}
+                                className="rounded-full bg-slate-800 px-2 py-1 text-xs text-slate-300"
+                              >
+                                {item.exercise.name}
+                              </span>
+                            ))}
+
+                          {routine.exercises.length > 3 ? (
+                            <span className="rounded-full bg-slate-800 px-2 py-1 text-xs text-slate-400">
+                              +{routine.exercises.length - 3}
+                            </span>
+                          ) : null}
                         </div>
                       </div>
-                      <div className="text-sm text-gray-400">Joined: {new Date(m.joinedAt).toLocaleDateString()}</div>
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.2fr_1fr]">
+              <div className="rounded-2xl bg-slate-900/70 p-5">
+                <div className="mb-4 text-lg font-semibold">Actividad reciente</div>
+
+                {activities.length === 0 ? (
+                  <div className="rounded-xl bg-slate-800 p-4 text-sm text-slate-400">
+                    No hay actividad cargada todavía.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {activities.slice(0, 8).map((activity: ActivityForStats) => {
+                      const minutes = getActivityDurationMinutes(activity);
+
+                      return (
+                        <div
+                          key={activity.id}
+                          className="rounded-xl bg-slate-800 px-4 py-4"
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <div className="text-xl font-semibold">
+                                {formatDateLabel(activity.startedAt)}
+                              </div>
+                              <div className="mt-1 text-sm text-slate-400">
+                                {formatMinutes(minutes)}
+                              </div>
+                            </div>
+
+                            <div className="text-right text-sm text-slate-400">
+                              {formatDateTimeLabel(activity.startedAt)}
+                            </div>
+                          </div>
+
+                          <div className="mt-4 flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-indigo-600/20 px-3 py-1 text-xs font-medium text-indigo-300">
+                              {getTypeLabel(activity.type)}
+                            </span>
+
+                            {activity.exercises
+                              .slice(0, 4)
+                              .map((item: ActivityExerciseItem) => (
+                                <span
+                                  key={item.id}
+                                  className="rounded-full bg-slate-700 px-3 py-1 text-xs text-slate-300"
+                                >
+                                  {item.exercise.name}
+                                </span>
+                              ))}
+                          </div>
+
+                          {activity.notes ? (
+                            <p className="mt-3 text-sm text-slate-300">“{activity.notes}”</p>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-2xl bg-slate-900/70 p-5">
+                <div className="mb-4 text-lg font-semibold">Mis grupos</div>
+
+                {memberships.length === 0 ? (
+                  <div className="rounded-xl bg-slate-800 p-4 text-sm text-slate-400">
+                    No pertenecés a ningún grupo todavía.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {memberships.map((membership: MembershipItem) => (
+                      <a
+                        key={membership.id}
+                        href={`/group/${membership.groupId}`}
+                        className="flex items-center justify-between gap-3 rounded-xl bg-slate-800 p-4 transition hover:bg-slate-700"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-11 w-11 overflow-hidden rounded-full bg-slate-600">
+                            {membership.group.photoUrl ? (
+                              <img
+                                src={membership.group.photoUrl}
+                                alt={membership.group.name}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-slate-200">
+                                {membership.group.name.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+
+                          <div>
+                            <div className="font-semibold">{membership.group.name}</div>
+                            <div className="text-sm text-slate-400">Rol: {membership.role}</div>
+                          </div>
+                        </div>
+
+                        <div className="text-sm text-slate-400">
+                          {new Date(membership.joinedAt).toLocaleDateString("es-AR")}
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
-
-          <div className="mt-6">
-            <h2 className="text-lg font-semibold mb-2">Actividad reciente</h2>
-            <div className="space-y-2">
-              {activities.length === 0 && <div className="text-sm text-gray-400">No hay actividad.</div>}
-              {activities.map((a) => (
-                <div key={a.id} className="p-3 bg-gray-700 rounded flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">{a.type ?? 'Actividad'}</div>
-                    <div className="text-sm text-gray-400">{a.notes ?? ''}</div>
-                  </div>
-                  <div className="text-sm text-gray-400">{new Date(a.startedAt).toLocaleString()}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        </section>
       </div>
     </main>
   );

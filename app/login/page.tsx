@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -15,22 +13,29 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-const res = await fetch("/api/auth/login", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  credentials: "include",
-  body: JSON.stringify({ email, password }),
-});
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
+      });
 
-    const data = await res.json();
-    setLoading(false);
+      const data = await res.json();
 
-    if (!res.ok) {
-      setError(data.error || "Error");
-      return;
+      if (!res.ok) {
+        setLoading(false);
+        setError(data.error || "Error");
+        return;
+      }
+
+      // navegación completa para asegurar que el navegador ya tenga la cookie aplicada
+      window.location.href = "/dashboard";
+    } catch (err) {
+      console.error("/login submit error:", err);
+      setLoading(false);
+      setError("Error iniciando sesión");
     }
-
-    router.push("/dashboard");
   }
 
   return (
@@ -40,7 +45,9 @@ const res = await fetch("/api/auth/login", {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-200 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-200 mb-1">
+              Email
+            </label>
             <input
               placeholder="you@example.com"
               type="email"
@@ -51,7 +58,9 @@ const res = await fetch("/api/auth/login", {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-200 mb-1">Password</label>
+            <label className="block text-sm font-medium text-gray-200 mb-1">
+              Password
+            </label>
             <input
               placeholder="Password"
               type="password"
@@ -77,7 +86,9 @@ const res = await fetch("/api/auth/login", {
           Don't have an account?
           <button
             type="button"
-            onClick={() => router.push('/register')}
+            onClick={() => {
+              window.location.href = "/register";
+            }}
             className="ml-2 text-indigo-400 hover:underline"
           >
             Register

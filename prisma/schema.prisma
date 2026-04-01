@@ -15,12 +15,33 @@ enum GroupRole {
   member
 }
 
+enum MembershipStatus {
+  pending
+  accepted
+  rejected
+  removed
+}
+
 enum ActivityType {
   gym
   run
   sport
   mobility
   other
+}
+
+enum ScoreEventType {
+  activity_base
+  weekly_streak_bonus
+  perfect_week_bonus
+  award_bonus
+  manual_adjustment
+  penalty
+}
+
+enum AwardScope {
+  season
+  profile
 }
 
 ////////////////////
@@ -34,25 +55,35 @@ model User {
   name         String?
   photoUrl     String? @db.VarChar(2048)
 
+  // Perfil MVP
+  weeklyGoal Int     @default(3)
+  timezone   String? @db.VarChar(64)
+
   emailVerifiedAt DateTime?
   isActive        Boolean   @default(true)
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime? @updatedAt
 
   // Relations
-  groupMembers  GroupMember[]
-  seasonMembers SeasonMember[]
-  activities    Activity[]
-  routines      Routine[]
+  groupMembers        GroupMember[]
+  seasonMembers       SeasonMember[]
+  activities          Activity[]
+  routines            Routine[]
+  scoreEvents         ScoreEvent[]
+  seasonWeekProgress  SeasonWeekProgress[]
+  awardsEarned        AwardEarned[]
 }
 
 model Group {
-  id        String   @id @default(cuid())
-  name      String
-  photoUrl  String?  @db.VarChar(2048) // foto del grupo (URL)
-  createdBy String
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  photoUrl    String?  @db.VarChar(2048)
+
+  createdBy String?
   createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
 
   inviteCode          String?   @unique @db.VarChar(12)
   inviteCodeExpiresAt DateTime?
@@ -60,21 +91,33 @@ model Group {
   // Relations
   members GroupMember[]
   seasons Season[]
+
+  @@index([createdBy])
 }
 
 model GroupMember {
-  id       String    @id @default(cuid())
-  groupId  String
-  userId   String
-  role     GroupRole
-  joinedAt DateTime  @default(now())
+  id      String    @id @default(cuid())
+  groupId String
+  userId  String
+
+  role   GroupRole
+  status MembershipStatus @default(accepted)
+
+  requestedAt DateTime?
+  acceptedAt  DateTime?
+  respondedAt DateTime?
+  respondedBy String?
+
+  joinedAt DateTime @default(now())
   leftAt   DateTime?
 
   // Relations
-  group Group @relation(fields: [groupId], references: [id])
-  user  User  @relation(fields: [userId], references: [id])
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([groupId, userId])
+  @@index([userId])
+  @@index([groupId, status])
 }
 
 model Season {
@@ -82,29 +125,57 @@ model Season {
   groupId     String
   name        String
   description String?  @db.Text
-  startDate   DateTime
-  endDate     DateTime
-  createdAt   DateTime @default(now())
 
-  minPerWeek  Int      @default(2)
+  startDate DateTime
+  endDate   DateTime
+
+  createdBy String?
+  createdAt DateTime @default(now())
+  endedAt   DateTime?
+
+  isActive Boolean @default(true)
+
+  // Config MVP de competencia
+  weeklyGoal Int @default(2)
+
+  // Tipos admitidos; para MVP va en JSON
+  allowedActivityTypes Json?
+
+  // Fair play / caps
+  maxScoreableMinutesPerDay      Int?
+  maxScoreableMinutesPerActivity Int?
+
+  // Config básica de scoring
+  basePointsPerActivity Int @default(10)
+  weeklyStreakBonus     Int @default(5)
+  perfectWeekBonus      Int @default(15)
 
   // Relations
-  group   Group          @relation(fields: [groupId], references: [id])
-  members SeasonMember[]
+  group             Group                @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  members           SeasonMember[]
+  activitySeasons   ActivitySeason[]
+  scoreEvents       ScoreEvent[]
+  weekProgress      SeasonWeekProgress[]
+  awardEarned       AwardEarned[]
+
+  @@index([groupId])
+  @@index([groupId, isActive])
+  @@index([startDate, endDate])
 }
 
 model SeasonMember {
-  id       String    @id @default(cuid())
+  id       String   @id @default(cuid())
   seasonId String
   userId   String
-  joinedAt DateTime  @default(now())
+  joinedAt DateTime @default(now())
   leftAt   DateTime?
 
   // Relations
-  season Season @relation(fields: [seasonId], references: [id])
-  user   User   @relation(fields: [userId], references: [id])
+  season Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([seasonId, userId])
+  @@index([userId])
 }
 
 model Exercise {
@@ -112,18 +183,19 @@ model Exercise {
   name String
 
   // Relations
-  muscles  ExerciseMuscle[]
-  routines RoutineExercise[]
+  muscles    ExerciseMuscle[]
+  routines   RoutineExercise[]
   activities ActivityExercise[]
 
   @@unique([name])
 }
 
 model Muscle {
-  id   String @id @default(cuid())
-  name String
+  id        String  @id @default(cuid())
+  name      String
+  slug      String  @unique
+  groupKey  String  @db.VarChar(64) // legs, chest, back, shoulders, arms, core, glutes, etc.
 
-  // Relations
   exercises ExerciseMuscle[]
 
   @@unique([name])
@@ -134,10 +206,11 @@ model ExerciseMuscle {
   muscleId   String
   percentage Int
 
-  exercise Exercise @relation(fields: [exerciseId], references: [id])
-  muscle   Muscle   @relation(fields: [muscleId], references: [id])
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  muscle   Muscle   @relation(fields: [muscleId], references: [id], onDelete: Cascade)
 
   @@id([exerciseId, muscleId])
+  @@index([muscleId])
 }
 
 model Activity {
@@ -145,17 +218,64 @@ model Activity {
   userId    String
   routineId String?
   type      ActivityType
+
   startedAt DateTime
   endedAt   DateTime
+  durationMinutes Int?
+
   notes     String?      @db.Text
-  createdAt DateTime     @default(now())
+  source    String?      @db.VarChar(32)
 
-  user User @relation(fields: [userId], references: [id])
+  isDeleted Boolean  @default(false)
+  deletedAt DateTime?
 
-  exercises ActivityExercise[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+
+  // Relations
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  routine         Routine?          @relation(fields: [routineId], references: [id], onDelete: SetNull)
+  exercises       ActivityExercise[]
+  media           ActivityMedia[]
+  activitySeasons ActivitySeason[]
+  scoreEvents     ScoreEvent[]
+  awardsEarned    AwardEarned[]
 
   @@index([userId, startedAt])
   @@index([startedAt])
+  @@index([type])
+  @@index([routineId])
+}
+
+model ActivityMedia {
+  id         String   @id @default(cuid())
+  activityId String
+
+  url        String   @db.VarChar(2048)
+  storageKey String?  @db.VarChar(255)
+  mimeType   String?  @db.VarChar(128)
+  sizeBytes  Int?
+  width      Int?
+  height     Int?
+
+  uploadedAt DateTime @default(now())
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([activityId])
+}
+
+model ActivitySeason {
+  id         String   @id @default(cuid())
+  activityId String
+  seasonId   String
+  createdAt  DateTime @default(now())
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  season   Season   @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+
+  @@unique([activityId, seasonId])
+  @@index([seasonId])
 }
 
 model Routine {
@@ -163,11 +283,15 @@ model Routine {
   name String
 
   userId String
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  exercises RoutineExercise[]
+  activities Activity[]
+  exercises  RoutineExercise[]
 
   createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+
+  @@index([userId])
 }
 
 model RoutineExercise {
@@ -179,9 +303,11 @@ model RoutineExercise {
   sets Int
   reps Int
 
-  routine  Routine  @relation(fields: [routineId], references: [id])
-  exercise Exercise @relation(fields: [exerciseId], references: [id])
+  routine  Routine  @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
 
+  @@index([routineId])
+  @@index([exerciseId])
 }
 
 model ActivityExercise {
@@ -193,8 +319,95 @@ model ActivityExercise {
   sets Int
   reps Int
 
-  activity Activity @relation(fields: [activityId], references: [id])
-  exercise Exercise @relation(fields: [exerciseId], references: [id])
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
 
+  @@index([activityId])
+  @@index([exerciseId])
+}
+
+model ScoreEvent {
+  id         String         @id @default(cuid())
+  seasonId   String
+  userId     String
+  activityId String?
+  weekStart  DateTime?
+  type       ScoreEventType
+  points     Int
+  reason     String?        @db.Text
+  metadata   Json?
+  createdAt  DateTime       @default(now())
+
+  season   Season    @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activity Activity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
+
+  @@index([seasonId, userId])
+  @@index([userId])
+  @@index([activityId])
+  @@index([seasonId, weekStart])
+}
+
+model SeasonWeekProgress {
+  id              String   @id @default(cuid())
+  seasonId        String
+  userId          String
+  weekStart       DateTime
+
+  activitiesCount Int      @default(0)
+  minutesTotal    Int      @default(0)
+
+  goalTarget   Int
+  goalReached  Boolean  @default(false)
+  perfectWeek  Boolean  @default(false)
+  streakCount  Int      @default(0)
+  pointsEarned Int      @default(0)
+
+  updatedAt DateTime? @updatedAt
+
+  season Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([seasonId, userId, weekStart])
+  @@index([seasonId, weekStart])
+  @@index([userId, weekStart])
+}
+
+model AwardDefinition {
+  id          String     @id @default(cuid())
+  code        String     @unique @db.VarChar(64)
+  name        String
+  description String?    @db.Text
+  scope       AwardScope @default(season)
+
+  pointsBonus Int      @default(0)
+  iconKey     String?  @db.VarChar(128)
+  criteria    Json?
+
+  category    String?  @db.VarChar(64)   // streak, volume, muscle, running, consistency, profile
+  level       Int?                         // 1, 2, 3... si quieren badges escalables
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  earned AwardEarned[]
+}
+
+model AwardEarned {
+  id         String   @id @default(cuid())
+  awardId    String
+  userId     String
+  seasonId   String?
+  activityId String?
+  earnedAt   DateTime @default(now())
+  metadata   Json?
+  dedupeKey  String   @unique @db.VarChar(255)
+
+  award    AwardDefinition @relation(fields: [awardId], references: [id], onDelete: Cascade)
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  season   Season?         @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+  activity Activity?       @relation(fields: [activityId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([seasonId, userId])
   @@index([activityId])
 }
