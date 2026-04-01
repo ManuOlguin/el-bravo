@@ -1,274 +1,523 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import ExerciseSelector from "./ExerciseSelector";
+import { useEffect, useMemo, useState } from "react";
+
+type AvailableExercise = {
+  id: string;
+  name: string;
+};
+
+type RoutineExercise = {
+  id?: string;
+  exerciseId: string;
+  name: string;
+  sets: number;
+  reps: number;
+  weightKg?: number | null;
+};
+
+type RoutineItem = {
+  id: string;
+  name: string;
+  exercises: RoutineExercise[];
+};
+
+type ActivityExerciseFormItem = {
+  exerciseId: string;
+  sets: number;
+  reps: number;
+  weightKg: string;
+};
 
 function twoDigits(n: number) {
   return String(n).padStart(2, "0");
 }
 
-
-
-export default function CreateActivityForm(): any {
-
-  const [routineExercises, setRoutineExercises] = useState<any[]>([]);
-  const [availableExercises, setAvailableExercises] = useState<any[]>([]);
-  const [routines, setRoutines] = useState<any[]>([]);
-  const [exerciseError, setExerciseError] = useState("");
-
+function getDefaultDate() {
   const now = new Date();
-  const startDefault = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+  return now.toISOString().slice(0, 10);
+}
 
-  const defaultDate = startDefault.toISOString().slice(0, 10);
-  const defaultStartTime = `${twoDigits(startDefault.getHours())}:${twoDigits(startDefault.getMinutes())}`;
-  const defaultEndTime = `${twoDigits(now.getHours())}:${twoDigits(now.getMinutes())}`;
+function getDefaultStartTime() {
+  const now = new Date();
+  return `${twoDigits(now.getHours())}:${twoDigits(now.getMinutes())}`;
+}
 
-  const [date, setDate] = useState(defaultDate);
-  const [startTime, setStartTime] = useState(defaultStartTime);
-  const [endTime, setEndTime] = useState(defaultEndTime);
+function buildDateTime(date: string, time: string) {
+  return new Date(`${date}T${time}:00`);
+}
+
+export default function CreateActivityForm() {
+  const [availableExercises, setAvailableExercises] = useState<AvailableExercise[]>([]);
+  const [routines, setRoutines] = useState<RoutineItem[]>([]);
+
+  const [activityType, setActivityType] = useState("gym");
+  const [date, setDate] = useState(getDefaultDate());
+  const [startTime, setStartTime] = useState(getDefaultStartTime());
+  const [durationMinutes, setDurationMinutes] = useState("60");
+  const [selectedRoutineId, setSelectedRoutineId] = useState("");
   const [notes, setNotes] = useState("");
-  const [activityType, setActivityType] = useState("other");
-  const [selectedRoutineId, setSelectedRoutineId] = useState<string | null>(null);
+
+  const [exercises, setExercises] = useState<ActivityExerciseFormItem[]>([]);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
+    async function loadData() {
+      try {
+        setLoadingData(true);
+        setError("");
 
-    fetch("/api/exercise/list")
-      .then(res => res.json())
-      .then(data => setAvailableExercises(data.exercises || data));
+        const [exerciseRes, routineRes] = await Promise.all([
+          fetch("/api/exercise/list", { cache: "no-store" }),
+          fetch("/api/routine/list", { cache: "no-store" }),
+        ]);
 
-    fetch("/api/routine/list")
-      .then(res => res.json())
-      .then(data => setRoutines(data.routines || data));
+        const exerciseData = await exerciseRes.json().catch(() => ({}));
+        const routineData = await routineRes.json().catch(() => ({}));
 
+        if (!exerciseRes.ok) {
+          throw new Error(exerciseData?.error || "No se pudieron cargar los ejercicios.");
+        }
+
+        if (!routineRes.ok) {
+          throw new Error(routineData?.error || "No se pudieron cargar las rutinas.");
+        }
+
+        setAvailableExercises(
+          Array.isArray(exerciseData)
+            ? exerciseData
+            : Array.isArray(exerciseData?.exercises)
+              ? exerciseData.exercises
+              : []
+        );
+
+        setRoutines(
+          Array.isArray(routineData)
+            ? routineData
+            : Array.isArray(routineData?.routines)
+              ? routineData.routines
+              : []
+        );
+      } catch (err: any) {
+        console.error("Error cargando datos de actividades:", err);
+        setError(err?.message || "Error cargando ejercicios y rutinas.");
+      } finally {
+        setLoadingData(false);
+      }
+    }
+
+    loadData();
   }, []);
 
-  function updateExercise(index: number, value: any) {
-    const copy = [...routineExercises];
-    copy[index] = value;
-    setRoutineExercises(copy);
+  const selectedRoutine = useMemo(
+    () => routines.find((routine) => routine.id === selectedRoutineId) ?? null,
+    [routines, selectedRoutineId]
+  );
+
+  function applyRoutine(routineId: string) {
+    setSelectedRoutineId(routineId);
+    setError("");
+
+    const routine = routines.find((item) => item.id === routineId);
+
+    if (!routine) {
+      setExercises([]);
+      return;
+    }
+
+    const mapped = routine.exercises.map((exercise) => ({
+      exerciseId: exercise.exerciseId,
+      sets: Number(exercise.sets ?? 3),
+      reps: Number(exercise.reps ?? 10),
+      weightKg:
+        exercise.weightKg !== null && exercise.weightKg !== undefined
+          ? String(exercise.weightKg)
+          : "",
+    }));
+
+    setExercises(mapped);
+  }
+
+  function addExercise() {
+    setError("");
+    setExercises((prev) => [
+      ...prev,
+      {
+        exerciseId: "",
+        sets: 3,
+        reps: 10,
+        weightKg: "",
+      },
+    ]);
+  }
+
+  function updateExercise(index: number, patch: Partial<ActivityExerciseFormItem>) {
+    setError("");
+    setExercises((prev) =>
+      prev.map((exercise, i) => (i === index ? { ...exercise, ...patch } : exercise))
+    );
   }
 
   function removeExercise(index: number) {
-    const copy = [...routineExercises];
-    copy.splice(index, 1);
-    setRoutineExercises(copy);
+    setError("");
+    setExercises((prev) => prev.filter((_, i) => i !== index));
   }
 
-  async function handleSubmit(e: any) {
-
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    // VALIDACION
-    for (const ex of routineExercises) {
+    setError("");
 
-      // caso 1: no eligio ejercicio
-      if (!ex.exerciseId) {
-        setExerciseError("Hay ejercicios sin seleccionar.");
+    if (!date || !startTime) {
+      setError("Completá la fecha y la hora de inicio.");
+      return;
+    }
+
+    const duration = Number(durationMinutes);
+
+    if (!Number.isFinite(duration) || duration <= 0) {
+      setError("La duración debe ser mayor a 0 minutos.");
+      return;
+    }
+
+    if (exercises.length === 0) {
+      setError("Tenés que agregar al menos un ejercicio para guardar la actividad.");
+      return;
+    }
+
+    for (const exercise of exercises) {
+      if (!exercise.exerciseId) {
+        setError("Todos los ejercicios deben estar seleccionados.");
         return;
       }
 
-      // caso 2: crear nuevo sin nombre
-      if (ex.exerciseId === "__new" && !ex.newExerciseName?.trim()) {
-        setExerciseError("Hay ejercicios nuevos sin nombre.");
+      if (!exercise.sets || exercise.sets <= 0) {
+        setError("Todas las series deben ser mayores a 0.");
+        return;
+      }
+
+      if (!exercise.reps || exercise.reps <= 0) {
+        setError("Todas las repeticiones deben ser mayores a 0.");
+        return;
+      }
+
+      if (
+        exercise.weightKg.trim() !== "" &&
+        (!Number.isFinite(Number(exercise.weightKg)) || Number(exercise.weightKg) < 0)
+      ) {
+        setError("El peso debe ser un número válido mayor o igual a 0.");
         return;
       }
     }
 
-    setExerciseError("");
+    const startedAt = buildDateTime(date, startTime);
+
+    if (Number.isNaN(startedAt.getTime())) {
+      setError("La fecha u hora de inicio no son válidas.");
+      return;
+    }
+
+    const endedAt = new Date(startedAt.getTime() + duration * 60 * 1000);
+
     setSaving(true);
 
-    const processedExercises = [];
+    try {
+      const payload = {
+        startedAt: startedAt.toISOString(),
+        endedAt: endedAt.toISOString(),
+        type: activityType,
+        notes: notes.trim() || null,
+        routineId: selectedRoutineId || null,
+        exercises: exercises.map((exercise) => ({
+          exerciseId: exercise.exerciseId,
+          sets: Number(exercise.sets),
+          reps: Number(exercise.reps),
+          weightKg: exercise.weightKg.trim() === "" ? null : Number(exercise.weightKg),
+        })),
+      };
 
-    for (const ex of routineExercises) {
+      const res = await fetch("/api/activities/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
-      let exerciseId = ex.exerciseId;
+      const data = await res.json().catch(() => ({}));
 
-      if (exerciseId === "__new") {
-
-        const res = await fetch("/api/exercise/create", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: ex.newExerciseName })
-        });
-
-        const data = await res.json();
-        exerciseId = data.id;
+      if (!res.ok) {
+        setError(data?.error || "No se pudo crear la actividad.");
+        return;
       }
 
-      processedExercises.push({
-        exerciseId,
-        sets: ex.sets,
-        reps: ex.reps
-      });
+      window.history.back();
+    } catch (err) {
+      console.error("Error creando actividad:", err);
+      setError("Ocurrió un error de red al guardar la actividad.");
+    } finally {
+      setSaving(false);
     }
-
-    const s = new Date(`${date}T${startTime}:00`);
-    const eTime = new Date(`${date}T${endTime}:00`);
-
-    const payload = {
-      startedAt: s.toISOString(),
-      endedAt: eTime.toISOString(),
-      type: activityType,
-      notes,
-      routineId: selectedRoutineId,
-      exercises: processedExercises
-    };
-
-    await fetch("/api/activities/create", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
-
-    window.location.href = "/dashboard";
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-
-      <div>
-        <label>Tipo</label>
-        <select
-          value={activityType}
-          onChange={(e) => setActivityType(e.target.value)}
-          className="w-full px-3 py-2 bg-gray-700 rounded"
-        >
-          <option value="gym">Gimnasio</option>
-          <option value="run">Correr</option>
-          <option value="sport">Deporte</option>
-          <option value="mobility">Movilidad</option>
-          <option value="other">Otro</option>
-        </select>
+    <div className="rounded-2xl bg-slate-900/60 p-6">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-white">Cargar actividad</h1>
+        <p className="mt-2 text-sm text-slate-400">
+          Registrá tu entrenamiento de forma simple, con rutina, ejercicios y peso.
+        </p>
       </div>
 
-      <div>
-        <label>Fecha</label>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="w-full px-3 py-2 bg-gray-700 rounded"
-        />
-      </div>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="rounded-xl bg-slate-800 p-4">
+            <label className="mb-2 block text-sm font-semibold text-slate-200">
+              Tipo de actividad
+            </label>
+            <select
+              value={activityType}
+              onChange={(e) => setActivityType(e.target.value)}
+              className="w-full rounded-lg bg-slate-700 px-3 py-3 text-white outline-none"
+            >
+              <option value="gym">Gimnasio</option>
+              <option value="run">Running</option>
+              <option value="sport">Deporte</option>
+              <option value="mobility">Movilidad</option>
+              <option value="other">Otro</option>
+            </select>
+          </div>
 
-      <div className="grid grid-cols-2 gap-4">
+          <div className="rounded-xl bg-slate-800 p-4">
+            <label className="mb-2 block text-sm font-semibold text-slate-200">
+              Rutina
+            </label>
+            <select
+              value={selectedRoutineId}
+              onChange={(e) => applyRoutine(e.target.value)}
+              className="w-full rounded-lg bg-slate-700 px-3 py-3 text-white outline-none"
+            >
+              <option value="">-- Ninguna --</option>
+              {routines.map((routine) => (
+                <option key={routine.id} value={routine.id}>
+                  {routine.name}
+                </option>
+              ))}
+            </select>
 
-        <div>
-          <label>Inicio</label>
-          <input
-            type="time"
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-700 rounded"
-          />
+            {selectedRoutine ? (
+              <p className="mt-2 text-xs text-slate-400">
+                Se cargaron automáticamente {selectedRoutine.exercises.length} ejercicios.
+              </p>
+            ) : null}
+          </div>
         </div>
 
-        <div>
-          <label>Fin</label>
-          <input
-            type="time"
-            value={endTime}
-            onChange={(e) => setEndTime(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-700 rounded"
-          />
-        </div>
-
-      </div>
-
-      <div>
-        <label>Notas</label>
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          className="w-full px-3 py-2 bg-gray-700 rounded"
-        />
-      </div>
-
-      <div>
-        <label>Rutina</label>
-        <select
-            value={selectedRoutineId ?? ""}
-            onChange={(e) => {
-              const id = e.target.value || null;
-              setSelectedRoutineId(id);
-
-              const r = routines.find((x) => x.id === id);
-
-              if (r) {
-
-                const mapped = r.exercises.map((ex: any) => ({
-                  exerciseId: ex.exerciseId,
-                  name: ex.name,
-                  sets: ex.sets,
-                  reps: ex.reps
-                }));
-
-                setRoutineExercises(mapped);
-
-              } else {
-                setRoutineExercises([]);
-              }
-            }}
-            className="w-full px-3 py-2 bg-gray-700 rounded"
-          >
-            <option value="">-- Ninguna --</option>
-
-            {routines.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-
-          </select>
-      </div>
-
-      {(
-        <div className="bg-gray-800 p-3 rounded space-y-2">
-
-          <h3>Ejercicios</h3>
-
-          {routineExercises.map((ex, i) => (
-            <ExerciseSelector
-              key={i}
-              index={i}
-              exercise={ex}
-              availableExercises={availableExercises}
-              onChange={updateExercise}
-              onRemove={removeExercise}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="rounded-xl bg-slate-800 p-4">
+            <label className="mb-2 block text-sm font-semibold text-slate-200">
+              Fecha
+            </label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full rounded-lg bg-slate-700 px-3 py-3 text-white outline-none"
             />
-          ))}
+          </div>
+
+          <div className="rounded-xl bg-slate-800 p-4">
+            <label className="mb-2 block text-sm font-semibold text-slate-200">
+              Hora de inicio
+            </label>
+            <input
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              className="w-full rounded-lg bg-slate-700 px-3 py-3 text-white outline-none"
+            />
+          </div>
+
+          <div className="rounded-xl bg-slate-800 p-4">
+            <label className="mb-2 block text-sm font-semibold text-slate-200">
+              Duración (minutos)
+            </label>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={durationMinutes}
+              onChange={(e) => setDurationMinutes(e.target.value)}
+              className="w-full rounded-lg bg-slate-700 px-3 py-3 text-white outline-none"
+              placeholder="Ej: 90"
+            />
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-slate-800 p-4">
+          <label className="mb-2 block text-sm font-semibold text-slate-200">
+            Notas
+          </label>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={4}
+            className="w-full rounded-lg bg-slate-700 px-3 py-3 text-white outline-none"
+            placeholder="Cómo te sentiste, observaciones, etc."
+          />
+        </div>
+
+        <div className="rounded-xl bg-slate-800 p-4">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-white">Ejercicios</h2>
+              <p className="text-sm text-slate-400">
+                Agregá ejercicios, series, repeticiones y peso.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={addExercise}
+              className="rounded-lg bg-slate-600 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-500"
+            >
+              + Agregar ejercicio
+            </button>
+          </div>
+
+          {loadingData ? (
+            <div className="rounded-lg bg-slate-900 px-4 py-4 text-sm text-slate-400">
+              Cargando ejercicios y rutinas...
+            </div>
+          ) : exercises.length === 0 ? (
+            <div className="rounded-lg bg-slate-900 px-4 py-4 text-sm text-slate-400">
+              Todavía no agregaste ejercicios.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {exercises.map((exercise, index) => (
+                <div
+                  key={`${exercise.exerciseId}-${index}`}
+                  className="rounded-xl bg-slate-900 p-4"
+                >
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-[2fr_1fr_1fr_1fr_auto]">
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-slate-200">
+                        Ejercicio
+                      </label>
+                      <select
+                        value={exercise.exerciseId}
+                        onChange={(e) =>
+                          updateExercise(index, { exerciseId: e.target.value })
+                        }
+                        className="w-full rounded-lg bg-slate-700 px-3 py-3 text-white outline-none"
+                      >
+                        <option value="">Seleccionar ejercicio</option>
+                        {availableExercises.map((availableExercise) => (
+                          <option key={availableExercise.id} value={availableExercise.id}>
+                            {availableExercise.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-slate-200">
+                        Series
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={exercise.sets}
+                        onChange={(e) =>
+                          updateExercise(index, { sets: Number(e.target.value) })
+                        }
+                        className="w-full rounded-lg bg-slate-700 px-3 py-3 text-white outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-slate-200">
+                        Reps
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={exercise.reps}
+                        onChange={(e) =>
+                          updateExercise(index, { reps: Number(e.target.value) })
+                        }
+                        className="w-full rounded-lg bg-slate-700 px-3 py-3 text-white outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-slate-200">
+                        Peso (kg)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.5"
+                        value={exercise.weightKg}
+                        onChange={(e) =>
+                          updateExercise(index, { weightKg: e.target.value })
+                        }
+                        className="w-full rounded-lg bg-slate-700 px-3 py-3 text-white outline-none"
+                        placeholder="Opcional"
+                      />
+                    </div>
+
+                    <div className="flex items-end">
+                      <button
+                        type="button"
+                        onClick={() => removeExercise(index)}
+                        className="rounded-lg bg-red-600 px-4 py-3 text-sm font-semibold text-white hover:bg-red-500"
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {exercises.length === 0 ? (
+            <p className="mt-3 text-sm text-amber-300">
+              Tenés que agregar al menos un ejercicio para guardar la actividad.
+            </p>
+          ) : null}
+        </div>
+
+        {error ? (
+          <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            {error}
+          </div>
+        ) : null}
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="submit"
+            disabled={saving || exercises.length === 0}
+            className="rounded-lg bg-gradient-to-b from-lime-600 to-lime-800 px-5 py-3 text-sm font-semibold text-white shadow-md transition hover:from-lime-500 hover:to-lime-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {saving ? "Guardando..." : "Guardar actividad"}
+          </button>
 
           <button
             type="button"
-            onClick={() =>
-              setRoutineExercises([
-                ...routineExercises,
-                { sets: 3, reps: 10 }
-              ])
-            }
-            className="text-sm px-3 py-1 bg-gray-700 rounded"
+            onClick={() => window.history.back()}
+            className="rounded-lg bg-slate-600 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-500"
           >
-            + Agregar ejercicio
+            Cancelar
           </button>
-
         </div>
-      )}
-
-      <button
-        type="submit"
-        disabled={saving}
-        className="px-4 py-2 bg-indigo-600 rounded"
-      >
-        Guardar actividad
-      </button>
-      {exerciseError && (
-        <div className="text-red-400 text-sm">
-          {exerciseError}
-        </div>
-      )}  
-    </form>
+      </form>
+    </div>
   );
 }

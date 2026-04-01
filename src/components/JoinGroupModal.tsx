@@ -10,14 +10,23 @@ export default function JoinGroupModal() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  function closeModal() {
+    setOpen(false);
+    setCode("");
+    setError(null);
+    setLoading(false);
+  }
+
   async function handleJoin() {
     setError(null);
+
     if (!/^[0-9]{6}$/.test(code)) {
-      setError("Please enter a valid 6-digit code");
+      setError("Ingresá un código válido de 6 dígitos.");
       return;
     }
 
     setLoading(true);
+
     try {
       const res = await fetch("/api/groups/join", {
         method: "POST",
@@ -26,19 +35,18 @@ export default function JoinGroupModal() {
       });
 
       const data = await res.json().catch(() => ({}));
-      setLoading(false);
 
       if (!res.ok) {
-        setError(data?.error || "Failed to join group");
+        setError(data?.error || "No se pudo unir al grupo.");
+        setLoading(false);
         return;
       }
 
-      setOpen(false);
-      setCode("");
+      closeModal();
       router.refresh();
-    } catch (err) {
+    } catch {
+      setError("Error de red.");
       setLoading(false);
-      setError("Network error");
     }
   }
 
@@ -47,42 +55,63 @@ export default function JoinGroupModal() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600"
+        className="inline-flex items-center rounded-md bg-slate-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-500"
       >
         Unirte a grupo
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-sm bg-gray-800 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-white mb-2">Unirte a grupo</h3>
-            <p className="text-sm text-gray-300 mb-4">Introduce el código de 6 dígitos</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-800 p-6 shadow-2xl">
+            <div className="mb-5">
+              <h3 className="text-2xl font-bold text-white">Unirte a grupo</h3>
+              <p className="mt-2 text-sm text-slate-300">
+                Ingresá el código de 6 dígitos para sumarte a un grupo.
+              </p>
+            </div>
 
-            <input
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              inputMode="numeric"
-              maxLength={6}
-              placeholder="123456"
-              className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md placeholder-gray-400 mb-3"
-            />
-
-            {error && <p className="text-sm text-red-400 mb-2">{error}</p>}
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => setOpen(false)}
-                className="flex-1 px-3 py-2 bg-gray-600 text-white rounded-md"
+            <div className="rounded-xl bg-slate-900/70 p-4">
+              <label
+                htmlFor="join-group-code"
+                className="mb-2 block text-sm font-medium text-slate-200"
               >
-                Cancel
+                Código de invitación
+              </label>
+
+              <input
+                id="join-group-code"
+                value={code}
+                onChange={(e) =>
+                  setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                }
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="123456"
+                className="w-full rounded-xl border border-slate-600 bg-slate-700 px-4 py-3 text-white outline-none transition placeholder:text-slate-400 focus:border-lime-500"
+              />
+
+              {error && (
+                <p className="mt-3 text-sm font-medium text-red-400">{error}</p>
+              )}
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={closeModal}
+                disabled={loading}
+                className="flex-1 rounded-md bg-slate-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-500 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancelar
               </button>
 
               <button
+                type="button"
                 onClick={handleJoin}
                 disabled={loading}
-                className="flex-1 px-3 py-2 bg-indigo-600 text-white rounded-md disabled:opacity-50"
+                className="flex-1 rounded-md bg-lime-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-lime-500 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loading ? "Joining..." : "Join"}
+                {loading ? "Uniéndote..." : "Unirme"}
               </button>
             </div>
           </div>

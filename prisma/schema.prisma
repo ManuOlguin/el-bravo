@@ -302,6 +302,7 @@ model RoutineExercise {
 
   sets Int
   reps Int
+  weightKg Float?
 
   routine  Routine  @relation(fields: [routineId], references: [id], onDelete: Cascade)
   exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
@@ -318,6 +319,7 @@ model ActivityExercise {
 
   sets Int
   reps Int
+  weightKg Float?
 
   activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
   exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)

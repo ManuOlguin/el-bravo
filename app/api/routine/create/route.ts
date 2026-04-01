@@ -45,23 +45,27 @@ export async function POST(req: Request) {
     }
 
     // 5️⃣ Crear rutina
-    const routine = await prisma.routine.create({
-      data: {
-        name,
-        user: {
-          connect: { id: user.id }
-        },
-        exercises: {
-          create: exercises.map(e => ({
-            sets: e.sets,
-            reps: e.reps,
-            exercise: {
-              connect: { id: e.exerciseId }
-            }
-          }))
+      const routine = await prisma.routine.create({
+        data: {
+          name,
+          user: {
+            connect: { id: user.id }
+          },
+          exercises: {
+            create: exercises.map((e: any) => ({
+              sets: Number(e.sets),
+              reps: Number(e.reps),
+              weightKg:
+                e.weightKg === null || e.weightKg === undefined || e.weightKg === ""
+                  ? null
+                  : Number(e.weightKg),
+              exercise: {
+                connect: { id: e.exerciseId }
+              }
+            }))
+          }
         }
-      }
-    });
+});
 
     return NextResponse.json(routine, { status: 201 });
 

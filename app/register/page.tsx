@@ -16,83 +16,113 @@ export default function RegisterPage() {
     setLoading(true);
     setError(null);
 
-const res = await fetch("/api/auth/register", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  credentials: "include",
-  body: JSON.stringify({ email, password, name }),
-});
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password, name }),
+      });
 
-    const data = await res.json();
-    setLoading(false);
+      const data = await res.json();
+      setLoading(false);
 
-    if (!res.ok) {
-      setError(data.error || "Error");
-      return;
+      if (!res.ok) {
+        setError(data.error || "Error al crear la cuenta");
+        return;
+      }
+
+      router.push("/home");
+    } catch (err) {
+      console.error("/register submit error:", err);
+      setLoading(false);
+      setError("Error creando la cuenta");
     }
-
-    router.push("/dashboard");
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-900 p-6 text-white">
-      <div className="w-full max-w-md bg-gray-800 rounded-lg shadow-md p-8">
-        <h1 className="text-2xl font-semibold mb-6 text-white">Register</h1>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-200 mb-1">Name</label>
-            <input
-              placeholder="Your name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            />
+    <main className="min-h-screen bg-[#08142d] px-6 py-10 text-white">
+      <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-5xl items-center justify-center">
+        <div className="w-full max-w-md rounded-[28px] bg-slate-800/85 p-8 shadow-2xl">
+          <div className="mb-8">
+            <div className="text-sm font-medium uppercase tracking-[0.2em] text-slate-400">
+              El Bravo
+            </div>
+            <h1 className="mt-2 text-4xl font-bold leading-tight text-white">
+              Crear cuenta
+            </h1>
+            <p className="mt-2 text-sm text-slate-400">
+              Registrate para empezar a cargar entrenamientos, crear rutinas y sumarte a grupos.
+            </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-200 mb-1">Email</label>
-            <input
-              placeholder="you@example.com"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-200">
+                Nombre
+              </label>
+              <input
+                placeholder="Tu nombre"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoComplete="name"
+                className="w-full rounded-xl border border-slate-600 bg-slate-700 px-4 py-3 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-lime-500/60"
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-200 mb-1">Password</label>
-            <input
-              placeholder="Password (min 8)"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            />
-          </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-200">
+                Email
+              </label>
+              <input
+                placeholder="tu@email.com"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                className="w-full rounded-xl border border-slate-600 bg-slate-700 px-4 py-3 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-lime-500/60"
+              />
+            </div>
 
-          <div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-200">
+                Contraseña
+              </label>
+              <input
+                placeholder="Contraseña (mínimo 8 caracteres)"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+                className="w-full rounded-xl border border-slate-600 bg-slate-700 px-4 py-3 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-lime-500/60"
+              />
+            </div>
+
+            {error ? (
+              <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                {error}
+              </div>
+            ) : null}
+
             <button
+              type="submit"
               disabled={loading}
-              className="w-full inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-500 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-b from-lime-600 to-lime-800 px-4 py-3 text-base font-semibold text-white shadow-md transition hover:from-lime-500 hover:to-lime-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "Creating..." : "Create account"}
+              {loading ? "Creando cuenta..." : "Crear cuenta"}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center text-sm text-slate-300">
+            ¿Ya tenés cuenta?
+            <button
+              type="button"
+              onClick={() => router.push("/login")}
+              className="ml-2 font-semibold text-lime-400 transition hover:text-lime-300"
+            >
+              Iniciá sesión
             </button>
           </div>
-
-          {error && <p className="text-sm text-red-400">{error}</p>}
-        </form>
-
-        <div className="mt-4 text-center text-sm text-gray-300">
-          Already have an account?
-          <button
-            type="button"
-            onClick={() => router.push('/login')}
-            className="ml-2 text-indigo-400 hover:underline"
-          >
-            Login
-          </button>
         </div>
       </div>
     </main>

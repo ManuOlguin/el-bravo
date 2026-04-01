@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/src/lib/currentUser";
 import LogoutButton from "@/src/components/LogoutButton";
 import { prisma } from "@/src/lib/db";
+import { evaluateAwardsForUser } from "@/src/lib/awards/evaluateAwards";
+import DeleteActivityButton from "@/src/components/DeleteActivityButton";
 
 type ActivityExerciseItem = {
   id: string;
@@ -47,13 +49,21 @@ type RoutineItem = {
   }[];
 };
 
-type AwardItem = {
+type ProfileAwardItem = {
   id: string;
-  earnedAt: Date;
-  award: {
-    id: string;
-    name: string;
-  };
+  code: string;
+  name: string;
+  description: string;
+  iconKey: string | null;
+  category: string | null;
+  level: number | null;
+  scope: string;
+  pointsBonus: number;
+  earned: boolean;
+  progressCurrent: number;
+  progressTarget: number;
+  progressPct: number;
+  seasonId: string | null;
 };
 
 function getActivityDurationMinutes(activity: {
@@ -89,6 +99,28 @@ function getWeekKey(date: Date) {
   return getWeekStart(date).toISOString().slice(0, 10);
 }
 
+function getCurrentConsecutiveWeekStreak(
+  weekCounts: Map<string, number>,
+  predicate: (count: number) => boolean
+) {
+  let streak = 0;
+  let cursor = getWeekStart(new Date());
+
+  while (true) {
+    const key = cursor.toISOString().slice(0, 10);
+    const count = weekCounts.get(key) ?? 0;
+
+    if (!predicate(count)) {
+      break;
+    }
+
+    streak += 1;
+    cursor = addDays(cursor, -7);
+  }
+
+  return streak;
+}
+
 function formatMinutes(totalMinutes: number) {
   if (!totalMinutes || totalMinutes <= 0) return "0m";
 
@@ -112,9 +144,16 @@ function formatDateTimeLabel(date: Date) {
   return new Date(date).toLocaleString("es-AR");
 }
 
+function addDays(date: Date, days: number) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
 function computeProfileStats(activities: ActivityForStats[], weeklyGoal: number) {
   const now = new Date();
   const currentWeekKey = getWeekKey(now);
+  const currentWeekStart = getWeekStart(now);
 
   const weekCounts = new Map<string, number>();
   const weekMinutes = new Map<string, number>();
@@ -142,40 +181,81 @@ function computeProfileStats(activities: ActivityForStats[], weeklyGoal: number)
     .map((time) => new Date(time));
 
   let longestActiveStreak = 0;
-  let currentStreak = 0;
+  let currentHistoricalStreak = 0;
   let previousWeekStart: Date | null = null;
 
   for (const weekStart of sortedWeekStarts) {
     if (!previousWeekStart) {
-      currentStreak = 1;
+      currentHistoricalStreak = 1;
     } else {
       const diffDays =
         (weekStart.getTime() - previousWeekStart.getTime()) / (1000 * 60 * 60 * 24);
 
       if (diffDays === 7) {
-        currentStreak += 1;
+        currentHistoricalStreak += 1;
       } else {
-        currentStreak = 1;
+        currentHistoricalStreak = 1;
       }
     }
 
-    longestActiveStreak = Math.max(longestActiveStreak, currentStreak);
+    longestActiveStreak = Math.max(longestActiveStreak, currentHistoricalStreak);
     previousWeekStart = weekStart;
   }
 
-  const activeWeeks = weekCounts.size;
+  const allWeekStartsDesc = Array.from(weekCounts.keys())
+    .map((weekKey) => getWeekStart(new Date(`${weekKey}T12:00:00`)))
+    .sort((a, b) => b.getTime() - a.getTime());
+
+  let currentActiveWeeks = 0;
+  let currentPerfectWeeks = 0;
+
+  for (const weekStart of allWeekStartsDesc) {
+    const weekKey = getWeekKey(weekStart);
+    const count = weekCounts.get(weekKey) ?? 0;
+    const isCurrentWeek = weekStart.getTime() === currentWeekStart.getTime();
+
+    if (isCurrentWeek) {
+      if (count >= 1) {
+        currentActiveWeeks += 1;
+      }
+      continue;
+    }
+
+    if (count >= 1) {
+      currentActiveWeeks += 1;
+    } else {
+      break;
+    }
+  }
+
+  for (const weekStart of allWeekStartsDesc) {
+    const weekKey = getWeekKey(weekStart);
+    const count = weekCounts.get(weekKey) ?? 0;
+    const isCurrentWeek = weekStart.getTime() === currentWeekStart.getTime();
+
+    if (isCurrentWeek) {
+      if (count >= weeklyGoal) {
+        currentPerfectWeeks += 1;
+      }
+      continue;
+    }
+
+    if (count >= weeklyGoal) {
+      currentPerfectWeeks += 1;
+    } else {
+      break;
+    }
+  }
+
   const workoutsThisWeek = weekCounts.get(currentWeekKey) ?? 0;
-  const perfectWeeks = Array.from(weekCounts.values()).filter(
-    (count) => count >= weeklyGoal
-  ).length;
   const maxWeeklyMinutes = Math.max(0, ...Array.from(weekMinutes.values()));
   const averageMinutes =
     activities.length > 0 ? Math.round(totalMinutes / activities.length) : 0;
 
   return {
-    activeWeeks,
+    activeWeeks: currentActiveWeeks,
     workoutsThisWeek,
-    perfectWeeks,
+    perfectWeeks: currentPerfectWeeks,
     longestActiveStreak,
     maxWeeklyMinutes,
     longestWorkoutMinutes,
@@ -196,6 +276,38 @@ function getTypeLabel(type: string) {
       return "Movilidad";
     default:
       return "Otro";
+  }
+}
+
+function getAwardShortLabel(name: string) {
+  if (name.length <= 12) return name;
+  return `${name.slice(0, 12)}…`;
+}
+
+function getAwardRingClasses(level: number | null) {
+  switch (level) {
+    case 3:
+      return {
+        border: "border-yellow-400",
+        bg: "bg-yellow-500/10",
+        text: "text-yellow-300",
+        glow: "shadow-[0_0_18px_rgba(250,204,21,0.25)]",
+      };
+    case 2:
+      return {
+        border: "border-slate-300",
+        bg: "bg-slate-200/10",
+        text: "text-slate-200",
+        glow: "shadow-[0_0_18px_rgba(226,232,240,0.18)]",
+      };
+    case 1:
+    default:
+      return {
+        border: "border-amber-600",
+        bg: "bg-amber-700/10",
+        text: "text-amber-300",
+        glow: "shadow-[0_0_18px_rgba(217,119,6,0.2)]",
+      };
   }
 }
 
@@ -231,14 +343,22 @@ export default async function ProfilePage() {
     where: { id: user.id },
   });
 
-  if (!dbUser) redirect("/dashboard");
+  if (!dbUser) redirect("/home");
 
-  const [activitiesRaw, membershipsRaw, routinesRaw, awardsRaw] = await Promise.all([
+  const [activitiesRaw, membershipsRaw, routinesRaw, evaluatedAwardsRaw] = await Promise.all([
     prisma.activity.findMany({
       where: { userId: user.id },
-      include: {
+      select: {
+        id: true,
+        type: true,
+        notes: true,
+        startedAt: true,
+        endedAt: true,
         exercises: {
-          include: {
+          select: {
+            id: true,
+            sets: true,
+            reps: true,
             exercise: {
               select: {
                 id: true,
@@ -269,9 +389,12 @@ export default async function ProfilePage() {
     }),
     prisma.routine.findMany({
       where: { userId: user.id },
-      include: {
+      select: {
+        id: true,
+        name: true,
         exercises: {
-          include: {
+          select: {
+            id: true,
             exercise: {
               select: {
                 id: true,
@@ -284,16 +407,25 @@ export default async function ProfilePage() {
       orderBy: { createdAt: "desc" },
       take: 6,
     }),
-    Promise.resolve([]),
+    evaluateAwardsForUser(user.id),
   ]);
 
   const activities = activitiesRaw as unknown as ActivityForStats[];
   const memberships = membershipsRaw as unknown as MembershipItem[];
   const routines = routinesRaw as unknown as RoutineItem[];
-  const awards = awardsRaw as unknown as AwardItem[];
+  const evaluatedAwards = evaluatedAwardsRaw as ProfileAwardItem[];
 
-const profileWeeklyGoal =
-  (dbUser as typeof dbUser & { weeklyGoal?: number | null }).weeklyGoal ?? 3;
+  const earnedAwards = evaluatedAwards
+    .filter((award) => award.earned)
+    .sort((a, b) => {
+      const levelDiff = (b.level ?? 0) - (a.level ?? 0);
+      if (levelDiff !== 0) return levelDiff;
+      return a.name.localeCompare(b.name);
+    })
+    .slice(0, 6);
+
+  const profileWeeklyGoal =
+    (dbUser as typeof dbUser & { weeklyGoal?: number | null }).weeklyGoal ?? 3;
   const stats = computeProfileStats(activities, profileWeeklyGoal);
 
   return (
@@ -302,12 +434,12 @@ const profileWeeklyGoal =
         <div className="mb-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <a
-              href="/dashboard"
+              href="/home"
               className="inline-flex items-center rounded-md bg-slate-600 px-4 py-2 text-sm font-medium hover:bg-slate-500"
             >
-              ← Volver al dashboard
+              ← Volver a la home
             </a>
-           <a
+            <a
               href="/profile/edit"
               className="inline-flex items-center rounded-lg bg-gradient-to-b from-lime-600 to-lime-800 px-4 py-2 text-sm font-semibold text-white shadow-md hover:from-lime-500 hover:to-lime-700"
             >
@@ -391,34 +523,59 @@ const profileWeeklyGoal =
               </div>
 
               <div className="rounded-2xl bg-slate-900/70 p-5">
-                <div className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-300">
-                  Badges / awards
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold uppercase tracking-wide text-slate-300">
+                    Badges / awards
+                  </div>
+                  <div className="text-xs text-slate-400">
+                    {earnedAwards.length} ganadas
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
-                  {Array.from({ length: 6 }).map((_, index: number) => {
-                    const earned = awards[index];
+                <div className="grid min-h-[220px] grid-cols-3 place-items-center gap-x-4 gap-y-6">
+                  {Array.from({ length: 6 }).map((_, index) => {
+                    const award = earnedAwards[index];
+
+                    if (!award) {
+                      return (
+                        <div
+                          key={`empty-award-${index}`}
+                          className="flex w-full flex-col items-center justify-center gap-3"
+                        >
+                          <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-slate-500 bg-slate-800/80">
+                            <div className="h-10 w-10 rounded-full border-2 border-slate-600" />
+                          </div>
+
+                          <span className="text-center text-xs text-slate-500">Vacía</span>
+                        </div>
+                      );
+                    }
+
+                    const ring = getAwardRingClasses(award.level);
 
                     return (
-                      <div key={index} className="flex flex-col items-center gap-2">
+                      <div
+                        key={award.code}
+                        className="flex w-full flex-col items-center justify-center gap-3"
+                      >
                         <div
-                          className={`flex h-16 w-16 items-center justify-center rounded-full border-4 ${
-                            earned
-                              ? "border-lime-500 bg-slate-800 text-lime-300"
-                              : "border-slate-600 bg-slate-800 text-slate-500"
-                          }`}
+                          title={award.description}
+                          className={`flex h-20 w-20 items-center justify-center rounded-full border-4 ${ring.border} ${ring.bg} ${ring.text} ${ring.glow} transition-transform hover:scale-105`}
                         >
-                          <span className="px-1 text-center text-xs font-bold">
-                            {earned ? earned.award.name.slice(0, 10) : "—"}
+                          <span className="px-1 text-center text-[10px] font-bold leading-tight">
+                            {getAwardShortLabel(award.name)}
                           </span>
                         </div>
-                        <span className="text-center text-[11px] text-slate-400">
-                          {earned ? earned.award.name : "Vacío"}
+
+                        <span className="text-center text-xs text-slate-300">
+                          {award.name}
                         </span>
                       </div>
                     );
                   })}
                 </div>
+
+                
               </div>
             </div>
 
@@ -492,7 +649,7 @@ const profileWeeklyGoal =
                       return (
                         <div
                           key={activity.id}
-                          className="rounded-xl bg-slate-800 px-4 py-4"
+                          className="relative rounded-xl bg-slate-800 px-4 py-4"
                         >
                           <div className="flex items-start justify-between gap-4">
                             <div>
@@ -529,6 +686,9 @@ const profileWeeklyGoal =
                           {activity.notes ? (
                             <p className="mt-3 text-sm text-slate-300">“{activity.notes}”</p>
                           ) : null}
+                          <div className="absolute bottom-3 right-3">
+                            <DeleteActivityButton activityId={activity.id} />
+                          </div>
                         </div>
                       );
                     })}

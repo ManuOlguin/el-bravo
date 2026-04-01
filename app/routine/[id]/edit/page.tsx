@@ -32,8 +32,22 @@ export default function EditRoutinePage() {
     load();
   }, [id]);
 
-  if (loading) return <div className="p-6 text-white">Cargando...</div>;
-  if (error) return <div className="p-6 text-red-400">{error}</div>;
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-[#08142d] p-6 text-white">
+        <div className="mx-auto max-w-5xl">Cargando...</div>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="min-h-screen bg-[#08142d] p-6 text-white">
+        <div className="mx-auto max-w-5xl text-red-400">{error}</div>
+      </main>
+    );
+  }
+
   if (!routine) return null;
 
   return (

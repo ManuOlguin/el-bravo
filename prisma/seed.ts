@@ -140,6 +140,273 @@ async function syncExerciseMuscles() {
   }
 }
 
+const awardDefinitions = [
+  // =========================
+  // EL PERSISTENTE
+  // Racha de semanas consecutivas con al menos 1 gym
+  // =========================
+  {
+    code: "EL_PERSISTENTE_L1",
+    name: "El Persistente I",
+    description: "Metiste al menos 1 entrenamiento de gym por semana durante 3 semanas consecutivas.",
+    scope: "profile",
+    pointsBonus: 0,
+    iconKey: "el-persistente",
+    category: "consistency",
+    level: 1,
+    criteria: {
+      kind: "activity_type_week_streak",
+      activityType: "gym",
+      minPerWeek: 1,
+      target: 3,
+    },
+  },
+  {
+    code: "EL_PERSISTENTE_L2",
+    name: "El Persistente II",
+    description: "Metiste al menos 1 entrenamiento de gym por semana durante 5 semanas consecutivas.",
+    scope: "profile",
+    pointsBonus: 0,
+    iconKey: "el-persistente",
+    category: "consistency",
+    level: 2,
+    criteria: {
+      kind: "activity_type_week_streak",
+      activityType: "gym",
+      minPerWeek: 1,
+      target: 5,
+    },
+  },
+  {
+    code: "EL_PERSISTENTE_L3",
+    name: "El Persistente III",
+    description: "Metiste al menos 1 entrenamiento de gym por semana durante 8 semanas consecutivas.",
+    scope: "profile",
+    pointsBonus: 0,
+    iconKey: "el-persistente",
+    category: "consistency",
+    level: 3,
+    criteria: {
+      kind: "activity_type_week_streak",
+      activityType: "gym",
+      minPerWeek: 1,
+      target: 8,
+    },
+  },
+
+  // =========================
+  // GYM RAT
+  // Racha de semanas perfectas
+  // =========================
+  {
+    code: "GYM_RAT_L1",
+    name: "Gym Rat I",
+    description: "Lograste una racha de 3 semanas perfectas consecutivas.",
+    scope: "profile",
+    pointsBonus: 0,
+    iconKey: "gym-rat",
+    category: "consistency",
+    level: 1,
+    criteria: {
+      kind: "perfect_week_streak",
+      target: 3,
+    },
+  },
+  {
+    code: "GYM_RAT_L2",
+    name: "Gym Rat II",
+    description: "Lograste una racha de 5 semanas perfectas consecutivas.",
+    scope: "profile",
+    pointsBonus: 0,
+    iconKey: "gym-rat",
+    category: "consistency",
+    level: 2,
+    criteria: {
+      kind: "perfect_week_streak",
+      target: 5,
+    },
+  },
+  {
+    code: "GYM_RAT_L3",
+    name: "Gym Rat III",
+    description: "Lograste una racha de 8 semanas perfectas consecutivas.",
+    scope: "profile",
+    pointsBonus: 0,
+    iconKey: "gym-rat",
+    category: "consistency",
+    level: 3,
+    criteria: {
+      kind: "perfect_week_streak",
+      target: 8,
+    },
+  },
+
+  // =========================
+  // IMPARABLE
+  // 3 fines de semana seguidos entrenando
+  // =========================
+  {
+    code: "IMPARABLE_L1",
+    name: "Imparable",
+    description: "Entrenaste durante 3 fines de semana consecutivos.",
+    scope: "profile",
+    pointsBonus: 0,
+    iconKey: "imparable",
+    category: "consistency",
+    level: 1,
+    criteria: {
+      kind: "weekend_activity_streak",
+      target: 3,
+    },
+  },
+
+  // =========================
+  // CORRE FORREST
+  // Semanas consecutivas con al menos un run
+  // =========================
+  {
+    code: "CORRE_FORREST_L1",
+    name: "Corre Forrest I",
+    description: "Metiste al menos un entrenamiento de running por semana durante 3 semanas consecutivas.",
+    scope: "profile",
+    pointsBonus: 0,
+    iconKey: "corre-forrest",
+    category: "running",
+    level: 1,
+    criteria: {
+      kind: "activity_type_week_streak",
+      activityType: "run",
+      minPerWeek: 1,
+      target: 3,
+    },
+  },
+  {
+    code: "CORRE_FORREST_L2",
+    name: "Corre Forrest II",
+    description: "Metiste al menos un entrenamiento de running por semana durante 5 semanas consecutivas.",
+    scope: "profile",
+    pointsBonus: 0,
+    iconKey: "corre-forrest",
+    category: "running",
+    level: 2,
+    criteria: {
+      kind: "activity_type_week_streak",
+      activityType: "run",
+      minPerWeek: 1,
+      target: 5,
+    },
+  },
+  {
+    code: "CORRE_FORREST_L3",
+    name: "Corre Forrest III",
+    description: "Metiste al menos un entrenamiento de running por semana durante 8 semanas consecutivas.",
+    scope: "profile",
+    pointsBonus: 0,
+    iconKey: "corre-forrest",
+    category: "running",
+    level: 3,
+    criteria: {
+      kind: "activity_type_week_streak",
+      activityType: "run",
+      minPerWeek: 1,
+      target: 8,
+    },
+  },
+
+  // =========================
+  // EL PIERNAS
+  // 8 entrenamientos con piernas en 30 días
+  // =========================
+  {
+    code: "EL_PIERNAS_L1",
+    name: "El Piernas",
+    description: "Hiciste al menos 8 entrenamientos con piernas involucradas en una ventana de 30 días.",
+    scope: "profile",
+    pointsBonus: 0,
+    iconKey: "el-piernas",
+    category: "muscle",
+    level: 1,
+    criteria: {
+      kind: "muscle_group_activities_rolling_days",
+      muscleGroup: "legs",
+      target: 8,
+      daysWindow: 30,
+    },
+  },
+
+  // =========================
+  // SIX PACK
+  // 8 entrenamientos con core en 30 días
+  // =========================
+  {
+    code: "SIX_PACK_L1",
+    name: "Six Pack",
+    description: "Hiciste al menos 8 entrenamientos con abdominales o core involucrado en una ventana de 30 días.",
+    scope: "profile",
+    pointsBonus: 0,
+    iconKey: "six-pack",
+    category: "muscle",
+    level: 1,
+    criteria: {
+      kind: "muscle_group_activities_rolling_days",
+      muscleGroup: "core",
+      target: 8,
+      daysWindow: 30,
+    },
+  },
+
+  // =========================
+  // TODOTERRENO
+  // 4 tipos distintos de actividad en una temporada
+  // =========================
+  {
+    code: "TODOTERRENO_L1",
+    name: "Todoterreno",
+    description: "Entrenaste 4 tipos distintos de actividad a lo largo de una misma temporada.",
+    scope: "season",
+    pointsBonus: 0,
+    iconKey: "todoterreno",
+    category: "variety",
+    level: 1,
+    criteria: {
+      kind: "distinct_activity_types_in_season",
+      target: 4,
+      allowedTypes: ["gym", "run", "sport", "mobility", "other"],
+    },
+  },
+] as const;
+
+async function upsertAwardDefinitions() {
+  for (const award of awardDefinitions) {
+    await prisma.awardDefinition.upsert({
+      where: { code: award.code },
+      update: {
+        name: award.name,
+        description: award.description,
+        scope: award.scope,
+        pointsBonus: award.pointsBonus,
+        iconKey: award.iconKey,
+        category: award.category,
+        level: award.level,
+        criteria: award.criteria,
+        isActive: true,
+      },
+      create: {
+        code: award.code,
+        name: award.name,
+        description: award.description,
+        scope: award.scope,
+        pointsBonus: award.pointsBonus,
+        iconKey: award.iconKey,
+        category: award.category,
+        level: award.level,
+        criteria: award.criteria,
+        isActive: true,
+      },
+    });
+  }
+}
+
 async function main() {
   console.log("🌱 Seeding muscles...");
   await upsertMuscles();
@@ -148,13 +415,15 @@ async function main() {
   await syncExerciseMuscles();
 
   console.log("✅ Seed completado");
+  await upsertAwardDefinitions();
 }
 
 main()
-  .catch((e) => {
-    console.error("❌ Seed error:", e);
-    process.exit(1);
-  })
-  .finally(async () => {
+  .then(async () => {
     await prisma.$disconnect();
+  })
+  .catch(async (e) => {
+    console.error(e);
+    await prisma.$disconnect();
+    process.exit(1);
   });

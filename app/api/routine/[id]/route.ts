@@ -8,7 +8,7 @@ export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params; // ✅ Next 14
+  const { id } = await params;
 
   try {
     if (!id) {
@@ -23,10 +23,10 @@ export async function GET(
       include: {
         exercises: {
           include: {
-            exercise: true
-          }
-        }
-      }
+            exercise: true,
+          },
+        },
+      },
     });
 
     if (!routine) {
@@ -39,11 +39,12 @@ export async function GET(
     return NextResponse.json({
       id: routine.id,
       name: routine.name,
-      exercises: routine.exercises.map(re => ({
+      exercises: routine.exercises.map((re) => ({
         exerciseId: re.exerciseId,
         sets: re.sets,
-        reps: re.reps
-      }))
+        reps: re.reps,
+        weightKg: re.weightKg ?? null,
+      })),
     });
   } catch (error) {
     console.error(error);
@@ -74,12 +75,10 @@ export async function PUT(
       );
     }
 
-    // borrar ejercicios previos
     await prisma.routineExercise.deleteMany({
-      where: { routineId: id }
+      where: { routineId: id },
     });
 
-    // actualizar rutina
     await prisma.routine.update({
       where: { id },
       data: {
@@ -87,11 +86,17 @@ export async function PUT(
         exercises: {
           create: exercises.map((ex: any) => ({
             exerciseId: ex.exerciseId,
-            sets: ex.sets,
-            reps: ex.reps
-          }))
-        }
-      }
+            sets: Number(ex.sets),
+            reps: Number(ex.reps),
+            weightKg:
+              ex.weightKg === null ||
+              ex.weightKg === undefined ||
+              ex.weightKg === ""
+                ? null
+                : Number(ex.weightKg),
+          })),
+        },
+      },
     });
 
     return NextResponse.json({ ok: true });
@@ -121,14 +126,12 @@ export async function DELETE(
       );
     }
 
-    // borrar ejercicios primero (FK)
     await prisma.routineExercise.deleteMany({
-      where: { routineId: id }
+      where: { routineId: id },
     });
 
-    // borrar rutina
     await prisma.routine.delete({
-      where: { id }
+      where: { id },
     });
 
     return NextResponse.json({ ok: true });
