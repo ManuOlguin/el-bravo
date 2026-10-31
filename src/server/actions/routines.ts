@@ -8,6 +8,7 @@ import { routineInputSchema, type RoutineForEditor, type RoutineInput } from "@/
 import { activityInputSchema, type ActivityInput } from "@/src/schemas/workout";
 import {
   RoutineError,
+  copyRoutine,
   createRoutine,
   deleteRoutine,
   getRoutineForEditor,
@@ -22,7 +23,10 @@ function revalidateRoutines(routineId?: string) {
   revalidatePath("/routines");
   revalidatePath("/home");
   revalidatePath("/profile");
-  if (routineId) revalidatePath(`/routines/${routineId}/edit`);
+  if (routineId) {
+    revalidatePath(`/routines/${routineId}`);
+    revalidatePath(`/routines/${routineId}/edit`);
+  }
 }
 
 /** Traduce `RoutineError` (regla de negocio) a `fail(message)`; el resto lo maneja `runAction`. */
@@ -83,6 +87,18 @@ export async function updateRoutineFromWorkoutAction(routineId: string, input: A
     await updateRoutineFromWorkout(user.id, id.data, parsed.data);
     revalidateRoutines(id.data);
     return ok(undefined, "Rutina actualizada con estos valores");
+  });
+}
+
+/** "Copiar a mis rutinas" (pública de otro) o "Duplicar" (propia). La privada de otro → "No encontramos…". */
+export async function copyRoutineAction(routineId: string): Promise<ActionResult<{ routineId: string }>> {
+  return guard(async () => {
+    const user = await requireUser();
+    const id = idSchema.safeParse(routineId);
+    if (!id.success) return fail(NOT_FOUND);
+    const copy = await copyRoutine(user.id, id.data);
+    revalidateRoutines();
+    return ok(copy, "Listo: la rutina ya está en tus rutinas");
   });
 }
 

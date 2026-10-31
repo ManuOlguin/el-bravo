@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/src/lib/db";
 import { AuthError } from "@/src/server/auth/errors";
 import { primaryGroupKeyOf, visibleTo } from "@/src/server/exercises/catalog";
+import { copyRoutineName, planExerciseCopies } from "./copy-plan";
 import { buildVisibleNameIndex } from "@/src/server/exercises/name-index";
 import { slugify } from "@/prisma/seed/slugify";
 import { normalize } from "@/src/features/exercises/search";
@@ -75,6 +76,11 @@ function normalizeShares(percentages: number[]): number[] {
   return [100 - rest.reduce((s, p) => s + p, 0), ...rest];
 }
 
+/** Slug de un ejercicio propio: base legible + sufijo aleatorio (el slug es único global; `name` es único por dueño). */
+function privateSlug(name: string): string {
+  return `${slugify(name).slice(0, 60) || "ejercicio"}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 /**
  * Crea (o reusa, si ya hay uno visible con el mismo nombre normalizado) los ejercicios nuevos de la rutina
  * y reemplaza los ids `new:<tempId>`. Corre dentro de la transacción de la rutina.
@@ -104,7 +110,7 @@ async function resolvePendingExercises(tx: Tx, userId: string, input: RoutineInp
     const shares = normalizeShares(muscles.map((m) => m.percentage));
     const created = await tx.exercise.create({
       data: {
-        slug: `${slugify(def.name).slice(0, 60) || "ejercicio"}-${Math.random().toString(36).slice(2, 8)}`,
+        slug: privateSlug(def.name),
         name: def.name.replace(/\s+/g, " "),
         nameEn: def.nameEn,
         measureType: def.measureType,
@@ -186,6 +192,115 @@ export async function updateRoutine(userId: string, routineId: string, raw: Rout
     });
     await writeExercises(tx, routineId, input);
   });
+}
+
+const copySourceInclude = {
+  user: { select: { name: true, isActive: true } },
+  exercises: {
+    orderBy: { position: "asc" },
+    include: {
+      sets: { orderBy: { position: "asc" } },
+      exercise: {
+        select: {
+          id: true, name: true, nameEn: true, description: true, instructions: true, mediaUrl: true,
+          equipment: true, measureType: true, tracksWeight: true, createdByUserId: true,
+          muscles: { select: { muscleId: true, percentage: true } },
+          aliases: { select: { alias: true, locale: true } },
+        },
+      },
+    },
+  },
+} as const;
+
+type CopySourceRow = Prisma.RoutineGetPayload<{ include: typeof copySourceInclude }>;
+type CopySourceExerciseRow = CopySourceRow["exercises"][number]["exercise"];
+
+/** Duplica un ejercicio propio del autor como privado de `userId` (músculos, equipamiento, tipo, textos y alias). */
+async function duplicateExercise(tx: Tx, userId: string, e: CopySourceExerciseRow): Promise<string> {
+  const row = await tx.exercise.create({
+    data: {
+      slug: privateSlug(e.name),
+      name: e.name,
+      nameEn: e.nameEn,
+      description: e.description,
+      instructions: (e.instructions ?? undefined) as Prisma.InputJsonValue | undefined,
+      mediaUrl: e.mediaUrl,
+      equipment: e.equipment,
+      measureType: e.measureType,
+      tracksWeight: e.tracksWeight,
+      createdByUserId: userId,
+      muscles: { create: e.muscles.map((m) => ({ muscleId: m.muscleId, percentage: m.percentage })) },
+      aliases: { create: e.aliases.map((a) => ({ alias: a.alias, locale: a.locale })) },
+    },
+    select: { id: true },
+  });
+  return row.id;
+}
+
+/**
+ * "Copiar a mis rutinas" (pública de otro) o "Duplicar" (propia): rutina nueva PRIVADA de `userId` con los mismos
+ * ejercicios y series, en una transacción. Ver `planExerciseCopies` para qué se referencia, reusa o duplica.
+ * La privada de otro, una inexistente o la de un autor desactivado → `NOT_FOUND`.
+ */
+export async function copyRoutine(userId: string, routineId: string): Promise<{ routineId: string }> {
+  const newId = await prisma.$transaction(
+    async (tx) => {
+      const src = await tx.routine.findUnique({ where: { id: routineId }, include: copySourceInclude });
+      const own = src?.userId === userId;
+      if (!src || (!own && (src.visibility !== "public" || !src.user.isActive))) throw new AuthError("NOT_FOUND");
+
+      const visible = await tx.exercise.findMany({ where: visibleTo(userId), select: { id: true, name: true, createdByUserId: true } });
+      const plan = planExerciseCopies(src.exercises.map((e) => e.exercise), userId, visible);
+      const byId = new Map(src.exercises.map((e) => [e.exercise.id, e.exercise]));
+      const duplicates = new Map<string, string>(); // sourceId → id del duplicado
+      const idFor = new Map<string, string>();
+      for (const [exerciseId, d] of plan) {
+        if (d.kind === "reference") {
+          idFor.set(exerciseId, d.exerciseId);
+          continue;
+        }
+        let dupId = duplicates.get(d.sourceId);
+        if (!dupId) {
+          dupId = await duplicateExercise(tx, userId, byId.get(d.sourceId)!);
+          duplicates.set(d.sourceId, dupId);
+        }
+        idFor.set(exerciseId, dupId);
+      }
+
+      const r = await tx.routine.create({
+        data: {
+          userId,
+          name: copyRoutineName(src.name, own),
+          notes: src.notes,
+          visibility: "private",
+          // Duplicar una propia conserva la atribución del original; copiar de otro apunta a esa rutina y su autor.
+          copiedFromRoutineId: own ? src.copiedFromRoutineId : src.id,
+          copiedFromUserName: own ? src.copiedFromUserName : (src.user.name ?? "otro usuario").slice(0, 80),
+        },
+        select: { id: true },
+      });
+      await writeExercises(tx, r.id, {
+        name: src.name,
+        notes: src.notes,
+        exercises: src.exercises.map((e) => ({
+          exerciseId: idFor.get(e.exercise.id)!,
+          restSeconds: e.restSeconds,
+          notes: e.notes,
+          sets: e.sets.map((s) => ({
+            kind: s.kind,
+            targetReps: s.targetReps,
+            targetDurationSeconds: s.targetDurationSeconds,
+            targetWeightKg: s.targetWeightKg,
+            restSeconds: s.restSeconds,
+          })),
+        })),
+      });
+      return r.id;
+    },
+    // Hasta 40 ejercicios (+ duplicados) contra TiDB: el default de 5 s de Prisma queda justo.
+    { timeout: 20_000, maxWait: 5_000 }
+  );
+  return { routineId: newId };
 }
 
 /** Los entrenamientos hechos con la rutina se conservan (`routineId` → null por `onDelete: SetNull`). */

@@ -4,6 +4,7 @@ import { resetDb, prisma } from "@/tests/setup/db";
 vi.mock("server-only", () => ({}));
 
 import {
+  copyRoutine,
   createRoutine,
   deleteRoutine,
   getPublicRoutine,
@@ -323,5 +324,113 @@ describe("rutinas públicas (fase 2)", () => {
       { id: pub.routineId, name: "La pública", exerciseCount: 2, setCount: 5, groupKeys: ["chest", "core"], visibility: "public", copiedFromUserName: null },
     ]);
     expect((await listRoutines(other.id)).map((r) => r.visibility).sort()).toEqual(["private", "public"]);
+  });
+});
+
+const oneSet = (o: Partial<RoutineInput["exercises"][number]["sets"][number]> = {}) => ({
+  kind: "normal" as const, targetReps: 10, targetDurationSeconds: null, targetWeightKg: null, restSeconds: null, ...o,
+});
+
+/** `other` ("B") tiene un ejercicio propio "Remo Hammer" y una rutina pública que lo usa junto con uno del catálogo. */
+async function publicFixtures() {
+  const base = await fixtures();
+  const pectoral = await prisma.muscle.findUniqueOrThrow({ where: { slug: "pectoral" } });
+  const hammer = await prisma.exercise.create({
+    data: {
+      slug: "remo-hammer-b", name: "Remo Hammer", nameEn: "Hammer row", description: "Con el pecho apoyado.",
+      instructions: ["Apoyá el pecho", "Tirá con los codos"], equipment: "machine", measureType: "reps", tracksWeight: true,
+      createdByUserId: base.other.id,
+      muscles: { create: [{ muscleId: pectoral.id, percentage: 100 }] },
+      aliases: { create: [{ alias: "remo maquina hammer" }] },
+    },
+  });
+  const { routineId } = await createRoutine(base.other.id, {
+    name: "Espalda de B", notes: "al fallo la última", visibility: "public",
+    exercises: [
+      { exerciseId: base.bench.id, restSeconds: 90, notes: null, sets: [oneSet({ targetReps: 8, targetWeightKg: 60 }), oneSet({ targetReps: 8, targetWeightKg: 60 })] },
+      { exerciseId: hammer.id, restSeconds: null, notes: "lento", sets: [oneSet({ kind: "failure", targetReps: 12 })] },
+    ],
+  });
+  return { ...base, pectoral, hammer, publicId: routineId };
+}
+
+describe("copiar rutinas (fase 2)", () => {
+  beforeEach(resetDb);
+
+  it("copiar una pública ajena: referencia el catálogo, duplica el ejercicio propio del autor y guarda el origen", async () => {
+    const { user, bench, hammer, pectoral, publicId } = await publicFixtures();
+    const { routineId } = await copyRoutine(user.id, publicId);
+    expect(await prisma.routine.findUniqueOrThrow({ where: { id: routineId } })).toMatchObject({
+      userId: user.id, name: "Espalda de B", notes: "al fallo la última", visibility: "private",
+      copiedFromRoutineId: publicId, copiedFromUserName: "B",
+    });
+    const r = await getRoutineForEditor(user.id, routineId);
+    expect(r.exercises[0].exercise.id).toBe(bench.id);
+    const dupId = r.exercises[1].exercise.id;
+    expect(dupId).not.toBe(hammer.id);
+    const dup = await prisma.exercise.findUniqueOrThrow({ where: { id: dupId }, include: { muscles: true, aliases: true } });
+    expect(dup).toMatchObject({
+      name: "Remo Hammer", nameEn: "Hammer row", description: "Con el pecho apoyado.", instructions: ["Apoyá el pecho", "Tirá con los codos"],
+      equipment: "machine", measureType: "reps", tracksWeight: true, createdByUserId: user.id,
+    });
+    expect(dup.muscles.map((m) => [m.muscleId, m.percentage])).toEqual([[pectoral.id, 100]]);
+    expect(dup.aliases.map((a) => a.alias)).toEqual(["remo maquina hammer"]);
+    expect(r.exercises.map((e) => [e.restSeconds, e.notes, e.sets.map((s) => [s.kind, s.targetReps, s.targetWeightKg])])).toEqual([
+      [90, null, [["normal", 8, 60], ["normal", 8, 60]]],
+      [null, "lento", [["failure", 12, null]]],
+    ]);
+    // El original no se tocó.
+    expect(await prisma.routineExercise.count({ where: { routineId: publicId } })).toBe(2);
+  });
+
+  it("si ya tengo uno con el mismo nombre normalizado, lo reusa (no duplica)", async () => {
+    const { user, publicId } = await publicFixtures();
+    const mine = await prisma.exercise.create({ data: { slug: "mi-remo", name: "remo  hammer", createdByUserId: user.id } });
+    const { routineId } = await copyRoutine(user.id, publicId);
+    expect((await getRoutineForEditor(user.id, routineId)).exercises[1].exercise.id).toBe(mine.id);
+    expect(await prisma.exercise.count({ where: { createdByUserId: user.id } })).toBe(1);
+  });
+
+  it("copiar dos veces duplica el ejercicio una sola vez (la segunda reusa el duplicado)", async () => {
+    const { user, publicId } = await publicFixtures();
+    const a = await copyRoutine(user.id, publicId);
+    const b = await copyRoutine(user.id, publicId);
+    expect(await prisma.exercise.count({ where: { createdByUserId: user.id } })).toBe(1);
+    const ids = async (id: string) => (await getRoutineForEditor(user.id, id)).exercises.map((e) => e.exercise.id);
+    expect(await ids(b.routineId)).toEqual(await ids(a.routineId));
+  });
+
+  it("IDOR: la privada de otro, una inexistente o la de un autor desactivado no se copian y no dejan nada", async () => {
+    const { user, other, bench, plank, publicId } = await publicFixtures();
+    const { routineId: privateId } = await createRoutine(other.id, routineInput(bench.id, plank.id));
+    await expect(copyRoutine(user.id, privateId)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(copyRoutine(user.id, "no-existe")).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await prisma.user.update({ where: { id: other.id }, data: { isActive: false } });
+    await expect(copyRoutine(user.id, publicId)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(await prisma.routine.count({ where: { userId: user.id } })).toBe(0);
+    expect(await prisma.exercise.count({ where: { createdByUserId: user.id } })).toBe(0);
+  });
+
+  it("duplicar una propia: '(copia)', privada, mismos ejercicios y la misma atribución que el original", async () => {
+    const { user, bench, plank, publicId } = await publicFixtures();
+    const own = await createRoutine(user.id, { ...routineInput(bench.id, plank.id), visibility: "public" });
+    const dup = await copyRoutine(user.id, own.routineId);
+    expect(await prisma.routine.findUniqueOrThrow({ where: { id: dup.routineId } })).toMatchObject({
+      name: "Pecho y core (copia)", visibility: "private", copiedFromRoutineId: null, copiedFromUserName: null,
+    });
+    expect((await getRoutineForEditor(user.id, dup.routineId)).exercises.map((e) => e.exercise.id)).toEqual([plank.id, bench.id]);
+    // Duplicar una copia conserva "Basada en la rutina de B".
+    const copied = await copyRoutine(user.id, publicId);
+    const again = await copyRoutine(user.id, copied.routineId);
+    expect(await prisma.routine.findUniqueOrThrow({ where: { id: again.routineId } })).toMatchObject({
+      name: "Espalda de B (copia)", copiedFromRoutineId: publicId, copiedFromUserName: "B",
+    });
+  });
+
+  it("borrar la original deja la copia con el nombre del autor y sin link", async () => {
+    const { user, other, publicId } = await publicFixtures();
+    const { routineId } = await copyRoutine(user.id, publicId);
+    await deleteRoutine(other.id, publicId);
+    expect(await prisma.routine.findUniqueOrThrow({ where: { id: routineId } })).toMatchObject({ copiedFromRoutineId: null, copiedFromUserName: "B" });
   });
 });
