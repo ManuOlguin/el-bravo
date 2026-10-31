@@ -19,24 +19,15 @@ Los secretos viven en `.env.production.local` (ignorado por git, permisos solo p
 2. **Create Cluster** → plan **Starter** (gratis) → proveedor **AWS**, región **N. Virginia (us-east-1)** → nombre `el-bravo`.
 3. En el cluster: **Connect** → "Connect With: General" (o "Prisma") → **Generate Password** (guardala, se muestra una sola vez).
 4. Crear la base `elbravo`: en **SQL Editor** correr `CREATE DATABASE elbravo;`.
-5. Armar la URL y pegarla en `.env.production.local`, en `DATABASE_URL`:
-   ```
-   mysql://USUARIO:CLAVE@HOST:4000/elbravo?sslaccept=strict
-   ```
-   `USUARIO` tiene la forma `xxxxxxxx.root`. Si la clave tiene `@`, `/` o `:`, reemplazalos por `%40`, `%2F` o `%3A`.
+5. Correr `node scripts/prod/set-db-url.mjs`: pide host, usuario y clave (oculta), prueba la conexión con TLS, crea la base si falta y guarda `DATABASE_URL` en `.env.production.local` (forma: `mysql://USUARIO:CLAVE@HOST:4000/elbravo?sslaccept=strict`).
 
 ## 2. Fotos — Cloudflare R2 (vos)
 
-Seguir [`r2-setup.md`](r2-setup.md) → "Cloudflare R2 (producción)": cuenta, bucket `elbravo-media`, acceso público (`r2.dev` para arrancar), token con permiso "Object Read & Write" solo para ese bucket, y CORS con la URL de la app. Completar en `.env.production.local`:
-`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_PUBLIC_BASE_URL`.
+Seguir [`r2-setup.md`](r2-setup.md) → "Cloudflare R2 (producción)": cuenta, bucket `elbravo-media`, acceso público (`r2.dev` para arrancar), token con permiso "Object Read & Write" solo para ese bucket, y CORS con la URL de la app.
 
-## 3. Resto de variables (vos)
+## 3. Resto de variables (script)
 
-En `.env.production.local`:
-- `APP_URL`: la URL de la app en Vercel (ej. `https://el-bravo.vercel.app`), sin barra final.
-- `VAPID_SUBJECT`: `mailto:` + un mail tuyo (lo usan Google y Apple como contacto del remitente de los push).
-
-Las demás (`JWT_SECRET`, `CRON_SECRET`, `VAPID_*`) ya están generadas.
+`node scripts/prod/set-r2.mjs` pide la URL de la app en Vercel (`APP_URL`), un mail de contacto para los push (`VAPID_SUBJECT`) y los datos de R2 (el secret, oculto). Antes de guardar prueba R2 como lo usa la app: CORS desde `APP_URL`, subida con URL prefirmada, lectura pública y borrado del archivo de prueba. Las demás (`JWT_SECRET`, `CRON_SECRET`, `VAPID_*`) ya están generadas.
 
 ## 4. Verificar (script)
 
