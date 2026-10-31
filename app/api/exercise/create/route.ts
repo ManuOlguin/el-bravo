@@ -1,3 +1,4 @@
+// TODO(W2-1): borrar cuando RoutineForm/CreateActivityForm migren a ExercisePicker
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/db";
 import { getCurrentUser } from "@/src/lib/currentUser";

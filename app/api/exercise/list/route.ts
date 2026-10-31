@@ -1,3 +1,4 @@
+// TODO(W2-1): borrar cuando RoutineForm/CreateActivityForm migren a ExercisePicker
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/db";
 import { getCurrentUser } from "@/src/lib/currentUser";
@@ -11,6 +12,8 @@ export async function GET() {
     }
 
     const exercisesRaw = await prisma.exercise.findMany({
+      // Solo oficiales + propios (los privados de otros usuarios no se exponen).
+      where: { OR: [{ createdByUserId: null }, { createdByUserId: user.id }] },
       orderBy: { name: "asc" },
       include: {
         muscles: {
