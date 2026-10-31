@@ -6,7 +6,7 @@ export const TZ = "America/Argentina/Buenos_Aires";
 export const rules = (o: Partial<SeasonRules> = {}): SeasonRules => ({
   startDate: "2026-11-02", endDate: "2026-11-29", timezone: TZ, // 4 semanas: lun 2/11 → dom 29/11
   weeklyGoal: 3, minDailyMinutes: 20, dayBasePoints: 10, timePointsFactor: 10, timeCurveMinutes: 30, maxDailyMinutes: 240,
-  weeklyGoalBonus: 20, streakBonusStep: 5, streakBonusCap: 25,
+  weeklyGoalBonus: 20, streakBonusStep: 5, streakBonusCap: 25, activeStreakBonusStep: 2, activeStreakBonusCap: 10,
   categoryWeights: { gym: 1, run: 2, yoga: 0.5 }, ...o,
 });
 let n = 0;

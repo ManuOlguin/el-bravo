@@ -23,7 +23,7 @@ export const CHANGELOG: ChangelogSection[] = [
     items: [
       {
         title: "Puntos por constancia",
-        desc: "Cada día que entrenás suma. Más tiempo suma más, pero cada vez menos (3 h no valen el triple que 1 h). Si hacés dos cosas el mismo día, se suman al tiempo del día. Cumplir la semana y las rachas dan bonus.",
+        desc: "Cada día que entrenás suma. Más tiempo suma más, pero cada vez menos (3 h no valen el triple que 1 h). Si hacés dos cosas el mismo día, se suman al tiempo del día. Cumplir la semana suma +20 y la racha de semanas cumplidas hasta +25; además, una racha aparte por entrenar al menos 1 día por semana suma hasta +10.",
       },
       {
         title: "Festejo al terminar",

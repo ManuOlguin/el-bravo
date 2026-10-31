@@ -44,6 +44,8 @@ async function loadSeasonInput(tx: Tx, seasonId: string) {
     weeklyGoalBonus: s.weeklyGoalBonus,
     streakBonusStep: s.streakBonusStep,
     streakBonusCap: s.streakBonusCap,
+    activeStreakBonusStep: s.activeStreakBonusStep,
+    activeStreakBonusCap: s.activeStreakBonusCap,
     categoryWeights: Object.fromEntries(s.categories.map((c) => [c.activityCategoryId, Number(c.weight)])),
   };
   const memberIds = s.members.map((m) => m.userId);

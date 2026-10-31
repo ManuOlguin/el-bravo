@@ -132,7 +132,7 @@ describe("updateSeasonAction", () => {
   it("recalcula con las reglas nuevas y conserva las reglas avanzadas si no vienen", async () => {
     const { admin, gym, group } = await setup();
     as(admin);
-    const r = await createSeasonAction(input(group.id, gym.id, { weeklyGoal: 3, rules: { dayBasePoints: 10, timePointsFactor: 10, timeCurveMinutes: 30, maxDailyMinutes: 240, weeklyGoalBonus: 30, streakBonusStep: 5, streakBonusCap: 25 } }));
+    const r = await createSeasonAction(input(group.id, gym.id, { weeklyGoal: 3, rules: { dayBasePoints: 10, timePointsFactor: 10, timeCurveMinutes: 30, maxDailyMinutes: 240, weeklyGoalBonus: 30, streakBonusStep: 5, streakBonusCap: 25, activeStreakBonusStep: 2, activeStreakBonusCap: 10 } }));
     const seasonId = r.ok ? r.data.seasonId : "";
     // Dos días de la semana pasada (semana completa dentro de la temporada).
     const lastMonday = addDays(today, -7 - ((new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7));

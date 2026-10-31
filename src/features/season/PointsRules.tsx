@@ -57,6 +57,13 @@ export function PointsRules({ season }: { season: Pick<SeasonSummary, "rules" | 
           Cada semana cumplida seguida suma <strong className="text-fg">+{r.streakBonusStep} pts</strong> extra por semana de racha (hasta{" "}
           <strong className="text-fg">+{r.streakBonusCap}</strong>). La semana en curso no corta la racha hasta que termina.
         </p>
+        {r.activeStreakBonusStep > 0 && (
+          <p className="text-fg-muted">
+            <strong className="text-fg">Racha activa</strong>, aparte y más chica: cada semana seguida en la que entrenás al menos 1 día suma{" "}
+            <strong className="text-fg">+{r.activeStreakBonusStep} pts</strong> extra por semana (hasta{" "}
+            <strong className="text-fg">+{r.activeStreakBonusCap}</strong>), aunque no llegues al objetivo.
+          </p>
+        )}
       </section>
 
       <section className="space-y-2">

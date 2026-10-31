@@ -43,6 +43,9 @@ export type SeasonRules = {
   weeklyGoalBonus: number;
   streakBonusStep: number;
   streakBonusCap: number;
+  /** Racha de semanas activas (≥ 1 día que cuenta), aparte y más chica que la de semanas cumplidas. */
+  activeStreakBonusStep: number;
+  activeStreakBonusCap: number;
   categoryWeights: Record<string, number>; // activityCategoryId → 0..2 (ausente = no cuenta)
 };
 
@@ -57,14 +60,14 @@ export type ScoringActivity = {
 export type ScoreLine = {
   userId: string;
   activityId: string | null;
-  kind: "workout" | "weekly_goal" | "streak" | "award";
+  kind: "workout" | "weekly_goal" | "streak" | "active_streak" | "award";
   weekKey: string | null;
   points: number;
   reason: string | null;
   detail?: Record<string, unknown>;
 };
 
-export type UserWeek = { weekKey: string; days: number; target: number; goalMet: boolean; streak: number; finished: boolean };
+export type UserWeek = { weekKey: string; days: number; target: number; goalMet: boolean; streak: number; activeStreak: number; finished: boolean };
 
 export type UserTotals = {
   userId: string;

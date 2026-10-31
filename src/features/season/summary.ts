@@ -22,6 +22,8 @@ export const seasonSummarySelect = {
   weeklyGoalBonus: true,
   streakBonusStep: true,
   streakBonusCap: true,
+  activeStreakBonusStep: true,
+  activeStreakBonusCap: true,
   resultsReveal: true,
   finalizedAt: true,
   resultsPublishedAt: true,
@@ -59,6 +61,8 @@ export function toSeasonSummary(s: SeasonSummaryRow, viewerId: string, timezone:
       weeklyGoalBonus: s.weeklyGoalBonus,
       streakBonusStep: s.streakBonusStep,
       streakBonusCap: s.streakBonusCap,
+      activeStreakBonusStep: s.activeStreakBonusStep,
+      activeStreakBonusCap: s.activeStreakBonusCap,
     },
   };
 }

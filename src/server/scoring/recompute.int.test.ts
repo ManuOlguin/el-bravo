@@ -84,13 +84,16 @@ describe("recomputeSeason", () => {
     const w2 = await days(u1.id, gym.id, W2);
     await days(u1.id, gym.id, W3);
     await recomputeSeason(s.id);
-    expect((await standing(s.id, u1.id))!.points).toBe(9 * 23 + 60 + 5 + 10);
+    // 9 días + 3 semanas cumplidas + racha (+5, +10) + racha activa (+2, +4).
+    expect((await standing(s.id, u1.id))!.points).toBe(9 * 23 + 60 + 5 + 10 + 2 + 4);
     expect((await prisma.scoreEntry.findFirst({ where: { seasonId: s.id, kind: "streak", weekKey: W3 } }))!.points).toBe(10);
 
     await prisma.activity.delete({ where: { id: w2[1].id } });
     await recomputeSeason(s.id);
-    expect((await standing(s.id, u1.id))!).toMatchObject({ points: 8 * 23 + 40, weeksGoalMet: 2, bestStreak: 1, currentStreak: 1 });
+    // La semana 2 queda con 2 días: corta la racha cumplida pero no la activa (+2, +4 siguen).
+    expect((await standing(s.id, u1.id))!).toMatchObject({ points: 8 * 23 + 40 + 2 + 4, weeksGoalMet: 2, bestStreak: 1, currentStreak: 1 });
     expect(await prisma.scoreEntry.count({ where: { seasonId: s.id, kind: "streak" } })).toBe(0);
+    expect(await prisma.scoreEntry.count({ where: { seasonId: s.id, kind: "active_streak" } })).toBe(2);
   });
 
   it("editar la temporada recalcula (objetivo y peso de categoría)", async () => {
@@ -99,14 +102,16 @@ describe("recomputeSeason", () => {
     await days(u1.id, gym.id, W1, 2);
     const r = await act(u1.id, run.id, W2);
     await recomputeSeason(s.id);
-    expect((await standing(s.id, u1.id))!.points).toBe(3 * 23);
+    // 2 semanas activas seguidas: +2 de racha activa.
+    expect((await standing(s.id, u1.id))!.points).toBe(3 * 23 + 2);
 
     await prisma.season.update({ where: { id: s.id }, data: { weeklyGoal: 2 } });
     await recomputeSeason(s.id);
-    expect((await standing(s.id, u1.id))!.points).toBe(3 * 23 + 20);
+    expect((await standing(s.id, u1.id))!.points).toBe(3 * 23 + 20 + 2);
 
     await prisma.seasonCategory.update({ where: { seasonId_activityCategoryId: { seasonId: s.id, activityCategoryId: run.id } }, data: { weight: 0 } });
     await recomputeSeason(s.id);
+    // Running deja de contar: la semana 2 queda sin días y se pierde la racha activa.
     expect((await standing(s.id, u1.id))!.points).toBe(2 * 23 + 20);
     expect((await getActivityPoints([r.id])).get(r.id)).toEqual([{ seasonId: s.id, points: 0, reason: "Esta actividad no cuenta en la temporada" }]);
   });

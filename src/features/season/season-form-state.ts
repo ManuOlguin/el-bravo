@@ -21,6 +21,8 @@ export const ADVANCED_RULE_KEYS = [
   "weeklyGoalBonus",
   "streakBonusStep",
   "streakBonusCap",
+  "activeStreakBonusStep",
+  "activeStreakBonusCap",
 ] as const;
 export type AdvancedRuleKey = (typeof ADVANCED_RULE_KEYS)[number];
 export type RulesDraft = Record<AdvancedRuleKey, number | null>;
@@ -64,6 +66,8 @@ export const RULE_FIELDS: Record<AdvancedRuleKey, { label: string; hint: string;
   weeklyGoalBonus: { label: "Bonus por semana cumplida", hint: "", min: 0, max: 500, suffix: "pts" },
   streakBonusStep: { label: "Extra por semana de racha", hint: "", min: 0, max: 100, suffix: "pts" },
   streakBonusCap: { label: "Tope del extra por racha", hint: "", min: 0, max: 500, suffix: "pts" },
+  activeStreakBonusStep: { label: "Extra por semana activa seguida", hint: "Al menos 1 día, aunque no cumpla. 0 = sin racha activa.", min: 0, max: 100, suffix: "pts" },
+  activeStreakBonusCap: { label: "Tope del extra por semana activa", hint: "", min: 0, max: 500, suffix: "pts" },
 };
 
 function defaultRules(): RulesDraft {

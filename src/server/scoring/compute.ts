@@ -20,7 +20,7 @@ export function dayPoints(r: SeasonRules, minutes: number): number {
   return r.dayBasePoints + Math.round(r.timePointsFactor * Math.log2(1 + m / r.timeCurveMinutes));
 }
 
-const KIND_ORDER = { workout: 0, weekly_goal: 1, streak: 2, award: 3 } as const;
+const KIND_ORDER = { workout: 0, weekly_goal: 1, streak: 2, active_streak: 3, award: 4 } as const;
 
 export function computeSeasonScores(r: SeasonRules, memberIds: string[], activities: ScoringActivity[], now: Date): SeasonScores {
   const members = [...new Set(memberIds)].sort();
@@ -85,6 +85,7 @@ export function computeSeasonScores(r: SeasonRules, memberIds: string[], activit
     const weeks: UserWeek[] = [];
     let streak = 0;
     let best = 0;
+    let activeStreak = 0;
     let weeksGoalMet = 0;
     for (const weekKey of lastDay >= r.startDate ? weekKeysBetween(r.startDate, lastDay) : []) {
       const target = Math.min(r.weeklyGoal, daysInWeekWithin(weekKey, r.startDate, r.endDate));
@@ -101,7 +102,17 @@ export function computeSeasonScores(r: SeasonRules, memberIds: string[], activit
       } else if (finished) {
         streak = 0; // la semana en curso no corta la racha mientras no termine (D1.6)
       }
-      weeks.push({ weekKey, days, target, goalMet, streak, finished });
+      // Racha activa (aparte, más chica): semanas seguidas con al menos 1 día que cuenta. Una semana con 2 de 3
+      // días corta la racha de cumplidas pero mantiene esta. Misma regla para la semana en curso.
+      if (days > 0) {
+        activeStreak += 1;
+        const activeBonus = Math.min((activeStreak - 1) * r.activeStreakBonusStep, r.activeStreakBonusCap);
+        if (activeBonus > 0)
+          userLines.push({ userId, activityId: null, kind: "active_streak", weekKey, points: activeBonus, reason: null, detail: { activeStreak } });
+      } else if (finished) {
+        activeStreak = 0;
+      }
+      weeks.push({ weekKey, days, target, goalMet, streak, activeStreak, finished });
     }
 
     userLines.sort(

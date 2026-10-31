@@ -66,7 +66,8 @@ describe("objetivo semanal y racha", () => {
     const r = computeSeasonScores(rules(), ["u"], acts, AFTER);
     expect(r.lines.filter((l) => l.kind === "weekly_goal").map((l) => l.points)).toEqual([20, 20, 20, 20]);
     expect(r.lines.filter((l) => l.kind === "streak").map((l) => l.points)).toEqual([5, 10, 15]);
-    expect(total(r, "u")).toMatchObject({ points: 12 * 23 + 80 + 30, weeksGoalMet: 4, bestStreak: 4, currentStreak: 4, daysTrained: 12 });
+    // + racha activa (aparte): +2, +4, +6.
+    expect(total(r, "u")).toMatchObject({ points: 12 * 23 + 80 + 30 + 12, weeksGoalMet: 4, bestStreak: 4, currentStreak: 4, daysTrained: 12 });
   });
   it("el tope de racha es +25", () => {
     const r = computeSeasonScores(rules({ endDate: "2026-12-27" }), ["u"],
@@ -78,6 +79,31 @@ describe("objetivo semanal y racha", () => {
     const r = computeSeasonScores(rules(), ["u"], acts, AFTER);
     expect(r.lines.filter((l) => l.kind === "streak").map((l) => l.points)).toEqual([5]);
     expect(total(r, "u")).toMatchObject({ bestStreak: 2, currentStreak: 2 });
+  });
+  it("racha activa: aparte de la cumplida, +2 por semana seguida con al menos 1 día, tope +10", () => {
+    const r = computeSeasonScores(rules({ endDate: "2026-12-27" }), ["u"],
+      Array.from({ length: 8 }, (_, i) => week("u", addD("2026-11-02", i * 7), 1)).flat(), new Date("2027-01-15T12:00:00Z"));
+    // 1 día por semana: nunca cumple el objetivo (3), pero suma la racha activa.
+    expect(r.lines.filter((l) => l.kind === "streak")).toEqual([]);
+    expect(r.lines.filter((l) => l.kind === "active_streak").map((l) => l.points)).toEqual([2, 4, 6, 8, 10, 10, 10]);
+  });
+  it("2 de 3 días corta la racha cumplida pero mantiene la activa", () => {
+    const acts = [...week("u", "2026-11-02"), ...week("u", "2026-11-09", 2), ...week("u", "2026-11-16")];
+    const r = computeSeasonScores(rules(), ["u"], acts, AFTER);
+    expect(r.lines.filter((l) => l.kind === "streak").map((l) => l.points)).toEqual([]);
+    expect(r.lines.filter((l) => l.kind === "active_streak").map((l) => l.points)).toEqual([2, 4]);
+    expect(total(r, "u").weeks.map((w) => [w.streak, w.activeStreak])).toEqual([[1, 1], [0, 2], [1, 3], [0, 0]]);
+  });
+  it("una semana sin entrenar corta la racha activa; un día que no llega al mínimo no cuenta", () => {
+    const acts = [act("u", "2026-11-02"), act("u", "2026-11-16", "18:00", 10), act("u", "2026-11-23")];
+    const r = computeSeasonScores(rules(), ["u"], acts, AFTER);
+    // Semana 2 vacía y semana 3 con solo 10 min: la racha activa se corta y recién arranca en la 4.
+    expect(r.lines.filter((l) => l.kind === "active_streak")).toEqual([]);
+  });
+  it("la racha activa se configura por temporada (0 la apaga)", () => {
+    const acts = [...week("u", "2026-11-02", 1), ...week("u", "2026-11-09", 1)];
+    expect(computeSeasonScores(rules({ activeStreakBonusStep: 0 }), ["u"], acts, AFTER).lines.filter((l) => l.kind === "active_streak")).toEqual([]);
+    expect(computeSeasonScores(rules({ activeStreakBonusStep: 5, activeStreakBonusCap: 5 }), ["u"], acts, AFTER).lines.filter((l) => l.kind === "active_streak").map((l) => l.points)).toEqual([5]);
   });
   it("semana parcial: objetivo = días de la semana dentro de la temporada", () => {
     const r = computeSeasonScores(rules({ startDate: "2026-11-07" }), ["u"], [act("u", "2026-11-07"), act("u", "2026-11-08")], AFTER);

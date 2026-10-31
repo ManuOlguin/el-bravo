@@ -94,7 +94,7 @@ describe("conversión a SeasonInput", () => {
       { awardType: "longest_session", bonusPoints: 0 },
     ]);
     expect(input.rules).toEqual({
-      dayBasePoints: 10, timePointsFactor: 10, timeCurveMinutes: 30, maxDailyMinutes: 240, weeklyGoalBonus: 20, streakBonusStep: 5, streakBonusCap: 25,
+      dayBasePoints: 10, timePointsFactor: 10, timeCurveMinutes: 30, maxDailyMinutes: 240, weeklyGoalBonus: 20, streakBonusStep: 5, streakBonusCap: 25, activeStreakBonusStep: 2, activeStreakBonusCap: 10,
     });
     expect(input.resultsReveal).toBe("manual");
   });

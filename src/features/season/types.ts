@@ -17,6 +17,8 @@ export type SeasonRulesView = {
   weeklyGoalBonus: number;
   streakBonusStep: number;
   streakBonusCap: number;
+  activeStreakBonusStep: number;
+  activeStreakBonusCap: number;
 };
 
 export type SeasonSummary = {
@@ -47,6 +49,8 @@ export const DEFAULT_RULES: SeasonRulesView = {
   weeklyGoalBonus: 20,
   streakBonusStep: 5,
   streakBonusCap: 25,
+  activeStreakBonusStep: 2,
+  activeStreakBonusCap: 10,
 };
 
 /** Reglas del motor a partir de los parámetros (para `dayPoints`, que no mira fechas ni pesos). */

@@ -30,6 +30,8 @@ export const seasonRulesSchema = z.object({
   weeklyGoalBonus: int(0, 500, "Bonus semanal"),
   streakBonusStep: int(0, 100, "Bonus de racha"),
   streakBonusCap: int(0, 500, "Tope de racha"),
+  activeStreakBonusStep: int(0, 100, "Bonus de racha activa"),
+  activeStreakBonusCap: int(0, 500, "Tope de racha activa"),
 });
 
 export const seasonCategoryInputSchema = z.object({

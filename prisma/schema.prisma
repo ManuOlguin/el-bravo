@@ -55,6 +55,7 @@ enum ScoreKind {
   workout
   weekly_goal
   streak
+  active_streak
   award
   adjustment
 }
@@ -228,15 +229,17 @@ model Season {
   endDate   DateTime @db.Date // fecha local (zona del grupo), inclusiva
 
   // Reglas (D1). Defaults = reglas estándar.
-  weeklyGoal       Int @default(3) // días entrenados por semana
-  minDailyMinutes  Int @default(20) // minutos efectivos mínimos para que un día cuente
-  dayBasePoints    Int @default(10) // puntos por presentarte
-  timePointsFactor Int @default(10) // factor de la curva de tiempo
-  timeCurveMinutes Int @default(30) // escala de la curva: 10 × log2(1 + min/30)
-  maxDailyMinutes  Int @default(240) // tope de minutos por día
-  weeklyGoalBonus  Int @default(20)
-  streakBonusStep  Int @default(5)
-  streakBonusCap   Int @default(25)
+  weeklyGoal            Int @default(3) // días entrenados por semana
+  minDailyMinutes       Int @default(20) // minutos efectivos mínimos para que un día cuente
+  dayBasePoints         Int @default(10) // puntos por presentarte
+  timePointsFactor      Int @default(10) // factor de la curva de tiempo
+  timeCurveMinutes      Int @default(30) // escala de la curva: 10 × log2(1 + min/30)
+  maxDailyMinutes       Int @default(240) // tope de minutos por día
+  weeklyGoalBonus       Int @default(20)
+  streakBonusStep       Int @default(5)
+  streakBonusCap        Int @default(25)
+  activeStreakBonusStep Int @default(2) // racha de semanas activas (≥ 1 día que cuenta): extra por semana seguida
+  activeStreakBonusCap  Int @default(10)
 
   // Ciclo de vida (D3)
   resultsReveal      ResultsReveal @default(auto)

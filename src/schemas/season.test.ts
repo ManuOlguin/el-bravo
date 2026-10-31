@@ -59,7 +59,7 @@ describe("seasonInputSchema", () => {
     expect(errors({ ...base, minDailyMinutes: 4 })).toHaveLength(1);
     expect(errors({ ...base, awards: [{ awardType: "nope", bonusPoints: 0 }] })).toEqual(["awards.0.awardType: Premio desconocido"]);
     expect(errors({ ...base, awards: [{ awardType: "most_days", bonusPoints: 201 }] })).toHaveLength(1);
-    const rules = { dayBasePoints: 10, timePointsFactor: 10, timeCurveMinutes: 30, maxDailyMinutes: 240, weeklyGoalBonus: 20, streakBonusStep: 5, streakBonusCap: 25 };
+    const rules = { dayBasePoints: 10, timePointsFactor: 10, timeCurveMinutes: 30, maxDailyMinutes: 240, weeklyGoalBonus: 20, streakBonusStep: 5, streakBonusCap: 25, activeStreakBonusStep: 2, activeStreakBonusCap: 10 };
     expect(errors({ ...base, rules })).toEqual([]);
     expect(errors({ ...base, rules: { ...rules, timeCurveMinutes: 0 } })).toHaveLength(1);
   });
