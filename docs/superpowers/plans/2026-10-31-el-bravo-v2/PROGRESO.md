@@ -18,3 +18,4 @@ Registro del orquestador. Cada ola se ejecuta con subagentes en worktrees separa
 - W0-B mergeado (conflictos triviales en stubs y package.json). Gates OK en integración (typecheck, 38 tests, colores, build). Catálogo de componentes en `/dev/ui`. Arranca W0-C.
 - W0-C mergeado. DB de integración `elbravo_main` migrada a v2 y sembrada; diff de Prisma vacío. Arranca la Ola 1 con 5 agentes.
 - W1-2 (insignias) mergeado: 9 familias con niveles I/II/III, recálculo persistido con diff (solo muestra las afectadas), grilla + hoja de detalle en el perfil. 82 unit + 24 integración OK.
+- W1-1 (puntos) mergeado: motor por días entrenados con curva decreciente, recálculo transaccional, premios de temporada, finalizar/publicar/reabrir idempotentes, cron. Verificado: 3 días×45 = 89 pts, borrar uno = 46, objetivo 2 = 66, +30 min el mismo día = +5. 129 unit + 51 integración OK.
