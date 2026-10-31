@@ -7,12 +7,19 @@ import { slugify } from "@/prisma/seed/slugify";
 import { normalize } from "@/src/features/exercises/search";
 import { isPendingExerciseId, PENDING_PREFIX } from "@/src/features/routines-share/match";
 import { GROUP_KEYS, type ExerciseSummary } from "@/src/features/exercises/types";
-import { routineInputSchema, type RoutineForEditor, type RoutineInput } from "@/src/schemas/routine";
+import {
+  routineInputSchema,
+  type RoutineForEditor,
+  type RoutineInput,
+  type RoutineView,
+  type RoutineVisibility,
+} from "@/src/schemas/routine";
 import type { ActivityInput } from "@/src/schemas/workout";
 
 /**
  * Rutinas v2 (W2-1 Task 2): ejercicios ordenados con series objetivo individuales.
- * Solo el dueño las ve, edita o borra (`AuthError("NOT_FOUND")` para cualquier otro, sin filtrar existencia).
+ * Solo el dueño las edita o borra; las públicas (fase 2) las lee otro usuario vía `getPublicRoutine`. Todo lo demás
+ * es `AuthError("NOT_FOUND")` para cualquier otro, sin filtrar existencia.
  * Las escrituras de ejercicios+series corren en UNA transacción: si algo falla, la rutina queda como estaba.
  */
 
@@ -154,14 +161,17 @@ export async function createRoutine(userId: string, raw: RoutineInput): Promise<
   const routineId = await prisma.$transaction(async (tx) => {
     const input = await resolvePendingExercises(tx, userId, parsed);
     await assertExercisesVisible(tx, userId, input);
-    const r = await tx.routine.create({ data: { userId, name: input.name, notes: input.notes ?? null }, select: { id: true } });
+    const r = await tx.routine.create({
+      data: { userId, name: input.name, notes: input.notes ?? null, visibility: input.visibility ?? "private" },
+      select: { id: true },
+    });
     await writeExercises(tx, r.id, input);
     return r.id;
   });
   return { routineId };
 }
 
-/** Reemplaza nombre, notas, ejercicios y series en una transacción (borrar y recrear). */
+/** Reemplaza nombre, notas, ejercicios y series en una transacción (borrar y recrear). `visibility` solo si viene. */
 export async function updateRoutine(userId: string, routineId: string, raw: RoutineInput): Promise<void> {
   const parsed = routineInputSchema.parse(raw);
   await prisma.$transaction(async (tx) => {
@@ -169,7 +179,10 @@ export async function updateRoutine(userId: string, routineId: string, raw: Rout
     const input = await resolvePendingExercises(tx, userId, parsed);
     await assertExercisesVisible(tx, userId, input);
     await tx.routineExercise.deleteMany({ where: { routineId } });
-    await tx.routine.update({ where: { id: routineId }, data: { name: input.name, notes: input.notes ?? null } });
+    await tx.routine.update({
+      where: { id: routineId },
+      data: { name: input.name, notes: input.notes ?? null, ...(input.visibility ? { visibility: input.visibility } : {}) },
+    });
     await writeExercises(tx, routineId, input);
   });
 }
@@ -180,21 +193,22 @@ export async function deleteRoutine(userId: string, routineId: string): Promise<
   await prisma.routine.delete({ where: { id: routineId } });
 }
 
-export async function getRoutineForEditor(userId: string, routineId: string): Promise<RoutineForEditor> {
-  const r = await prisma.routine.findUnique({
-    where: { id: routineId },
-    include: {
-      exercises: {
-        orderBy: { position: "asc" },
-        include: { exercise: { select: exerciseSummarySelect }, sets: { orderBy: { position: "asc" } } },
-      },
-    },
-  });
-  if (!r || r.userId !== userId) throw new AuthError("NOT_FOUND");
+const routineEditorInclude = {
+  exercises: {
+    orderBy: { position: "asc" },
+    include: { exercise: { select: exerciseSummarySelect }, sets: { orderBy: { position: "asc" } } },
+  },
+} as const;
+
+type RoutineEditorRow = Prisma.RoutineGetPayload<{ include: typeof routineEditorInclude }>;
+
+function toRoutineForEditor(r: RoutineEditorRow): RoutineForEditor {
   return {
     id: r.id,
     name: r.name,
     notes: r.notes,
+    visibility: r.visibility,
+    copiedFromUserName: r.copiedFromUserName,
     exercises: r.exercises.map((re) => ({
       exercise: toExerciseSummary(re.exercise),
       restSeconds: re.restSeconds,
@@ -210,32 +224,86 @@ export async function getRoutineForEditor(userId: string, routineId: string): Pr
   };
 }
 
-export type RoutineListItem = {
+/** Solo el dueño (editor, en vivo, "Compartir" desde la tarjeta). */
+export async function getRoutineForEditor(userId: string, routineId: string): Promise<RoutineForEditor> {
+  const r = await prisma.routine.findUnique({ where: { id: routineId }, include: routineEditorInclude });
+  if (!r || r.userId !== userId) throw new AuthError("NOT_FOUND");
+  return toRoutineForEditor(r);
+}
+
+/**
+ * `/routines/[id]` (fase 2): el dueño ve la suya (pública o privada); cualquier otro usuario logueado, solo si es
+ * pública y el autor está activo. Si no, `NOT_FOUND` (nunca `FORBIDDEN`: no se revela que existe).
+ */
+export async function getPublicRoutine(viewerId: string, routineId: string): Promise<RoutineView> {
+  const r = await prisma.routine.findUnique({
+    where: { id: routineId },
+    include: { ...routineEditorInclude, user: { select: { id: true, name: true, photoUrl: true, isActive: true } } },
+  });
+  const isOwner = r?.userId === viewerId;
+  if (!r || (!isOwner && (r.visibility !== "public" || !r.user.isActive))) throw new AuthError("NOT_FOUND");
+  return {
+    ...toRoutineForEditor(r),
+    visibility: r.visibility,
+    copiedFromUserName: r.copiedFromUserName,
+    owner: { id: r.user.id, name: r.user.name, photoUrl: r.user.photoUrl },
+    isOwner,
+  };
+}
+
+const routineSummarySelect = {
+  id: true,
+  name: true,
+  createdAt: true,
+  visibility: true,
+  copiedFromUserName: true,
+  exercises: {
+    select: {
+      _count: { select: { sets: true } },
+      exercise: { select: { muscles: { select: { percentage: true, muscle: { select: { groupKey: true } } } } } },
+    },
+  },
+} as const;
+
+type RoutineSummaryRow = Prisma.RoutineGetPayload<{ select: typeof routineSummarySelect }>;
+
+export type RoutineSummary = {
   id: string;
   name: string;
   exerciseCount: number;
   setCount: number;
   groupKeys: string[];
-  lastUsedAt: Date | null;
+  visibility: RoutineVisibility;
+  copiedFromUserName: string | null;
 };
+
+export type RoutineListItem = RoutineSummary & { lastUsedAt: Date | null };
+
+const groupOrder = (k: string) => {
+  const i = (GROUP_KEYS as readonly string[]).indexOf(k);
+  return i < 0 ? GROUP_KEYS.length : i;
+};
+
+function toRoutineSummary(r: RoutineSummaryRow): RoutineSummary {
+  const keys = new Set<string>();
+  for (const e of r.exercises) {
+    const k = primaryGroupKeyOf(e.exercise.muscles.map((m) => ({ percentage: m.percentage, groupKey: m.muscle.groupKey })));
+    if (k) keys.add(k);
+  }
+  return {
+    id: r.id,
+    name: r.name,
+    exerciseCount: r.exercises.length,
+    setCount: r.exercises.reduce((n, e) => n + e._count.sets, 0),
+    groupKeys: [...keys].sort((a, b) => groupOrder(a) - groupOrder(b) || a.localeCompare(b)),
+    visibility: r.visibility,
+    copiedFromUserName: r.copiedFromUserName,
+  };
+}
 
 /** Rutinas del usuario, las usadas más recientemente primero (después las nuevas). */
 export async function listRoutines(userId: string): Promise<RoutineListItem[]> {
-  const routines = await prisma.routine.findMany({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      name: true,
-      createdAt: true,
-      exercises: {
-        select: {
-          _count: { select: { sets: true } },
-          exercise: { select: { muscles: { select: { percentage: true, muscle: { select: { groupKey: true } } } } } },
-        },
-      },
-    },
-  });
+  const routines = await prisma.routine.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, select: routineSummarySelect });
   if (routines.length === 0) return [];
   const used = await prisma.activity.groupBy({
     by: ["routineId"],
@@ -243,29 +311,24 @@ export async function listRoutines(userId: string): Promise<RoutineListItem[]> {
     _max: { startedAt: true },
   });
   const lastUsed = new Map(used.map((u) => [u.routineId, u._max.startedAt]));
-  const order = (k: string) => {
-    const i = (GROUP_KEYS as readonly string[]).indexOf(k);
-    return i < 0 ? GROUP_KEYS.length : i;
-  };
   return routines
-    .map((r) => {
-      const keys = new Set<string>();
-      for (const e of r.exercises) {
-        const k = primaryGroupKeyOf(e.exercise.muscles.map((m) => ({ percentage: m.percentage, groupKey: m.muscle.groupKey })));
-        if (k) keys.add(k);
-      }
-      return {
-        id: r.id,
-        name: r.name,
-        exerciseCount: r.exercises.length,
-        setCount: r.exercises.reduce((n, e) => n + e._count.sets, 0),
-        groupKeys: [...keys].sort((a, b) => order(a) - order(b) || a.localeCompare(b)),
-        lastUsedAt: lastUsed.get(r.id) ?? null,
-        createdAt: r.createdAt,
-      };
-    })
-    .sort((a, b) => (b.lastUsedAt?.getTime() ?? 0) - (a.lastUsedAt?.getTime() ?? 0) || b.createdAt.getTime() - a.createdAt.getTime())
-    .map((r) => ({ id: r.id, name: r.name, exerciseCount: r.exerciseCount, setCount: r.setCount, groupKeys: r.groupKeys, lastUsedAt: r.lastUsedAt }));
+    .map((r) => ({ item: { ...toRoutineSummary(r), lastUsedAt: lastUsed.get(r.id) ?? null }, createdAt: r.createdAt }))
+    .sort(
+      (a, b) =>
+        (b.item.lastUsedAt?.getTime() ?? 0) - (a.item.lastUsedAt?.getTime() ?? 0) || b.createdAt.getTime() - a.createdAt.getTime()
+    )
+    .map((x) => x.item);
+}
+
+/** Sección "Rutinas" de un perfil ajeno: solo las públicas (y nada si el autor está desactivado). Sin último uso. */
+export async function listPublicRoutines(ownerId: string): Promise<RoutineSummary[]> {
+  const rows = await prisma.routine.findMany({
+    where: { userId: ownerId, visibility: "public", user: { isActive: true } },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+    select: routineSummarySelect,
+  });
+  return rows.map(toRoutineSummary);
 }
 
 /**

@@ -6,7 +6,9 @@ vi.mock("server-only", () => ({}));
 import {
   createRoutine,
   deleteRoutine,
+  getPublicRoutine,
   getRoutineForEditor,
+  listPublicRoutines,
   listRoutines,
   updateRoutine,
   updateRoutineFromWorkout,
@@ -258,5 +260,68 @@ describe("routines service", () => {
       ).rejects.toBeInstanceOf(RoutineError);
       expect(await prisma.exercise.count({ where: { createdByUserId: user.id } })).toBe(0);
     });
+  });
+});
+
+describe("rutinas públicas (fase 2)", () => {
+  beforeEach(resetDb);
+
+  const workoutWithBench = (catId: string, routineId: string, benchId: string) => ({
+    clientRequestId: "x", activityCategoryId: catId, localDate: "2026-10-31", localTime: "18:00", durationMinutes: 40, routineId,
+    exercises: [{ exerciseId: benchId, notes: null, sets: [{ kind: "normal" as const, reps: 10, durationSeconds: null, weightKg: 40, restSeconds: null, completed: true }] }],
+  });
+
+  it("se crea privada; la visibilidad se guarda y editar sin mandarla no la cambia", async () => {
+    const { user, bench, plank, cat } = await fixtures();
+    const { routineId } = await createRoutine(user.id, routineInput(bench.id, plank.id));
+    const visibility = async () => (await getRoutineForEditor(user.id, routineId)).visibility;
+    expect(await visibility()).toBe("private");
+    await updateRoutine(user.id, routineId, { ...routineInput(bench.id, plank.id), visibility: "public" });
+    expect(await visibility()).toBe("public");
+    await updateRoutine(user.id, routineId, routineInput(bench.id, plank.id));
+    expect(await visibility()).toBe("public");
+    await updateRoutineFromWorkout(user.id, routineId, workoutWithBench(cat.id, routineId, bench.id));
+    expect(await visibility()).toBe("public");
+  });
+
+  it("una pública ajena se ve con su autor, pero no se edita, ni se borra, ni se abre en el editor", async () => {
+    const { user, other, bench, plank } = await fixtures();
+    const { routineId } = await createRoutine(other.id, { ...routineInput(bench.id, plank.id), visibility: "public" });
+    const view = await getPublicRoutine(user.id, routineId);
+    expect(view).toMatchObject({ id: routineId, name: "Pecho y core", visibility: "public", isOwner: false, copiedFromUserName: null, owner: { id: other.id, name: "B" } });
+    expect(view.exercises.map((e) => e.exercise.name)).toEqual(["Plancha", "Press banca"]);
+    expect(JSON.stringify(view)).not.toContain("b@b.com");
+    await expect(getRoutineForEditor(user.id, routineId)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(updateRoutine(user.id, routineId, routineInput(bench.id, plank.id))).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(deleteRoutine(user.id, routineId)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(await prisma.routine.count()).toBe(1);
+  });
+
+  it("IDOR: la privada de otro no se ve (NOT_FOUND, no FORBIDDEN)", async () => {
+    const { user, other, bench, plank } = await fixtures();
+    const { routineId } = await createRoutine(other.id, routineInput(bench.id, plank.id));
+    await expect(getPublicRoutine(user.id, routineId)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(getPublicRoutine(user.id, "no-existe")).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("el dueño ve la suya aunque sea privada; la pública de un usuario desactivado no se ve", async () => {
+    const { user, other, bench, plank } = await fixtures();
+    const mine = await createRoutine(user.id, routineInput(bench.id, plank.id));
+    expect(await getPublicRoutine(user.id, mine.routineId)).toMatchObject({ isOwner: true, visibility: "private", owner: { id: user.id } });
+    const theirs = await createRoutine(other.id, { ...routineInput(bench.id, plank.id), visibility: "public" });
+    await prisma.user.update({ where: { id: other.id }, data: { isActive: false } });
+    await expect(getPublicRoutine(user.id, theirs.routineId)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(await listPublicRoutines(other.id)).toEqual([]);
+  });
+
+  it("listPublicRoutines: solo las públicas de ese dueño, con conteos y sin último uso", async () => {
+    const { user, other, bench, plank } = await fixtures();
+    await createRoutine(other.id, routineInput(bench.id, plank.id));
+    const pub = await createRoutine(other.id, { ...routineInput(bench.id, plank.id), name: "La pública", visibility: "public" });
+    await createRoutine(user.id, { ...routineInput(bench.id, plank.id), visibility: "public" });
+    expect(await listPublicRoutines(other.id)).toEqual([
+      { id: pub.routineId, name: "La pública", exerciseCount: 2, setCount: 5, groupKeys: ["chest", "core"], visibility: "public", copiedFromUserName: null },
+    ]);
+    expect((await listRoutines(other.id)).map((r) => r.visibility).sort()).toEqual(["private", "public"]);
   });
 });
