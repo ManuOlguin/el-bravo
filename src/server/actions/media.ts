@@ -19,7 +19,7 @@ import { z } from "zod";
 
 export async function createUploadAction(
   target: UploadTarget,
-  file: { contentType: string; size: number }
+  file: { contentType: string; size: number; thumbSize: number }
 ): Promise<ActionResult<UploadTicket>> {
   return runAction(async () => {
     await requireUser();

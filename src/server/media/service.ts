@@ -78,7 +78,7 @@ function objectKeysOf(m: { storageKey: string | null; url: string; thumbUrl: str
 
 export async function createUpload(
   target: UploadTarget,
-  file: { contentType: AllowedMime; size: number }
+  file: { contentType: AllowedMime; size: number; thumbSize: number }
 ): Promise<ActionResult<UploadTicket>> {
   if (!isStorageConfigured()) return fail(NOT_CONFIGURED);
   const { keyTarget } = await authorizeTarget(target);
@@ -90,8 +90,8 @@ export async function createUpload(
   const thumbKey = thumbKeyFor(key);
   // La miniatura se genera en el mismo formato que el original (WebP, o JPEG si el navegador no codifica WebP).
   const [uploadUrl, thumbUploadUrl] = await Promise.all([
-    presignPut(key, file.contentType),
-    presignPut(thumbKey, file.contentType),
+    presignPut(key, file.contentType, file.size),
+    presignPut(thumbKey, file.contentType, file.thumbSize),
   ]);
   const base = publicBaseUrl();
   return ok({

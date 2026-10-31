@@ -34,6 +34,10 @@ function config(): R2Config {
     region: "auto",
     endpoint,
     forcePathStyle: !!env.R2_ENDPOINT,
+    // Sin esto el SDK agrega a las URLs prefirmadas `x-amz-checksum-crc32` del cuerpo VACÍO
+    // (AAAAAA==): MinIO lo ignora, pero S3/R2 pueden rechazar el PUT real por checksum incorrecto.
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
     credentials: { accessKeyId: env.R2_ACCESS_KEY_ID!, secretAccessKey: env.R2_SECRET_ACCESS_KEY! },
   });
   cached = { bucket: env.R2_BUCKET!, publicBaseUrl: env.R2_PUBLIC_BASE_URL!, client };
@@ -45,12 +49,17 @@ export function publicBaseUrl(): string {
   return config().publicBaseUrl;
 }
 
-/** URL prefirmada para un `PUT` directo desde el navegador. Vence en 5 minutos. */
-export async function presignPut(key: string, contentType: string): Promise<string> {
+/**
+ * URL prefirmada para un `PUT` directo desde el navegador. Vence en 5 minutos. Firma el tipo y el
+ * tamaño exacto (`Content-Length`): con la URL no se puede subir otro archivo más grande.
+ */
+export async function presignPut(key: string, contentType: string, contentLength: number): Promise<string> {
   const { client, bucket } = config();
-  return getSignedUrl(client, new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType }), {
-    expiresIn: PRESIGN_TTL_S,
-  });
+  return getSignedUrl(
+    client,
+    new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType, ContentLength: contentLength }),
+    { expiresIn: PRESIGN_TTL_S, signableHeaders: new Set(["content-type", "content-length"]) }
+  );
 }
 
 function isNotFound(e: unknown) {
