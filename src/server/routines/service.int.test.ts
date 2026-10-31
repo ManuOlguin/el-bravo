@@ -1,0 +1,150 @@
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { resetDb, prisma } from "@/tests/setup/db";
+
+vi.mock("server-only", () => ({}));
+
+import {
+  createRoutine,
+  deleteRoutine,
+  getRoutineForEditor,
+  listRoutines,
+  updateRoutine,
+  updateRoutineFromWorkout,
+  RoutineError,
+} from "./service";
+import type { RoutineInput } from "@/src/schemas/routine";
+
+async function fixtures() {
+  const user = await prisma.user.create({ data: { email: "a@a.com", passwordHash: "x", name: "A" } });
+  const other = await prisma.user.create({ data: { email: "b@b.com", passwordHash: "x", name: "B" } });
+  const chest = await prisma.muscle.create({ data: { slug: "pectoral", name: "Pectoral", groupKey: "chest" } });
+  const core = await prisma.muscle.create({ data: { slug: "abs", name: "Abdominales", groupKey: "core" } });
+  const bench = await prisma.exercise.create({
+    data: { slug: "press-banca", name: "Press banca", muscles: { create: [{ muscleId: chest.id, percentage: 100 }] } },
+  });
+  const plank = await prisma.exercise.create({
+    data: {
+      slug: "plancha", name: "Plancha", measureType: "duration", tracksWeight: false, equipment: "bodyweight",
+      muscles: { create: [{ muscleId: core.id, percentage: 100 }] },
+    },
+  });
+  const privateOfOther = await prisma.exercise.create({ data: { slug: "secreto", name: "Secreto", createdByUserId: other.id } });
+  const cat = await prisma.activityCategory.create({ data: { slug: "strength", name: "Fuerza", usesExercises: true } });
+  return { user, other, bench, plank, privateOfOther, cat };
+}
+
+const routineInput = (benchId: string, plankId: string): RoutineInput => ({
+  name: "Pecho y core",
+  notes: null,
+  exercises: [
+    { exerciseId: plankId, restSeconds: 30, notes: null, sets: [{ kind: "normal", targetReps: null, targetDurationSeconds: 45, targetWeightKg: null, restSeconds: null }] },
+    {
+      exerciseId: benchId, restSeconds: 120, notes: "codos a 45°",
+      sets: [
+        { kind: "warmup", targetReps: 12, targetDurationSeconds: null, targetWeightKg: 20, restSeconds: 60 },
+        { kind: "normal", targetReps: 10, targetDurationSeconds: null, targetWeightKg: 40, restSeconds: null },
+        { kind: "normal", targetReps: 8, targetDurationSeconds: null, targetWeightKg: 45, restSeconds: null },
+        { kind: "failure", targetReps: 6, targetDurationSeconds: null, targetWeightKg: 50, restSeconds: null },
+      ],
+    },
+  ],
+});
+
+describe("routines service", () => {
+  beforeEach(resetDb);
+
+  it("crea con un ejercicio por tiempo y pesos distintos por serie, conservando el orden", async () => {
+    const { user, bench, plank } = await fixtures();
+    const { routineId } = await createRoutine(user.id, routineInput(bench.id, plank.id));
+    const r = await getRoutineForEditor(user.id, routineId);
+    expect(r.name).toBe("Pecho y core");
+    expect(r.exercises.map((e) => e.exercise.name)).toEqual(["Plancha", "Press banca"]);
+    expect(r.exercises[0].exercise).toMatchObject({ measureType: "duration", tracksWeight: false, primaryGroupKey: "core" });
+    expect(r.exercises[0].sets[0]).toMatchObject({ targetDurationSeconds: 45, targetReps: null });
+    expect(r.exercises[1]).toMatchObject({ restSeconds: 120, notes: "codos a 45°" });
+    expect(r.exercises[1].sets.map((s) => [s.kind, s.targetReps, s.targetWeightKg, s.restSeconds])).toEqual([
+      ["warmup", 12, 20, 60],
+      ["normal", 10, 40, null],
+      ["normal", 8, 45, null],
+      ["failure", 6, 50, null],
+    ]);
+  });
+
+  it("otro usuario no puede leer, editar ni borrar la rutina", async () => {
+    const { user, other, bench, plank } = await fixtures();
+    const { routineId } = await createRoutine(user.id, routineInput(bench.id, plank.id));
+    await expect(getRoutineForEditor(other.id, routineId)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(updateRoutine(other.id, routineId, routineInput(bench.id, plank.id))).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(deleteRoutine(other.id, routineId)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(await listRoutines(other.id)).toEqual([]);
+  });
+
+  it("la actualización es atómica: con un ejercicio inexistente la rutina queda intacta", async () => {
+    const { user, bench, plank } = await fixtures();
+    const { routineId } = await createRoutine(user.id, routineInput(bench.id, plank.id));
+    const broken = routineInput(bench.id, "no-existe");
+    broken.name = "Cambiada";
+    await expect(updateRoutine(user.id, routineId, broken)).rejects.toBeInstanceOf(RoutineError);
+    const r = await getRoutineForEditor(user.id, routineId);
+    expect(r.name).toBe("Pecho y core");
+    expect(r.exercises).toHaveLength(2);
+    expect(r.exercises[1].sets).toHaveLength(4);
+  });
+
+  it("no deja usar ejercicios privados de otro usuario", async () => {
+    const { user, bench, privateOfOther } = await fixtures();
+    await expect(createRoutine(user.id, routineInput(bench.id, privateOfOther.id))).rejects.toBeInstanceOf(RoutineError);
+    expect(await prisma.routine.count()).toBe(0);
+  });
+
+  it("actualiza reemplazando ejercicios y series", async () => {
+    const { user, bench, plank } = await fixtures();
+    const { routineId } = await createRoutine(user.id, routineInput(bench.id, plank.id));
+    const next = routineInput(bench.id, plank.id);
+    next.name = "Solo banca";
+    next.exercises = [next.exercises[1]];
+    await updateRoutine(user.id, routineId, next);
+    const r = await getRoutineForEditor(user.id, routineId);
+    expect(r.name).toBe("Solo banca");
+    expect(r.exercises.map((e) => e.exercise.name)).toEqual(["Press banca"]);
+    expect(await prisma.routineSet.count()).toBe(4);
+  });
+
+  it("borrar la rutina conserva los entrenamientos (routineId → null)", async () => {
+    const { user, bench, plank, cat } = await fixtures();
+    const { routineId } = await createRoutine(user.id, routineInput(bench.id, plank.id));
+    const a = await prisma.activity.create({ data: { userId: user.id, activityCategoryId: cat.id, routineId, startedAt: new Date(), durationMinutes: 40 } });
+    await deleteRoutine(user.id, routineId);
+    expect(await prisma.routine.count()).toBe(0);
+    expect((await prisma.activity.findUniqueOrThrow({ where: { id: a.id } })).routineId).toBeNull();
+  });
+
+  it("lista con conteos, grupos musculares y último uso", async () => {
+    const { user, bench, plank, cat } = await fixtures();
+    const { routineId } = await createRoutine(user.id, routineInput(bench.id, plank.id));
+    const used = new Date("2026-10-30T21:00:00Z");
+    await prisma.activity.create({ data: { userId: user.id, activityCategoryId: cat.id, routineId, startedAt: used, durationMinutes: 40 } });
+    const [item] = await listRoutines(user.id);
+    expect(item).toMatchObject({ id: routineId, exerciseCount: 2, setCount: 5, groupKeys: ["chest", "core"] });
+    expect(item.lastUsedAt?.toISOString()).toBe(used.toISOString());
+  });
+
+  it("actualiza la rutina con los valores de un entrenamiento", async () => {
+    const { user, bench, plank, cat } = await fixtures();
+    const { routineId } = await createRoutine(user.id, routineInput(bench.id, plank.id));
+    await updateRoutineFromWorkout(user.id, routineId, {
+      clientRequestId: "x", activityCategoryId: cat.id, localDate: "2026-10-31", localTime: "18:00", durationMinutes: 40, routineId,
+      exercises: [
+        { exerciseId: bench.id, notes: null, sets: [
+          { kind: "normal", reps: 10, durationSeconds: null, weightKg: 42.5, restSeconds: 90, completed: true },
+          { kind: "normal", reps: 9, durationSeconds: null, weightKg: 47.5, restSeconds: 90, completed: true },
+        ] },
+      ],
+    });
+    const r = await getRoutineForEditor(user.id, routineId);
+    expect(r.name).toBe("Pecho y core");
+    expect(r.exercises).toHaveLength(1);
+    expect(r.exercises[0].restSeconds).toBe(90);
+    expect(r.exercises[0].sets.map((s) => [s.targetReps, s.targetWeightKg, s.restSeconds])).toEqual([[10, 42.5, null], [9, 47.5, null]]);
+  });
+});

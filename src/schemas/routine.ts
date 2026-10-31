@@ -53,25 +53,3 @@ export type RoutineForEditor = {
     }[];
   }[];
 };
-
-// --- Formato viejo (plano). Lo usan solo app/api/routine/* hasta que se borren (W2-1 Task 2). ---
-
-const legacyRoutineExerciseSchema = z
-  .object({
-    exerciseId: z.string().min(1, "Elegí un ejercicio"),
-    sets: z.coerce.number().int().min(1, "Mínimo 1 serie").max(50),
-    reps: z.preprocess(emptyToNull, z.coerce.number().int().min(1, "Mínimo 1 repetición").max(500).nullable()),
-    durationSeconds: z.preprocess(emptyToNull, z.coerce.number().int().min(1, "Mínimo 1 segundo").max(36000).nullable()),
-    weightKg: z.preprocess(emptyToNull, z.coerce.number().min(0, "El peso no puede ser negativo").max(1000).nullable()),
-  })
-  .refine((e) => e.reps !== null || e.durationSeconds !== null, {
-    message: "Cada ejercicio necesita repeticiones o tiempo",
-    path: ["reps"],
-  });
-
-export const createRoutineSchema = z.object({
-  name: z.string().trim().min(1, "Poné un nombre a la rutina").max(100, "Nombre demasiado largo"),
-  exercises: z.array(legacyRoutineExerciseSchema).min(1, "Agregá al menos un ejercicio"),
-});
-
-export type CreateRoutineInput = z.infer<typeof createRoutineSchema>;
