@@ -3,9 +3,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Avatar } from "@/src/components/ui/Avatar";
 import { cn } from "@/src/components/ui/cn";
+import { DEFAULT_TZ } from "@/src/lib/time";
+import { NotificationBell } from "@/src/features/notifications/NotificationBell";
 import { NAV_ITEMS, isNavItemActive } from "./nav-items";
 
-export type ShellUser = { id: string; name: string | null; photoUrl: string | null };
+/** `unreadNotifications`/`timezone` los carga el layout para la campana (W2-3). */
+export type ShellUser = { id: string; name: string | null; photoUrl: string | null; unreadNotifications?: number; timezone?: string };
 
 /**
  * Barra superior: logo a la izquierda; `rightSlot` (p. ej. la campana de W2-3) + avatar a la derecha.
@@ -51,7 +54,7 @@ export function TopBar({ user, rightSlot }: { user: ShellUser | null; rightSlot?
 
         {user && (
           <div className="ml-auto flex shrink-0 items-center gap-2">
-            {rightSlot}
+            {rightSlot ?? <NotificationBell initialCount={user.unreadNotifications ?? 0} tz={user.timezone ?? DEFAULT_TZ} />}
             <Avatar name={user.name} src={user.photoUrl} size="sm" href="/profile" />
           </div>
         )}
