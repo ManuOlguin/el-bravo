@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { safeNextPath } from "@/src/server/auth/policies";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -29,7 +30,8 @@ export default function LoginPage() {
         return;
       }
 
-      window.location.href = "/home";
+      // Volver a donde estaba (proxy.ts manda ?next=); solo rutas internas.
+      window.location.href = safeNextPath(new URLSearchParams(window.location.search).get("next"));
     } catch (err) {
       console.error("/login submit error:", err);
       setLoading(false);
