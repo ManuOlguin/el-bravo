@@ -60,12 +60,38 @@ describe("matchImport", () => {
     expect(d.items[0].match).toMatchObject({ kind: "new", draft: { equipment: "machine", source: "ai", muscles: [{ muscleSlug: "dorsal", percentage: 100 }] } });
   });
 
+  it("los hints no pisan la identidad (tempId y name)", () => {
+    const d = matchImport(parseRoutineText(`X\nRemo Hammer — 3×12`), CATALOG, new Map([["remo hammer", { tempId: "zzz", name: "Otro", equipment: "machine" }]]));
+    expect(d.items[0].match).toMatchObject({ kind: "new", draft: { tempId: "t1", name: "Remo Hammer", equipment: "machine" } });
+  });
+
+  it("las líneas sin entender llegan al borrador", () => {
+    const d = matchImport(parseRoutineText(`X\nPress de banca — 3×8\nEntreno 18:00`), CATALOG);
+    expect(d.unparsedLines).toEqual(["Entreno 18:00"]);
+  });
+
   it("importDraftToRoutine arma un RoutineForEditor con ids new: para los nuevos", () => {
     const r = importDraftToRoutine(matchImport(parseRoutineText(`Mi rutina\nbanca — 2×8 @ 60\nRemo Hammer — 3×12`), CATALOG));
     expect(r.name).toBe("Mi rutina");
     expect(r.exercises[0].exercise.id).toBe("press-de-banca");
     expect(isPendingExerciseId(r.exercises[1].exercise.id)).toBe(true);
     expect(r.exercises[0].sets[0]).toEqual({ kind: "normal", targetReps: 8, targetWeightKg: 60, targetDurationSeconds: null, restSeconds: null });
+  });
+});
+
+describe("importDraftToRoutine con catálogo de músculos", () => {
+  const muscles = [
+    { id: "m1", slug: "dorsal", name: "Dorsal", groupKey: "back" },
+    { id: "m2", slug: "biceps", name: "Bíceps", groupKey: "arms" },
+  ];
+  it("el grupo principal de un ejercicio nuevo sale del músculo con mayor porcentaje", () => {
+    const d = matchImport(parseRoutineText(`X\nRemo Hammer — 3×12\nCurl raro — 3×10`), CATALOG, new Map([
+      ["remo hammer", { muscles: [{ muscleSlug: "biceps", percentage: 30 }, { muscleSlug: "dorsal", percentage: 70 }] }],
+    ]));
+    const r = importDraftToRoutine(d, muscles);
+    expect(r.exercises[0].exercise.primaryGroupKey).toBe("back");
+    expect(r.exercises[1].exercise.primaryGroupKey).toBeNull();
+    expect(importDraftToRoutine(d).exercises[0].exercise.primaryGroupKey).toBeNull();
   });
 });
 

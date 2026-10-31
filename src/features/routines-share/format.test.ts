@@ -50,6 +50,34 @@ Descansá bien entre series.`);
     expect(looksLikeBravoFormat(p)).toBe(false);
   });
 
+  it("el nombre puede tener guiones: corta en el último ' — ' o en el separador que deja series válidas", () => {
+    const p = parseRoutineText(`X
+Jalón - agarre cerrado — 3×10
+Jalón - agarre cerrado - 3x10
+Remo - barra: 3×8`);
+    expect(p.exercises.map((e) => e.name)).toEqual(["Jalón - agarre cerrado", "Jalón - agarre cerrado", "Remo - barra"]);
+    expect(p.exercises.every((e) => e.sets.length > 0)).toBe(true);
+    expect(p.unparsedLines).toEqual([]);
+  });
+
+  it("los dos puntos solo separan si les sigue un espacio: 'Entreno 18:00' no es un ejercicio", () => {
+    const p = parseRoutineText(`Mi rutina
+Press — 3×8
+Entreno 18:00
+Bici 1x20:00
+Bici: 1x20:00`);
+    expect(p.exercises.map((e) => e.name)).toEqual(["Press", "Bici"]);
+    expect(p.exercises[1].sets).toEqual([s(null, null, "normal", 1200)]);
+    expect(p.unparsedLines).toEqual(["Entreno 18:00", "Bici 1x20:00"]);
+  });
+
+  it("una primera línea con 🏋 es siempre el título, aunque parezca un ejercicio", () => {
+    const p = parseRoutineText(`🏋️ Fuerza: 5x5\nPress — 3×8`);
+    expect(p.name).toBe("Fuerza: 5x5");
+    expect(p.exercises.map((e) => e.name)).toEqual(["Press"]);
+    expect(p.unparsedLines).toEqual([]);
+  });
+
   it("limita series a 30 y reps/tiempo a rangos válidos", () => {
     const p = parseRoutineText(`X\nBanca — 99×8`);
     expect(p.exercises[0].sets).toHaveLength(30);

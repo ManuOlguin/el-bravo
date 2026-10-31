@@ -1,6 +1,6 @@
 /** Asocia los ejercicios de una rutina leída (texto o IA) al catálogo visible del usuario; lo que no está, es nuevo. Puro. */
 import { normalize } from "@/src/features/exercises/search";
-import type { CatalogEntry, ExerciseSummary } from "@/src/features/exercises/types";
+import type { CatalogEntry, CatalogMuscle, ExerciseSummary } from "@/src/features/exercises/types";
 import type { RoutineForEditor } from "@/src/schemas/routine";
 import type { ImportDraft, ImportItem, NewExerciseDraft, ParsedRoutine, ParsedSet } from "./types";
 
@@ -66,25 +66,37 @@ export function matchImport(parsed: ParsedRoutine, catalog: CatalogEntry[], hint
       const key = normalize(e.name);
       let draft = pending.get(key);
       if (!draft) {
-        draft = { ...newExerciseFromName(e.name, `t${pending.size + 1}`, e.sets), ...(hints?.get(key) ?? {}) };
+        const base = newExerciseFromName(e.name, `t${pending.size + 1}`, e.sets);
+        // Los hints completan el ejercicio, pero no pueden cambiar su identidad.
+        draft = { ...base, ...(hints?.get(key) ?? {}), tempId: base.tempId, name: base.name };
         pending.set(key, draft);
       }
       match = { kind: "new", draft };
     }
     return { key: `i${i}`, sourceName: e.name, match, restSeconds: e.restSeconds, sets: e.sets };
   });
-  return { name: parsed.name, notes: parsed.notes, items };
+  return { name: parsed.name, notes: parsed.notes, items, unparsedLines: parsed.unparsedLines };
 }
 
-/** Borrador listo para `RoutineEditorScreen`; los nuevos llevan id `new:<tempId>` y `primaryGroupKey` del músculo mayor si se conoce. */
-export function importDraftToRoutine(d: ImportDraft): RoutineForEditor {
+/** Grupo del músculo con mayor porcentaje (null si no tiene músculos o no se conoce el catálogo). */
+function primaryGroupOf(draft: NewExerciseDraft, muscles: CatalogMuscle[] | undefined): string | null {
+  if (!muscles || draft.muscles.length === 0) return null;
+  const top = draft.muscles.reduce((a, b) => (b.percentage > a.percentage ? b : a));
+  return muscles.find((m) => m.slug === top.muscleSlug)?.groupKey ?? null;
+}
+
+/**
+ * Borrador listo para `RoutineEditorScreen`; los nuevos llevan id `new:<tempId>` y, si se pasa el catálogo de `muscles`,
+ * `primaryGroupKey` del músculo con mayor porcentaje (si no, null).
+ */
+export function importDraftToRoutine(d: ImportDraft, muscles?: CatalogMuscle[]): RoutineForEditor {
   return {
     id: "", name: d.name, notes: d.notes,
     exercises: d.items.map((i) => ({
       exercise: i.match.kind === "found"
         ? i.match.exercise
         : { id: `${PENDING_PREFIX}${i.match.draft.tempId}`, name: i.match.draft.name, nameEn: i.match.draft.nameEn, measureType: i.match.draft.measureType,
-            equipment: i.match.draft.equipment, tracksWeight: i.match.draft.tracksWeight, primaryGroupKey: null, mediaUrl: null },
+            equipment: i.match.draft.equipment, tracksWeight: i.match.draft.tracksWeight, primaryGroupKey: primaryGroupOf(i.match.draft, muscles), mediaUrl: null },
       restSeconds: i.restSeconds, notes: null,
       sets: i.sets.map((s) => ({ kind: s.kind, targetReps: s.reps, targetWeightKg: s.weightKg, targetDurationSeconds: s.durationSeconds, restSeconds: null })),
     })),

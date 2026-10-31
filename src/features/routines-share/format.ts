@@ -9,8 +9,10 @@ import type { ParsedExercise, ParsedRoutine, ParsedSet } from "./types";
 
 const MAX_SETS = 30;
 const KIND_PREFIX: Record<string, SetKind> = { w: "warmup", d: "drop", f: "failure" };
-/** "Nombre — series" (guión largo/medio/corto con espacios, o dos puntos). */
-const EXERCISE_LINE = /^(.+?)\s*(?:\s[—–-]\s|:\s*)(.+)$/;
+/** "Nombre — series": guión largo/medio/corto con espacios, o dos puntos seguidos de espacio ("Entreno 18:00" no separa). */
+const SEPARATOR = String.raw`(?:\s[—–-]\s|:\s+)`;
+const EXERCISE_LINE = new RegExp(`^(.+?)\\s*${SEPARATOR}(.+)$`);
+const SEPARATOR_G = new RegExp(SEPARATOR, "g");
 const REST = /\s*·\s*desc(?:anso)?\.?\s*(\d+)\s*(?:s|seg|segundos|")?\s*$/i;
 const NUM = "(\\d+(?:[.,]\\d+)?)";
 
@@ -68,11 +70,35 @@ function parseExerciseLine(line: string): ParsedExercise | null {
     rest = clampInt(Number(r[1]), 0, 3600);
     line = line.slice(0, r.index).trim();
   }
+  const split = splitNameAndSets(line);
+  return split ? { name: split.name.replace(/\s+/g, " "), restSeconds: rest, sets: split.sets } : null;
+}
+
+/**
+ * Parte "nombre <sep> series" donde el nombre puede tener guiones. Primero el último " — " (lo que escribe El Bravo),
+ * después el primer separador tolerante y, si las series no se entienden, cada separador de derecha a izquierda.
+ */
+function splitNameAndSets(line: string): { name: string; sets: ParsedSet[] } | null {
+  const attempt = (name: string, spec: string) => {
+    const sets = name.trim() ? parseSets(spec.trim()) : null;
+    return sets ? { name: name.trim(), sets } : null;
+  };
+  const em = line.lastIndexOf(" — ");
+  if (em >= 0) {
+    const r = attempt(line.slice(0, em), line.slice(em + 3));
+    if (r) return r;
+  }
   const m = line.match(EXERCISE_LINE);
   if (!m) return null;
-  const sets = parseSets(m[2].trim());
-  if (!sets) return null;
-  return { name: m[1].trim().replace(/\s+/g, " "), restSeconds: rest, sets };
+  const first = attempt(m[1], m[2]);
+  if (first) return first;
+  const seps = [...line.matchAll(SEPARATOR_G)];
+  for (let k = seps.length - 1; k >= 0; k--) {
+    const sep = seps[k];
+    const r = attempt(line.slice(0, sep.index), line.slice(sep.index + sep[0].length));
+    if (r) return r;
+  }
+  return null;
 }
 
 const stripDecoration = (s: string) => s.replace(/^[^\p{L}\p{N}]+/u, "").trim();
@@ -83,11 +109,16 @@ export function parseRoutineText(text: string): ParsedRoutine {
   let notes: string | null = null;
   const exercises: ParsedExercise[] = [];
   const unparsedLines: string[] = [];
-  for (const line of lines) {
+  for (const [idx, line] of lines.entries()) {
     if (/^hecho con el bravo/i.test(line)) continue;
     const notesMatch = line.match(/^notas?:\s*(.+)$/i);
     if (notesMatch) {
       notes = notesMatch[1].trim();
+      continue;
+    }
+    // La primera línea con 🏋 es el título aunque parezca un ejercicio ("🏋️ Fuerza: 5x5").
+    if (idx === 0 && line.startsWith("🏋")) {
+      name = stripDecoration(line).slice(0, 100);
       continue;
     }
     const ex = parseExerciseLine(line);

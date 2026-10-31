@@ -19,4 +19,4 @@ export type NewExerciseDraft = {
 
 export type ImportMatch = { kind: "found"; exercise: ExerciseSummary } | { kind: "new"; draft: NewExerciseDraft };
 export type ImportItem = { key: string; sourceName: string; match: ImportMatch; restSeconds: number | null; sets: ParsedSet[] };
-export type ImportDraft = { name: string; notes: string | null; items: ImportItem[] };
+export type ImportDraft = { name: string; notes: string | null; items: ImportItem[]; unparsedLines: string[] };

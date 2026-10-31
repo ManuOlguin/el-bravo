@@ -47,7 +47,7 @@ export type NewExerciseDraft = {
 
 export type ImportMatch = { kind: "found"; exercise: ExerciseSummary } | { kind: "new"; draft: NewExerciseDraft };
 export type ImportItem = { key: string; sourceName: string; match: ImportMatch; restSeconds: number | null; sets: ParsedSet[] };
-export type ImportDraft = { name: string; notes: string | null; items: ImportItem[] };
+export type ImportDraft = { name: string; notes: string | null; items: ImportItem[]; unparsedLines: string[] };
 ```
 
 ```ts
@@ -60,7 +60,7 @@ export function routineToText(r: RoutineForEditor, opts?: { url?: string }): str
 export const PENDING_PREFIX = "new:";
 export const isPendingExerciseId = (id: string) => id.startsWith(PENDING_PREFIX);
 export function matchImport(parsed: ParsedRoutine, catalog: CatalogEntry[], hints?: Map<string, Partial<NewExerciseDraft>>): ImportDraft;
-export function importDraftToRoutine(d: ImportDraft): RoutineForEditor; // ids `new:<tempId>` para los nuevos
+export function importDraftToRoutine(d: ImportDraft, muscles?: CatalogMuscle[]): RoutineForEditor; // ids `new:<tempId>` para los nuevos; primaryGroupKey del músculo mayor si se pasa `muscles`
 ```
 
 ```ts
