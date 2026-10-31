@@ -85,7 +85,7 @@ if (process.argv.includes("--ping")) {
       password: decodeURIComponent(u.password),
       database: decodeURIComponent(u.pathname.slice(1)),
       ssl: { rejectUnauthorized: true },
-      connectTimeout: 10_000,
+      connectTimeout: 30_000,
     });
     const [row] = await conn.query("SELECT VERSION() AS v");
     console.log(`✓ Base de datos: conecta (${row.v})`);

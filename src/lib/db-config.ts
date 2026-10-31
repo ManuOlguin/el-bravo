@@ -6,7 +6,8 @@ import type { PoolConfig } from "mariadb";
  *   parámetro que entiende `prisma migrate`), `ssl=true` o `sslmode=require|verify-*`. Valida el certificado
  *   con las CAs del sistema; `sslaccept=accept_invalid_certs` no lo valida (solo para pruebas).
  * - `connection_limit`: conexiones por instancia (en serverless conviene pocas). Por defecto 5.
- * - `connect_timeout` (segundos): el driver corta a 1 s por defecto, poco para un TLS en frío. Por defecto 10.
+ * - `connect_timeout` (segundos): el driver corta a 1 s por defecto. TiDB Starter "se duerme" sin uso y
+ *   despertarlo puede tardar más de 10 s: por defecto 20 (la primera visita tarda, pero no falla).
  */
 export function mariadbConfig(url: string): PoolConfig {
   const u = new URL(url);
@@ -29,7 +30,7 @@ export function mariadbConfig(url: string): PoolConfig {
     password: decodeURIComponent(u.password),
     database: decodeURIComponent(u.pathname.replace(/^\//, "")),
     connectionLimit: Number.isInteger(limit) && limit > 0 ? limit : 5,
-    connectTimeout: (timeoutS > 0 ? timeoutS : 10) * 1000,
+    connectTimeout: (timeoutS > 0 ? timeoutS : 20) * 1000,
     ...(ssl ? { ssl } : {}),
   };
 }

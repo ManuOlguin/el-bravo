@@ -10,7 +10,7 @@ describe("mariadbConfig", () => {
       password: "clave",
       database: "elbravo",
       connectionLimit: 5,
-      connectTimeout: 10_000,
+      connectTimeout: 20_000,
     });
   });
 
@@ -23,7 +23,7 @@ describe("mariadbConfig", () => {
       password: "p@ss/w0rd",
       database: "elbravo",
       connectionLimit: 3,
-      connectTimeout: 10_000,
+      connectTimeout: 20_000,
       ssl: { rejectUnauthorized: true, minVersion: "TLSv1.2" },
     });
   });
