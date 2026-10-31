@@ -101,4 +101,30 @@ describe("invitar amigos a un grupo", () => {
     await as(beto);
     expect((await joinGroupByInviteTokenAction(token)).ok).toBe(true);
   });
+
+  it("una invitación vieja no anula una expulsión posterior", async () => {
+    const { ana, beto, groupId } = await setup();
+    expect(await inviteFriendsToGroupAction(groupId, [beto.id])).toMatchObject({ ok: true, data: { invited: 1 } });
+    const token = tokenFromNotify();
+    await as(beto);
+    expect((await joinGroupByInviteTokenAction(token)).ok).toBe(true);
+    // Expulsión 2 s después de emitir el token (iat tiene precisión de segundos).
+    await as(ana);
+    expect((await kickMemberAction(groupId, beto.id)).ok).toBe(true);
+    await prisma.groupMember.update({
+      where: { groupId_userId: { groupId, userId: beto.id } },
+      data: { respondedAt: new Date(Date.now() + 2000) },
+    });
+    await as(beto);
+    expect(await joinGroupByInviteTokenAction(token)).toMatchObject({ ok: false, error: expect.stringContaining("Te sacaron del grupo") });
+  });
+
+  it("la invitación deja de valer si quien la mandó ya no es admin", async () => {
+    const { ana, beto, groupId } = await setup();
+    expect(await inviteFriendsToGroupAction(groupId, [beto.id])).toMatchObject({ ok: true, data: { invited: 1 } });
+    const token = tokenFromNotify();
+    await prisma.groupMember.update({ where: { groupId_userId: { groupId, userId: ana.id } }, data: { role: "member" } });
+    await as(beto);
+    expect(await joinGroupByInviteTokenAction(token)).toMatchObject({ ok: false, error: expect.stringContaining("ya no es válida") });
+  });
 });

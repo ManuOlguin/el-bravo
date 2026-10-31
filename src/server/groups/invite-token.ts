@@ -22,12 +22,15 @@ export async function signGroupInviteToken(p: { groupId: string; userId: string;
 }
 
 /** Devuelve null si el token es inválido, vencido o no es de invitación. */
-export async function verifyGroupInviteToken(token: string): Promise<{ groupId: string; userId: string; inviterId: string } | null> {
+export async function verifyGroupInviteToken(
+  token: string
+): Promise<{ groupId: string; userId: string; inviterId: string; issuedAt: Date } | null> {
   try {
     const { payload } = await jwtVerify(token, secret(), { audience: AUDIENCE });
     const { groupId, userId, inviterId } = payload as Record<string, unknown>;
     if (typeof groupId !== "string" || typeof userId !== "string" || typeof inviterId !== "string") return null;
-    return { groupId, userId, inviterId };
+    if (typeof payload.iat !== "number") return null;
+    return { groupId, userId, inviterId, issuedAt: new Date(payload.iat * 1000) };
   } catch {
     return null;
   }
