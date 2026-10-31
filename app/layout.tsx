@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#0a0a0a",
-  colorScheme: "dark",
+  // El meta color-scheme va a mano en <head> ("only dark": Next no acepta ese valor acá).
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -39,8 +39,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const unreadNotifications = session ? await unreadCount(session.id).catch(() => 0) : 0;
   return (
     // `data-theme` lo cambia el script de abajo antes de pintar si el usuario eligió otro tema.
-    <html lang="es-AR" className={`${montserrat.variable} dark`} style={{ colorScheme: "dark" }} data-theme={DEFAULT_THEME} suppressHydrationWarning>
+    <html lang="es-AR" className={`${montserrat.variable} dark`} style={{ colorScheme: "only dark" }} data-theme={DEFAULT_THEME} suppressHydrationWarning>
       <head>
+        <meta name="color-scheme" content="only dark" />
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
       </head>
       <body className="min-h-dvh bg-bg font-sans text-fg">

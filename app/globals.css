@@ -129,8 +129,18 @@
   }
 }
 
+/*
+ * La app es siempre oscura. "only dark" le pide al navegador que no la recoloree (modo oscuro forzado de
+ * Chrome/Android, Xiaomi, etc.). Samsung Internet además solo respeta los sitios que tienen estilos para
+ * `prefers-color-scheme: dark`: con esta regla detecta que ya hay modo oscuro y no aplica el suyo.
+ */
 :root {
-  color-scheme: dark;
+  color-scheme: only dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: only dark;
+  }
 }
 
 @layer base {
