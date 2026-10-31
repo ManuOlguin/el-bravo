@@ -266,6 +266,19 @@ export async function joinGroupByInviteToken(userId: string, token: string): Pro
   if (payload.userId !== userId) throw new GroupError("Esta invitación no es para vos.");
   const group = await prisma.group.findUnique({ where: { id: payload.groupId }, select: { id: true } });
   if (!group) throw new GroupError("El grupo ya no existe.");
+  // La invitación vale mientras quien la mandó siga siendo admin, y no sirve para volver si te
+  // expulsaron DESPUÉS de recibirla (antes, cualquier invitación vieja anulaba la expulsión).
+  if ((await activeRole(prisma, group.id, payload.inviterId)) !== "admin") {
+    throw new GroupError("La invitación ya no es válida: pedile una nueva a un admin del grupo.");
+  }
+  const membership = await prisma.groupMember.findUnique({
+    where: { groupId_userId: { groupId: group.id, userId } },
+    select: { status: true, respondedAt: true },
+  });
+  // `iat` tiene precisión de segundos: si la expulsión cae en el mismo segundo, la invitación vale.
+  if (membership?.status === "removed" && membership.respondedAt && Math.floor(membership.respondedAt.getTime() / 1000) * 1000 > payload.issuedAt.getTime()) {
+    throw new GroupError("Te sacaron del grupo después de esta invitación: pedile una nueva a un admin.");
+  }
   return addMember(group.id, userId, { allowRemoved: true });
 }
 

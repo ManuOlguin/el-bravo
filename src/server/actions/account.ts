@@ -17,19 +17,40 @@ import {
   updateProfileSchema,
 } from "@/src/server/account/schemas";
 import { recomputeUserBadges } from "@/src/server/badges";
+import { isAllowedPhotoUrl } from "@/src/server/media/service";
 
-const LOGIN_LIMIT = { max: 5, windowMs: 15 * 60_000 };
+const LOGIN_LIMIT = { max: 5, windowMs: 15 * 60_000 }; // por IP + email
+const LOGIN_EMAIL_LIMIT = { max: 20, windowMs: 15 * 60_000 }; // por email, desde cualquier IP (ataque distribuido)
+const LOGIN_IP_LIMIT = { max: 50, windowMs: 15 * 60_000 }; // por IP, contra cualquier email (password spraying)
+const REGISTER_IP_LIMIT = { max: 10, windowMs: 60 * 60_000 };
 const BAD_CREDENTIALS = "Email o contraseña incorrectos.";
+const PHOTO_URL_ERROR = "Subí la foto desde la app.";
 
 function formValue(form: FormData, key: string): string | undefined {
   const v = form.get(key);
   return typeof v === "string" ? v : undefined;
 }
 
+/**
+ * IP del cliente para el rate limit. Primero los headers que pone la plataforma (Vercel:
+ * `x-vercel-forwarded-for` / `x-real-ip`); si no, la ÚLTIMA entrada de `x-forwarded-for` (la agrega el
+ * proxy propio). La primera la escribe el cliente: usarla permitía saltear el límite rotando el header.
+ */
 async function clientIp(): Promise<string> {
   const h = await headers();
-  const fwd = h.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return fwd || h.get("x-real-ip")?.trim() || "local";
+  const platform = h.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip")?.trim();
+  if (platform) return platform;
+  const hops = h.get("x-forwarded-for")?.split(",").map((x) => x.trim()).filter(Boolean) ?? [];
+  return hops.at(-1) || "local";
+}
+
+/** Primer límite agotado de la lista (registra el intento en los que todavía tienen lugar). */
+function firstBlocked(checks: [key: string, opts: { max: number; windowMs: number }][]) {
+  for (const [key, opts] of checks) {
+    const r = rateLimit(key, opts);
+    if (!r.ok) return r;
+  }
+  return null;
 }
 
 export async function loginAction(_prev: unknown, form: FormData): Promise<ActionResult<{ next: string }>> {
@@ -42,9 +63,14 @@ export async function loginAction(_prev: unknown, form: FormData): Promise<Actio
     if (!parsed.ok) return parsed.result;
     const { email, password, next } = parsed.data;
 
-    const key = `login:${await clientIp()}:${email}`;
-    const limit = rateLimit(key, LOGIN_LIMIT);
-    if (!limit.ok) return fail(`Demasiados intentos. Probá de nuevo en ${retryAfterMinutes(limit.retryAfterS)} minutos.`);
+    const ip = await clientIp();
+    const key = `login:${ip}:${email}`;
+    const blocked = firstBlocked([
+      [key, LOGIN_LIMIT],
+      [`login-email:${email}`, LOGIN_EMAIL_LIMIT],
+      [`login-ip:${ip}`, LOGIN_IP_LIMIT],
+    ]);
+    if (blocked) return fail(`Demasiados intentos. Probá de nuevo en ${retryAfterMinutes(blocked.retryAfterS)} minutos.`);
 
     const user = await prisma.user.findUnique({
       where: { email },
@@ -58,6 +84,7 @@ export async function loginAction(_prev: unknown, form: FormData): Promise<Actio
     if (!valid || !user.isActive) return fail(BAD_CREDENTIALS);
 
     resetRateLimit(key);
+    resetRateLimit(`login-email:${email}`);
     await setSessionCookie({ userId: user.id, email: user.email, ver: user.tokenVersion });
     return ok({ next: safeNextPath(next) });
   });
@@ -73,6 +100,9 @@ export async function registerAction(_prev: unknown, form: FormData): Promise<Ac
     });
     if (!parsed.ok) return parsed.result;
     const { name, email, password, next } = parsed.data;
+
+    const limit = rateLimit(`register:${await clientIp()}`, REGISTER_IP_LIMIT);
+    if (!limit.ok) return fail(`Demasiados registros desde esta conexión. Probá de nuevo en ${retryAfterMinutes(limit.retryAfterS)} minutos.`);
 
     const exists = await prisma.user.findUnique({ where: { email }, select: { id: true } });
     if (exists) return fail("Ya hay una cuenta con ese email.", { email: ["Ya hay una cuenta con ese email."] });
@@ -158,7 +188,10 @@ export async function updateProfileAction(input: {
     if (!parsed.ok) return parsed.result;
     const data = parsed.data;
 
-    const before = await prisma.user.findUniqueOrThrow({ where: { id: me.id }, select: { weeklyGoal: true } });
+    const before = await prisma.user.findUniqueOrThrow({ where: { id: me.id }, select: { weeklyGoal: true, photoUrl: true } });
+    if (!isAllowedPhotoUrl(data.photoUrl, before.photoUrl, { kind: "avatar", userId: me.id })) {
+      return fail(PHOTO_URL_ERROR, { photoUrl: [PHOTO_URL_ERROR] });
+    }
     await prisma.user.update({
       where: { id: me.id },
       data: { name: data.name, bio: data.bio, weeklyGoal: data.weeklyGoal, timezone: data.timezone, photoUrl: data.photoUrl },

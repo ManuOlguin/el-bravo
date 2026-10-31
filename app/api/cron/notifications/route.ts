@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isAuthorizedCron } from "@/src/server/http/cron-auth";
 import { emitDueSeasonStarts, emitRecentlyPublishedSeasons } from "@/src/server/notifications/emit";
 import { isDigestTime, sendPendingEmails, sendWeeklyDigests } from "@/src/server/notifications/email";
 import { sendPendingPush } from "@/src/server/notifications/push";
@@ -22,8 +23,7 @@ async function step<T>(name: string, fn: () => Promise<T>): Promise<T | { error:
 }
 
 export async function GET(req: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!isAuthorizedCron(req.headers.get("authorization"))) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
   const now = new Date();

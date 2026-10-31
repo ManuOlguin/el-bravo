@@ -24,7 +24,7 @@ export async function uploadFile(target: UploadTarget, file: Blob): Promise<Acti
   }
   const { main, thumb } = compressed;
   try {
-    const ticket = await createUploadAction(target, { contentType: main.contentType, size: main.blob.size });
+    const ticket = await createUploadAction(target, { contentType: main.contentType, size: main.blob.size, thumbSize: thumb.blob.size });
     if (!ticket.ok) return ticket;
     const [mainPut] = await Promise.allSettled([
       put(ticket.data.uploadUrl, main.blob, main.contentType),

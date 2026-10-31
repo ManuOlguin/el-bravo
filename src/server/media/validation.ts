@@ -16,6 +16,8 @@ export const uploadFileSchema = z.object({
     .int()
     .positive("El archivo está vacío.")
     .max(MAX_BYTES, "La foto pesa más de 5 MB."),
+  /** Tamaño de la miniatura: también se firma en su URL. */
+  thumbSize: z.number().int().positive("La miniatura está vacía.").max(MAX_BYTES, "La miniatura pesa más de 5 MB."),
 });
 
 export const createUploadSchema = z.object({ target: uploadTargetSchema, file: uploadFileSchema });

@@ -10,6 +10,7 @@ import {
   isAllowedMime,
   isOwnKeyFor,
   keyFromPublicUrl,
+  keyPrefix,
   mediaKey,
   publicUrlFor,
   thumbKeyFor,
@@ -77,7 +78,7 @@ function objectKeysOf(m: { storageKey: string | null; url: string; thumbUrl: str
 
 export async function createUpload(
   target: UploadTarget,
-  file: { contentType: AllowedMime; size: number }
+  file: { contentType: AllowedMime; size: number; thumbSize: number }
 ): Promise<ActionResult<UploadTicket>> {
   if (!isStorageConfigured()) return fail(NOT_CONFIGURED);
   const { keyTarget } = await authorizeTarget(target);
@@ -89,8 +90,8 @@ export async function createUpload(
   const thumbKey = thumbKeyFor(key);
   // La miniatura se genera en el mismo formato que el original (WebP, o JPEG si el navegador no codifica WebP).
   const [uploadUrl, thumbUploadUrl] = await Promise.all([
-    presignPut(key, file.contentType),
-    presignPut(thumbKey, file.contentType),
+    presignPut(key, file.contentType, file.size),
+    presignPut(thumbKey, file.contentType, file.thumbSize),
   ]);
   const base = publicBaseUrl();
   return ok({
@@ -166,8 +167,10 @@ export async function confirmUpload(
   if (keyTarget.kind === "avatar") await prisma.user.update({ where: { id: user.id }, data: { photoUrl: url } });
   else await prisma.group.update({ where: { id: keyTarget.groupId }, data: { photoUrl: url } });
 
+  // Solo se borra la foto anterior si es de ESTE destino: `photoUrl` puede venir de afuera (perfil o
+  // grupo) y apuntar a la foto de otro usuario del bucket.
   const oldKey = keyFromPublicUrl(previous, base);
-  if (oldKey && oldKey !== key) await deleteKeysQuietly([oldKey, thumbKeyFor(oldKey)]);
+  if (oldKey && oldKey !== key && oldKey.startsWith(keyPrefix(keyTarget))) await deleteKeysQuietly([oldKey, thumbKeyFor(oldKey)]);
   return ok({ url }, "Foto actualizada");
 }
 
@@ -224,4 +227,17 @@ export async function deleteActivityObjects(activityId: string): Promise<void> {
   } catch (e) {
     console.error("[media] deleteActivityObjects", activityId, e);
   }
+}
+
+/**
+ * ¿Se puede guardar `next` como `photoUrl` del perfil o del grupo? Vale `null`, dejar la que ya estaba
+ * o una URL pública del bucket dentro de la carpeta propia (`avatars/<userId>/` o `groups/<id>/`).
+ * Evita apuntar a fotos ajenas (que después se borrarían al cambiar la foto) o a hosts externos
+ * (píxel de seguimiento). Las fotos nuevas se setean con `confirmUpload`.
+ */
+export function isAllowedPhotoUrl(next: string | null, previous: string | null, target: KeyTarget): boolean {
+  if (next === null || next === previous) return true;
+  if (!isStorageConfigured()) return false;
+  const key = keyFromPublicUrl(next, publicBaseUrl());
+  return !!key && key.startsWith(keyPrefix(target));
 }

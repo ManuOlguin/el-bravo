@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { WorkoutDraft, WorkoutMode } from "./state";
 
 /**
@@ -72,14 +72,43 @@ export function useDraftPersistence(key: string, draft: WorkoutDraft, enabled: b
     setSaved(readDraft(key));
   }, [key]);
 
+  // Último borrador todavía no escrito (por el debounce): se escribe igual si la página se va.
+  const pending = useRef<WorkoutDraft | null>(null);
+
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      pending.current = null;
+      return;
+    }
+    pending.current = draft;
     const t = setTimeout(() => {
+      pending.current = null;
       if (isDraftDirty(draft)) writeDraft(key, draft);
     }, 250);
     return () => clearTimeout(t);
   }, [key, draft, enabled]);
 
-  const clear = useCallback(() => clearDraft(key), [key]);
+  // Recargar o cerrar la pestaña dentro del debounce perdía lo último que se tildó.
+  useEffect(() => {
+    const flush = () => {
+      const d = pending.current;
+      pending.current = null;
+      if (d && isDraftDirty(d)) writeDraft(key, d);
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [key]);
+
+  const clear = useCallback(() => {
+    pending.current = null;
+    clearDraft(key);
+  }, [key]);
   return { saved, clear };
 }

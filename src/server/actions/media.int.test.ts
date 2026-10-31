@@ -63,7 +63,7 @@ async function fixtures() {
   return { user, other, activity, group };
 }
 
-const webp = { contentType: "image/webp", size: 300_000 };
+const webp = { contentType: "image/webp", size: 300_000, thumbSize: 20_000 };
 const meta = { width: 1600, height: 1200 };
 
 async function addMedia(activityId: string, n: number) {
@@ -104,12 +104,15 @@ describe("media actions", () => {
       expect(r.data.thumbPublicUrl).toBe(`${BASE}/${r.data.thumbKey}`);
       expect(r.data.uploadUrl).toBe(`https://signed.test/${r.data.key}?ct=image/webp`);
       expect(r.data.thumbUploadUrl).toBe(`https://signed.test/${r.data.thumbKey}?ct=image/webp`);
+      // El tamaño queda firmado en cada URL (no se puede subir otro archivo más grande).
+      expect(presign).toHaveBeenCalledWith(r.data.key, "image/webp", 300_000);
+      expect(presign).toHaveBeenCalledWith(r.data.thumbKey, "image/webp", 20_000);
     });
 
     it("jpeg usa extensión .jpg", async () => {
       const { user } = await fixtures();
       await loginAs(user);
-      const r = await createUploadAction({ kind: "avatar" }, { contentType: "image/jpeg", size: 1000 });
+      const r = await createUploadAction({ kind: "avatar" }, { contentType: "image/jpeg", size: 1000, thumbSize: 100 });
       expect(r.ok && r.data.key).toMatch(new RegExp(`^avatars/${user.id}/[A-Za-z0-9_-]+\\.jpg$`));
     });
 
@@ -133,10 +136,10 @@ describe("media actions", () => {
     it("rechaza tipos no permitidos y archivos pesados", async () => {
       const { user } = await fixtures();
       await loginAs(user);
-      const gif = await createUploadAction({ kind: "avatar" }, { contentType: "image/gif", size: 1000 });
+      const gif = await createUploadAction({ kind: "avatar" }, { contentType: "image/gif", size: 1000, thumbSize: 100 });
       expect(gif.ok).toBe(false);
       expect(!gif.ok && gif.fieldErrors?.["file.contentType"]).toBeTruthy();
-      const big = await createUploadAction({ kind: "avatar" }, { contentType: "image/webp", size: MAX_BYTES + 1 });
+      const big = await createUploadAction({ kind: "avatar" }, { contentType: "image/webp", size: MAX_BYTES + 1, thumbSize: 100 });
       expect(big.ok).toBe(false);
       expect(!big.ok && big.fieldErrors?.["file.size"]).toBeTruthy();
       expect(presign).not.toHaveBeenCalled();
