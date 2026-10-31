@@ -38,9 +38,15 @@ export const newExerciseInputSchema = z.object({
 });
 export type NewExerciseInput = z.infer<typeof newExerciseInputSchema>;
 
+export const ROUTINE_VISIBILITIES = ["private", "public"] as const;
+export const routineVisibilitySchema = z.enum(ROUTINE_VISIBILITIES);
+export type RoutineVisibility = z.infer<typeof routineVisibilitySchema>;
+
 export const routineInputSchema = z.object({
   name: z.string().trim().min(1, "Poné un nombre a la rutina").max(100, "Nombre demasiado largo"),
   notes: z.string().trim().max(2000).optional().nullable(),
+  /** Opcional: si no viene, `updateRoutine` conserva la actual y `createRoutine` usa "private". */
+  visibility: routineVisibilitySchema.optional(),
   exercises: z.array(routineExerciseInputSchema).min(1, "Agregá al menos un ejercicio").max(40, "Máximo 40 ejercicios"),
   /** Definiciones de los ejercicios con id `new:<tempId>` de `exercises`. */
   newExercises: z.array(newExerciseInputSchema).max(40).optional(),
@@ -55,6 +61,9 @@ export type RoutineForEditor = {
   id: string;
   name: string;
   notes: string | null;
+  /** Solo los llena el server (`getRoutineForEditor`/`getPublicRoutine`); los borradores (importar) no los tienen. */
+  visibility?: RoutineVisibility;
+  copiedFromUserName?: string | null;
   exercises: {
     exercise: ExerciseSummary;
     restSeconds: number | null;
@@ -67,4 +76,12 @@ export type RoutineForEditor = {
       restSeconds: number | null;
     }[];
   }[];
+};
+
+/** `/routines/[id]`: rutina en modo lectura (propia, o pública de otro). Nunca incluye el email del autor. */
+export type RoutineView = RoutineForEditor & {
+  visibility: RoutineVisibility;
+  copiedFromUserName: string | null;
+  owner: { id: string; name: string | null; photoUrl: string | null };
+  isOwner: boolean;
 };

@@ -4,6 +4,16 @@ import { routineInputSchema } from "./routine";
 const set = (o: Record<string, unknown> = {}) => ({ kind: "normal", targetReps: null, targetDurationSeconds: null, targetWeightKg: null, restSeconds: null, ...o });
 
 describe("routineInputSchema", () => {
+  it("visibility es opcional y solo acepta privada o pública", () => {
+    const base = { name: "Core", exercises: [{ exerciseId: "plank", sets: [set()] }] };
+    const none = routineInputSchema.safeParse(base);
+    expect(none.success).toBe(true);
+    if (none.success) expect(none.data.visibility).toBeUndefined();
+    const pub = routineInputSchema.safeParse({ ...base, visibility: "public" });
+    expect(pub.success && pub.data.visibility).toBe("public");
+    expect(routineInputSchema.safeParse({ ...base, visibility: "friends" }).success).toBe(false);
+  });
+
   it("acepta un ejercicio por tiempo y pesos distintos por serie", () => {
     const r = routineInputSchema.safeParse({
       name: "Core",

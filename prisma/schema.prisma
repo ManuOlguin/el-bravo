@@ -46,6 +46,11 @@ enum SetKind {
   failure
 }
 
+enum RoutineVisibility {
+  private
+  public
+}
+
 enum ResultsReveal {
   auto
   manual
@@ -415,12 +420,19 @@ model ExerciseMuscle {
 }
 
 model Routine {
-  id     String  @id @default(cuid())
-  name   String  @db.VarChar(100)
-  notes  String? @db.Text
-  userId String
+  id         String            @id @default(cuid())
+  name       String            @db.VarChar(100)
+  notes      String?           @db.Text
+  userId     String
+  visibility RoutineVisibility @default(private)
+  /// Rutina de la que se copió (null si no es copia o si el original se borró).
+  copiedFromRoutineId String?
+  /// Nombre del autor al momento de copiar: "Basada en la rutina de Juan" aunque el original se borre.
+  copiedFromUserName  String? @db.VarChar(80)
 
   user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  copiedFrom Routine?          @relation("RoutineCopies", fields: [copiedFromRoutineId], references: [id], onDelete: SetNull)
+  copies     Routine[]         @relation("RoutineCopies")
   activities Activity[]
   exercises  RoutineExercise[]
 
@@ -428,6 +440,7 @@ model Routine {
   updatedAt DateTime? @updatedAt
 
   @@index([userId])
+  @@index([copiedFromRoutineId])
 }
 
 model RoutineExercise {
