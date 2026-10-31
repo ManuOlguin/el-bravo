@@ -1,15 +1,16 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/src/lib/db";
-import { dbDateToLocalDate, localDateOf, weekKeyOf, addWeeks, type WeekKey } from "@/src/lib/time";
+import { dbDateToLocalDate, localDateOf, weekKeyOf } from "@/src/lib/time";
 import { requirePageUser } from "@/src/server/auth/dal";
-import { getSeasonStandings } from "@/src/server/scoring";
+import { getSeasonStandings, type StandingRow } from "@/src/server/scoring";
+import { ensureSeasonFinalizedIfDue } from "@/src/server/actions/seasons";
 import { getUserBadges } from "@/src/server/badges";
 import GroupPageClient from "./GroupPageClient";
 
 // PUENTE (W0-C): adapta la página vieja del grupo al schema v2. W2-2 la reescribe.
-// - El ranking sale de SeasonStanding (vacío → todos en 0 pts hasta W1-1).
+// - El ranking y las stats de miembros salen de SeasonStanding (motor W1-1), ordenados por `rank`.
 // - Las fechas de temporada son fechas locales (@db.Date) en la zona del grupo.
-// - No se finaliza nada al renderizar (eso es de W1-1: cron + primera visita idempotente).
+// - Respaldo del cron (D3): al entrar se finaliza, si corresponde, la última temporada terminada.
 
 type ActivityMuscleItem = { name: string; percentage: number };
 
@@ -22,11 +23,15 @@ type SeasonLeaderboardEntry = {
   rank: number;
   activeWeeks: number;
   perfectWeeks: number;
+  daysTrained: number;
 };
 
 type UserSeasonStanding = {
   rank: number;
   totalPoints: number;
+  weeksGoalMet: number;
+  currentStreak: number;
+  daysTrained: number;
   totalParticipants: number;
   pointsToNextAbove: number | null;
   nextAbove: SeasonLeaderboardEntry | null;
@@ -73,25 +78,10 @@ function calculateActivityMuscleShare(
     .slice(0, 4);
 }
 
-/** Racha de semanas consecutivas (hasta la actual) que cumplen `min`. La semana en curso no corta la racha. */
-function weekStreak(weekCounts: Map<WeekKey, number>, currentWeek: WeekKey, min: number) {
-  let streak = (weekCounts.get(currentWeek) ?? 0) >= min ? 1 : 0;
-  for (let w = addWeeks(currentWeek, -1); (weekCounts.get(w) ?? 0) >= min; w = addWeeks(w, -1)) streak++;
-  return streak;
-}
-
-function computeSeasonMemberStats(activities: Array<{ startedAt: Date }>, weeklyGoal: number, tz: string) {
-  const weekCounts = new Map<WeekKey, number>();
-  for (const a of activities) {
-    const key = weekKeyOf(a.startedAt, tz);
-    weekCounts.set(key, (weekCounts.get(key) ?? 0) + 1);
-  }
+/** Días distintos con actividad en la semana en curso (las semanas cuentan días, D1). Racha y semanas cumplidas salen del standing. */
+function currentWeekDays(activities: Array<{ startedAt: Date }>, tz: string) {
   const currentWeek = weekKeyOf(new Date(), tz);
-  return {
-    currentWeekCount: weekCounts.get(currentWeek) ?? 0,
-    activeWeeks: weekStreak(weekCounts, currentWeek, 1),
-    perfectWeeks: weekStreak(weekCounts, currentWeek, weeklyGoal),
-  };
+  return new Set(activities.filter((a) => weekKeyOf(a.startedAt, tz) === currentWeek).map((a) => localDateOf(a.startedAt, tz))).size;
 }
 
 /**
@@ -107,6 +97,15 @@ export default async function GroupByIdPage({ params }: { params: Promise<{ id: 
 
   const { id: groupId } = await params;
   if (!groupId) redirect("/home");
+
+  // Respaldo del cron (D3): si la temporada activa o la última terminó y publica sola, se finaliza ahora (idempotente).
+  const seasonDates = await prisma.season.findMany({
+    where: { groupId, finalizedAt: null },
+    select: { id: true, endDate: true, group: { select: { timezone: true } } },
+    orderBy: { endDate: "desc" },
+  });
+  const lastEnded = seasonDates.find((s) => dbDateToLocalDate(s.endDate) < localDateOf(new Date(), s.group.timezone));
+  if (lastEnded) await ensureSeasonFinalizedIfDue(lastEnded.id);
 
   const membership = await prisma.groupMember.findFirst({
     where: { userId: user.id, groupId, leftAt: null },
@@ -167,33 +166,23 @@ export default async function GroupByIdPage({ params }: { params: Promise<{ id: 
     ? activeSeasonRaw.members.some((m) => m.userId === user.id)
     : false;
 
-  // Ranking: SeasonStanding (vacío hasta W1-1) + miembros en 0 pts.
+  // Ranking: SeasonStanding (motor W1-1), en el orden y con el puesto que calcula el motor.
+  const standingsList: StandingRow[] = activeSeasonRaw ? await getSeasonStandings(activeSeasonRaw.id) : [];
+  const standingByUser = new Map(standingsList.map((s) => [s.userId, s]));
   let seasonLeaderboard: SeasonLeaderboardEntry[] = [];
   if (activeSeasonRaw && userJoinedActiveSeason) {
-    const standings = new Map((await getSeasonStandings(activeSeasonRaw.id)).map((s) => [s.userId, s]));
-    seasonLeaderboard = activeSeasonRaw.members
-      .map((m) => {
-        const s = standings.get(m.userId);
-        return {
-          userId: m.user.id,
-          name: m.user.name,
-          email: m.user.email,
-          photoUrl: m.user.photoUrl,
-          points: s?.points ?? 0,
-          activeWeeks: s?.currentStreak ?? 0,
-          perfectWeeks: s?.weeksGoalMet ?? 0,
-          daysTrained: s?.daysTrained ?? 0,
-          rank: 0,
-        };
-      })
-      .sort(
-        (a, b) =>
-          b.points - a.points ||
-          b.perfectWeeks - a.perfectWeeks ||
-          b.daysTrained - a.daysTrained ||
-          (a.name ?? a.email ?? "").localeCompare(b.name ?? b.email ?? "")
-      )
-      .map((entry, index) => ({ ...entry, rank: index + 1 }));
+    const usersById = new Map(activeSeasonRaw.members.map((m) => [m.userId, m.user]));
+    seasonLeaderboard = standingsList.map((s) => ({
+      userId: s.userId,
+      name: s.name,
+      email: usersById.get(s.userId)?.email ?? null,
+      photoUrl: s.photoUrl,
+      points: s.points,
+      rank: s.rank,
+      activeWeeks: s.currentStreak,
+      perfectWeeks: s.weeksGoalMet,
+      daysTrained: s.daysTrained,
+    }));
   }
 
   let userSeasonStanding: UserSeasonStanding = null;
@@ -204,6 +193,9 @@ export default async function GroupByIdPage({ params }: { params: Promise<{ id: 
     userSeasonStanding = {
       rank: current.rank,
       totalPoints: current.points,
+      weeksGoalMet: current.perfectWeeks,
+      currentStreak: current.activeWeeks,
+      daysTrained: current.daysTrained,
       totalParticipants: seasonLeaderboard.length,
       pointsToNextAbove: nextAbove ? nextAbove.points - current.points : null,
       nextAbove,
@@ -252,11 +244,14 @@ export default async function GroupByIdPage({ params }: { params: Promise<{ id: 
   const membersWithStats = (
     await Promise.all(
       group.members.map(async (member) => {
-        const stats = computeSeasonMemberStats(
-          seasonScopedActivities.filter((a) => a.userId === member.userId),
-          activeSeasonRaw?.weeklyGoal ?? 3,
-          tz
-        );
+        const s = standingByUser.get(member.userId);
+        const stats = {
+          currentWeekCount: currentWeekDays(seasonScopedActivities.filter((a) => a.userId === member.userId), tz),
+          activeWeeks: s?.currentStreak ?? 0,
+          perfectWeeks: s?.weeksGoalMet ?? 0,
+          points: s?.points ?? null,
+          rank: s?.rank ?? null,
+        };
         const badges = (await getUserBadges(member.userId))
           .filter((b) => b.level > 0)
           .sort((a, b) => b.level - a.level)
@@ -275,8 +270,10 @@ export default async function GroupByIdPage({ params }: { params: Promise<{ id: 
       })
     )
   ).sort(
+    // Por puesto en la temporada activa; los que no participan, al final.
     (a, b) =>
-      b.perfectWeeks - a.perfectWeeks || b.activeWeeks - a.activeWeeks || b.currentWeekCount - a.currentWeekCount
+      (a.rank ?? Number.MAX_SAFE_INTEGER) - (b.rank ?? Number.MAX_SAFE_INTEGER) ||
+      (a.name ?? a.email ?? "").localeCompare(b.name ?? b.email ?? "")
   );
 
   const seasons = withLocalDates.map((season) => ({

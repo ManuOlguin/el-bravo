@@ -2,6 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { Button, toastResult } from "@/src/components/ui";
+import { createSeasonAction } from "@/src/server/actions/seasons";
 
 type ActivityCategoryOption = {
   id: string;
@@ -23,15 +25,6 @@ function getActivityTypeLabel(
   return items.find((option) => option.id === id)?.name ?? id;
 }
 
-function rangesOverlap(
-  startA: string,
-  endA: string,
-  startB: string,
-  endB: string
-) {
-  return startA <= endB && endA >= startB;
-}
-
 export default function CreateSeasonPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -48,15 +41,6 @@ export default function CreateSeasonPage() {
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [existingSeasons, setExistingSeasons] = useState<
-    Array<{
-      id: string;
-      name: string;
-      startDate: string;
-      endDate: string;
-      isActive?: boolean;
-    }>
-  >([]);
   const [activityCategories, setActivityCategories] = useState<ActivityCategoryOption[]>([]);
 
   const totalSteps = 5;
@@ -68,24 +52,12 @@ export default function CreateSeasonPage() {
       if (!groupId) return;
 
       try {
-        const [seasonRes, categoryRes] = await Promise.all([
-          fetch(`/api/groups/${groupId}/seasons`, {
-            method: "GET",
-            credentials: "include",
-          }),
-          fetch("/api/activity-types/list", {
-            method: "GET",
-            credentials: "include",
-            cache: "no-store",
-          }),
-        ]);
-
-        if (seasonRes.ok) {
-          const data = await seasonRes.json().catch(() => []);
-          if (alive) {
-            setExistingSeasons(Array.isArray(data) ? data : []);
-          }
-        }
+        // La superposición con otras temporadas la valida createSeasonAction.
+        const categoryRes = await fetch("/api/activity-types/list", {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        });
 
         if (categoryRes.ok) {
           const data = await categoryRes.json().catch(() => []);
@@ -149,27 +121,6 @@ export default function CreateSeasonPage() {
       if (startDate < todayStr) return "La fecha de inicio no puede ser en el pasado";
       if (endDate < todayStr) return "La fecha de fin no puede ser en el pasado";
       if (endDate < startDate) return "La fecha de fin no puede ser anterior a la de inicio";
-
-      const overlappingSeason = existingSeasons.find((season) =>
-        rangesOverlap(startDate, endDate, season.startDate.slice(0, 10), season.endDate.slice(0, 10))
-      );
-
-      if (overlappingSeason) {
-        return `Las fechas se superponen con la temporada "${overlappingSeason.name}"`;
-      }
-
-      const today = todayStr;
-      const newSeasonWouldBeActive = startDate <= today && endDate >= today;
-
-      const alreadyActiveSeason = existingSeasons.find((season) => {
-        const seasonStart = season.startDate.slice(0, 10);
-        const seasonEnd = season.endDate.slice(0, 10);
-        return seasonStart <= today && seasonEnd >= today;
-      });
-
-      if (newSeasonWouldBeActive && alreadyActiveSeason) {
-        return `Ya existe una temporada activa: "${alreadyActiveSeason.name}"`;
-      }
     }
 
     if (currentStep === 2) {
@@ -208,34 +159,29 @@ export default function CreateSeasonPage() {
       return;
     }
 
+    if (!groupId) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/seasons/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          groupId,
-          name,
-          startDate,
-          endDate,
-          minPerWeek,
-          allowedActivityCategoryIds,
-          description,
-        }),
+      const result = await createSeasonAction({
+        groupId,
+        name,
+        description,
+        startDate,
+        endDate,
+        weeklyGoal: minPerWeek,
+        minDailyMinutes: 20,
+        resultsReveal: "auto",
+        categories: allowedActivityCategoryIds.map((activityCategoryId) => ({ activityCategoryId, weight: 1 })),
+        awards: [],
       });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        setError(data?.error || "Error creando la temporada");
-        setLoading(false);
+      if (!toastResult(result)) {
+        setError(result.ok ? null : result.error);
         return;
       }
-
       router.push(`/group/${groupId}`);
       router.refresh();
     } catch {
-      setError("Error de red");
+      toastResult({ ok: false, error: "Error de red. Probá de nuevo." });
     } finally {
       setLoading(false);
     }
@@ -366,7 +312,7 @@ export default function CreateSeasonPage() {
                   className="w-full rounded-xl border border-slate-600 bg-slate-700 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-lime-500/60"
                 />
                 <p className="mt-2 text-sm text-slate-400">
-                  Cantidad mínima de entrenamientos por semana para cumplir el objetivo.
+                  Cantidad mínima de días entrenados por semana para cumplir el objetivo.
                 </p>
               </div>
             )}
@@ -419,7 +365,7 @@ export default function CreateSeasonPage() {
                   <div className="rounded-2xl bg-slate-800 p-4">
                     <div className="text-sm text-slate-400">Objetivo semanal</div>
                     <div className="mt-1 font-semibold text-white">
-                      {minPerWeek} entrenamiento{minPerWeek === 1 ? "" : "s"} por semana
+                      {minPerWeek} día{minPerWeek === 1 ? "" : "s"} por semana
                     </div>
                   </div>
 
@@ -490,14 +436,9 @@ export default function CreateSeasonPage() {
                 Siguiente
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={handleCreate}
-                disabled={loading}
-                className="rounded-lg bg-gradient-to-b from-lime-600 to-lime-800 px-4 py-2 text-sm font-medium text-white hover:from-lime-500 hover:to-lime-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {loading ? "Creando..." : "Crear temporada"}
-              </button>
+              <Button size="sm" onClick={handleCreate} pending={loading}>
+                Crear temporada
+              </Button>
             )}
 
             <button
