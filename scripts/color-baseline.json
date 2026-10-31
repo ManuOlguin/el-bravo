@@ -1,6 +1,4 @@
 {
-  "app/group/[id]/create-season/page.tsx": 1,
-  "app/group/[id]/season/[seasonId]/edit/page.tsx": 1,
   "app/home/page.tsx": 1,
   "app/load/page.tsx": 1,
   "app/profile/page.tsx": 1,
