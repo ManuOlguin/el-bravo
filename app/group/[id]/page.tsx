@@ -1,334 +1,79 @@
-import { redirect } from "next/navigation";
-import { prisma } from "@/src/lib/db";
-import { dbDateToLocalDate, localDateOf, weekKeyOf } from "@/src/lib/time";
-import { requirePageUser } from "@/src/server/auth/dal";
-import { getSeasonStandings, type StandingRow } from "@/src/server/scoring";
-import { ensureSeasonFinalizedIfDue } from "@/src/server/actions/seasons";
-import { getUserBadges } from "@/src/server/badges";
-import GroupPageClient from "./GroupPageClient";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { Card } from "@/src/components/ui";
+import { localDateOf } from "@/src/lib/time";
+import { AuthError, requirePageUser } from "@/src/server/auth/dal";
+import { getGroupPageData } from "@/src/features/group/data";
+import { GroupHeader } from "@/src/features/group/GroupHeader";
+import { SeasonHero } from "@/src/features/group/SeasonHero";
+import { MyWeekCard } from "@/src/features/group/MyWeekCard";
+import { Leaderboard } from "@/src/features/group/Leaderboard";
+import { ActivityFeed } from "@/src/features/group/ActivityFeed";
+import { PastSeasons } from "@/src/features/group/PastSeasons";
+import { MembersList } from "@/src/features/group/MembersList";
+import { GroupActionsMenu } from "@/src/features/group/GroupActionsMenu";
 
-// PUENTE (W0-C): adapta la página vieja del grupo al schema v2. W2-2 la reescribe.
-// - El ranking y las stats de miembros salen de SeasonStanding (motor W1-1), ordenados por `rank`.
-// - Las fechas de temporada son fechas locales (@db.Date) en la zona del grupo.
-// - Respaldo del cron (D3): al entrar se finaliza, si corresponde, la última temporada terminada.
+export const metadata: Metadata = { title: "Grupo" };
 
-type ActivityMuscleItem = { name: string; percentage: number };
-
-type SeasonLeaderboardEntry = {
-  userId: string;
-  name: string | null;
-  email: string | null;
-  photoUrl: string | null;
-  points: number;
-  rank: number;
-  activeWeeks: number;
-  perfectWeeks: number;
-  daysTrained: number;
-};
-
-type UserSeasonStanding = {
-  rank: number;
-  totalPoints: number;
-  weeksGoalMet: number;
-  currentStreak: number;
-  daysTrained: number;
-  totalParticipants: number;
-  pointsToNextAbove: number | null;
-  nextAbove: SeasonLeaderboardEntry | null;
-  nextBelow: SeasonLeaderboardEntry | null;
-} | null;
-
-function roundTo(value: number, decimals = 1) {
-  const factor = 10 ** decimals;
-  return Math.round(value * factor) / factor;
-}
-
-function calculateActivityMuscleShare(
-  exercises: Array<{
-    sets: Array<{ reps: number | null; weightKg: number | null }>;
-    exercise: { muscles: Array<{ percentage: number; muscle: { name: string } }> };
-  }>
-): ActivityMuscleItem[] {
-  const muscleLoadMap = new Map<string, number>();
-
-  for (const entry of exercises) {
-    const baseLoad = entry.sets.reduce((sum, s) => {
-      const reps = s.reps ?? 0;
-      const weightKg = s.weightKg ?? 0;
-      return sum + (weightKg > 0 ? reps * weightKg : reps);
-    }, 0);
-    if (baseLoad <= 0) continue;
-
-    const muscles = entry.exercise.muscles;
-    const totalPct = muscles.reduce((sum, item) => sum + item.percentage, 0);
-    if (totalPct <= 0) continue;
-
-    for (const m of muscles) {
-      const key = m.muscle.name;
-      muscleLoadMap.set(key, (muscleLoadMap.get(key) ?? 0) + baseLoad * (m.percentage / totalPct));
-    }
-  }
-
-  const totalLoad = Array.from(muscleLoadMap.values()).reduce((a, b) => a + b, 0);
-  if (totalLoad <= 0) return [];
-
-  return Array.from(muscleLoadMap.entries())
-    .map(([name, load]) => ({ name, percentage: roundTo((load / totalLoad) * 100, 1) }))
-    .sort((a, b) => b.percentage - a.percentage)
-    .slice(0, 4);
-}
-
-/** Días distintos con actividad en la semana en curso (las semanas cuentan días, D1). Racha y semanas cumplidas salen del standing. */
-function currentWeekDays(activities: Array<{ startedAt: Date }>, tz: string) {
-  const currentWeek = weekKeyOf(new Date(), tz);
-  return new Set(activities.filter((a) => weekKeyOf(a.startedAt, tz) === currentWeek).map((a) => localDateOf(a.startedAt, tz))).size;
-}
-
-/**
- * Los componentes cliente viejos formatean con `new Date(x)` en la zona del navegador. Para que una
- * fecha local se vea igual en cualquier zona, se les pasa "YYYY-MM-DDT12:00:00" (mediodía local, sin Z).
- */
-function clientLocalDate(d: Date) {
-  return `${dbDateToLocalDate(d)}T12:00:00`;
-}
-
-export default async function GroupByIdPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function GroupPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requirePageUser();
+  const { id } = await params;
 
-  const { id: groupId } = await params;
-  if (!groupId) redirect("/home");
-
-  // Respaldo del cron (D3): si la temporada activa o la última terminó y publica sola, se finaliza ahora (idempotente).
-  const seasonDates = await prisma.season.findMany({
-    where: { groupId, finalizedAt: null },
-    select: { id: true, endDate: true, group: { select: { timezone: true } } },
-    orderBy: { endDate: "desc" },
-  });
-  const lastEnded = seasonDates.find((s) => dbDateToLocalDate(s.endDate) < localDateOf(new Date(), s.group.timezone));
-  if (lastEnded) await ensureSeasonFinalizedIfDue(lastEnded.id);
-
-  const membership = await prisma.groupMember.findFirst({
-    where: { userId: user.id, groupId, leftAt: null },
-    select: { role: true },
-  });
-  if (!membership) redirect("/home");
-
-  const userSelect = { id: true, name: true, photoUrl: true } as const; // sin email (W1-4: no se envía al cliente)
-  const group = await prisma.group.findUnique({
-    where: { id: groupId },
-    include: {
-      members: {
-        where: { leftAt: null },
-        select: { id: true, userId: true, role: true, user: { select: userSelect } },
-      },
-      seasons: {
-        orderBy: { startDate: "desc" },
-        include: {
-          members: { where: { leftAt: null }, include: { user: { select: userSelect } } },
-          categories: {
-            include: { activityCategory: { select: { id: true, slug: true, name: true } } },
-          },
-        },
-      },
-    },
-  });
-  if (!group) redirect("/home");
-
-  const tz = group.timezone;
-  const today = localDateOf(new Date(), tz);
-  const isAdmin = membership.role === "admin";
-
-  const withLocalDates = group.seasons.map((s) => ({
-    ...s,
-    start: dbDateToLocalDate(s.startDate),
-    end: dbDateToLocalDate(s.endDate),
-  }));
-
-  const activeSeasonRaw =
-    withLocalDates.find((s) => !s.finalizedAt && s.start <= today && s.end >= today) ?? null;
-  const upcomingSeasonRaw = withLocalDates.find((s) => s.start > today) ?? null;
-  const pastSeasonsRaw = withLocalDates.filter((s) => !!s.finalizedAt || s.end < today);
-
-  // Objetos planos para el cliente (sin Decimal de Prisma).
-  const toClientSeason = (s: (typeof withLocalDates)[number]) => ({
-    id: s.id,
-    name: s.name,
-    description: s.description,
-    weeklyGoal: s.weeklyGoal,
-    startDate: clientLocalDate(s.startDate),
-    endDate: clientLocalDate(s.endDate),
-    finalizedAt: s.finalizedAt,
-    members: s.members,
-  });
-  const activeSeason = activeSeasonRaw ? toClientSeason(activeSeasonRaw) : null;
-
-  const userJoinedActiveSeason = activeSeasonRaw
-    ? activeSeasonRaw.members.some((m) => m.userId === user.id)
-    : false;
-
-  // Ranking: SeasonStanding (motor W1-1), en el orden y con el puesto que calcula el motor.
-  const standingsList: StandingRow[] = activeSeasonRaw ? await getSeasonStandings(activeSeasonRaw.id) : [];
-  const standingByUser = new Map(standingsList.map((s) => [s.userId, s]));
-  let seasonLeaderboard: SeasonLeaderboardEntry[] = [];
-  if (activeSeasonRaw && userJoinedActiveSeason) {
-    seasonLeaderboard = standingsList.map((s) => ({
-      userId: s.userId,
-      name: s.name,
-      email: null,
-      photoUrl: s.photoUrl,
-      points: s.points,
-      rank: s.rank,
-      activeWeeks: s.currentStreak,
-      perfectWeeks: s.weeksGoalMet,
-      daysTrained: s.daysTrained,
-    }));
+  let data;
+  try {
+    data = await getGroupPageData(id, user);
+  } catch (e) {
+    if (e instanceof AuthError) notFound();
+    throw e;
   }
 
-  let userSeasonStanding: UserSeasonStanding = null;
-  const myIndex = seasonLeaderboard.findIndex((e) => e.userId === user.id);
-  if (myIndex !== -1) {
-    const current = seasonLeaderboard[myIndex];
-    const nextAbove = myIndex > 0 ? seasonLeaderboard[myIndex - 1] : null;
-    userSeasonStanding = {
-      rank: current.rank,
-      totalPoints: current.points,
-      weeksGoalMet: current.perfectWeeks,
-      currentStreak: current.activeWeeks,
-      daysTrained: current.daysTrained,
-      totalParticipants: seasonLeaderboard.length,
-      pointsToNextAbove: nextAbove ? nextAbove.points - current.points : null,
-      nextAbove,
-      nextBelow: seasonLeaderboard[myIndex + 1] ?? null,
-    };
-  }
+  const { group, current, upcoming, standings, viewer } = data;
+  const isAdmin = viewer.role === "admin";
+  const today = localDateOf(new Date(), group.timezone);
+  const me = standings.find((s) => s.userId === viewer.id) ?? null;
+  const showLeaderboard = !!current && (current.status === "active" || standings.length > 0);
 
-  const memberIds = group.members.map((m) => m.userId);
-  const activities = await prisma.activity.findMany({
-    where: { userId: { in: memberIds } },
-    orderBy: { startedAt: "desc" },
-    take: 100,
-    include: {
-      user: { select: userSelect },
-      media: { select: { id: true, url: true }, orderBy: { position: "asc" }, take: 1 },
-      activityCategory: { select: { id: true, slug: true, name: true } },
-      exercises: {
-        orderBy: { position: "asc" },
-        select: {
-          id: true,
-          sets: { orderBy: { position: "asc" }, select: { reps: true, weightKg: true } },
-          exercise: {
-            select: {
-              id: true,
-              name: true,
-              measureType: true,
-              muscles: { select: { percentage: true, muscle: { select: { name: true } } } },
-            },
-          },
-        },
-      },
-    },
-  });
-
-  // Actividades que cuentan en la temporada activa: fecha local dentro del rango y categoría habilitada.
-  const enabledCategoryIds = new Set(
-    (activeSeasonRaw?.categories ?? []).filter((c) => Number(c.weight) > 0).map((c) => c.activityCategoryId)
-  );
-  const seasonScopedActivities = activeSeasonRaw
-    ? activities.filter((a) => {
-        const d = localDateOf(a.startedAt, tz);
-        return d >= activeSeasonRaw.start && d <= activeSeasonRaw.end && enabledCategoryIds.has(a.activityCategoryId);
-      })
-    : [];
-
-  const membersWithStats = (
-    await Promise.all(
-      group.members.map(async (member) => {
-        const s = standingByUser.get(member.userId);
-        const stats = {
-          currentWeekCount: currentWeekDays(seasonScopedActivities.filter((a) => a.userId === member.userId), tz),
-          activeWeeks: s?.currentStreak ?? 0,
-          perfectWeeks: s?.weeksGoalMet ?? 0,
-          points: s?.points ?? null,
-          rank: s?.rank ?? null,
-        };
-        const badges = (await getUserBadges(member.userId))
-          .filter((b) => b.level > 0)
-          .sort((a, b) => b.level - a.level)
-          .slice(0, 3)
-          .map((b) => ({ id: b.code, name: b.name, level: b.level, category: null }));
-        return {
-          id: member.user.id,
-          userId: member.userId,
-          name: member.user.name,
-          email: null,
-          photoUrl: member.user.photoUrl,
-          role: member.role,
-          ...stats,
-          badges,
-        };
-      })
-    )
-  ).sort(
-    // Por puesto en la temporada activa; los que no participan, al final.
-    (a, b) =>
-      (a.rank ?? Number.MAX_SAFE_INTEGER) - (b.rank ?? Number.MAX_SAFE_INTEGER) ||
-      (a.name ?? a.email ?? "").localeCompare(b.name ?? b.email ?? "")
-  );
-
-  const seasons = withLocalDates.map((season) => ({
-    id: season.id,
-    name: season.name,
-    description: season.description,
-    startDate: clientLocalDate(season.startDate),
-    endDate: clientLocalDate(season.endDate),
-    weeklyGoal: season.weeklyGoal,
-    allowedActivityTypes: season.categories.map((c) => c.activityCategory.name),
-    members: season.members.map((m) => ({
-      id: m.user.id,
-      userId: m.userId,
-      name: m.user.name,
-      email: null,
-      photoUrl: m.user.photoUrl,
-    })),
-    joined: season.members.some((m) => m.userId === user.id),
-    isActive: !season.finalizedAt && season.start <= today && season.end >= today,
-    isUpcoming: season.start > today,
-    isPast: !!season.finalizedAt || season.end < today,
-  }));
-
-  const actData = seasonScopedActivities.map((a) => ({
-    id: a.id,
-    type: a.activityCategory.name, // el cliente muestra este texto como etiqueta del tipo
-    activityCategory: a.activityCategory,
-    notes: a.notes,
-    startedAt: a.startedAt,
-    durationMinutes: a.durationMinutes,
-    mediaUrl: a.media[0]?.url ?? null,
-    user: a.user,
-    muscles: calculateActivityMuscleShare(a.exercises),
-  }));
-
+  // Mobile: una columna en el orden del plan (los wrappers son `contents` y manda `order-*`).
+  // Desde md: ranking + semana a la izquierda, feed a la derecha.
   return (
-    <GroupPageClient
-      group={{
-        id: group.id,
-        name: group.name,
-        description: group.description,
-        photoUrl: group.photoUrl,
-        createdAt: group.createdAt,
-        members: group.members,
-      }}
-      isAdmin={isAdmin}
-      activities={actData}
-      membersWithStats={membersWithStats}
-      activeSeason={activeSeason}
-      upcomingSeason={upcomingSeasonRaw ? toClientSeason(upcomingSeasonRaw) : null}
-      pastSeasons={pastSeasonsRaw.map(toClientSeason)}
-      seasons={seasons}
-      currentUserId={user.id}
-      seasonLeaderboard={seasonLeaderboard}
-      userSeasonStanding={userSeasonStanding}
-      timezone={tz}
-    />
+    <div className="flex flex-col gap-4">
+      <GroupHeader group={group} isAdmin={isAdmin} />
+      {group.description && <p className="-mt-2 text-sm text-fg-muted">{group.description}</p>}
+      <SeasonHero groupId={group.id} current={current} upcoming={upcoming} me={me} today={today} isAdmin={isAdmin} />
+
+      <div className="flex flex-col gap-4 md:grid md:grid-cols-2 md:items-start">
+        <div className="contents md:flex md:flex-col md:gap-4">
+          {data.myWeek && (
+            <div className="order-1">
+              <MyWeekCard week={data.myWeek} today={today} />
+            </div>
+          )}
+          {showLeaderboard && current && (
+            <div className="order-2">
+              <Leaderboard
+                season={current}
+                standings={standings}
+                viewerId={viewer.id}
+                title={current.status === "active" ? "Ranking" : "Ranking final (vista previa)"}
+                limit={10}
+                moreHref={`/group/${group.id}/season/${current.id}`}
+              />
+            </div>
+          )}
+          <div className="order-4">
+            <PastSeasons groupId={group.id} seasons={data.past} />
+          </div>
+          <div className="order-5">
+            <MembersList groupId={group.id} members={group.members} viewerId={viewer.id} isAdmin={isAdmin} />
+          </div>
+          <Card className="order-6">
+            <GroupActionsMenu groupId={group.id} groupName={group.name} isAdmin={isAdmin} memberCount={group.members.length} />
+          </Card>
+        </div>
+        <div className="order-3 md:order-none">
+          <ActivityFeed groupId={group.id} initial={data.feed} viewer={{ id: user.id, name: user.name }} tz={user.timezone} />
+        </div>
+      </div>
+    </div>
   );
 }
