@@ -35,7 +35,7 @@ const ROOT = path.resolve(__dirname, "../../..");
 /** Acciones públicas a propósito (login/registro) o que solo borran la cookie. */
 const PUBLIC = new Set(["account.loginAction", "account.registerAction", "account.logoutAction"]);
 
-function useServerModules(): string[] {
+function findUseServerModules(): string[] {
   const out: string[] = [];
   const walk = (dir: string) => {
     for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -50,7 +50,7 @@ function useServerModules(): string[] {
 }
 
 type Fn = (...args: unknown[]) => Promise<unknown>;
-const modules = useServerModules();
+const modules = findUseServerModules();
 const loaded = new Map<string, Record<string, unknown>>();
 
 beforeAll(async () => {

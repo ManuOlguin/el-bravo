@@ -204,13 +204,32 @@ describe("account actions", () => {
       expect(goal.ok === false && goal.fieldErrors?.weeklyGoal).toBeTruthy();
     });
 
-    it("guarda nombre, bio, zona y foto sin tocar el email", async () => {
-      const u = await loggedIn();
-      const r = await updateProfileAction({ ...base, photoUrl: "https://img.test/a.webp" });
-      expect(r.ok).toBe(true);
-      const after = await prisma.user.findUniqueOrThrow({ where: { id: u.id } });
-      expect(after).toMatchObject({ name: "Ana María", bio: "Corro", timezone: "America/Montevideo", photoUrl: "https://img.test/a.webp", email: "ana@test.com" });
-      expect(recomputeUserBadges).not.toHaveBeenCalled();
+    it("guarda nombre, bio, zona y foto (de su carpeta del bucket) sin tocar el email", async () => {
+      vi.stubEnv("R2_ACCOUNT_ID", "test");
+      vi.stubEnv("R2_ACCESS_KEY_ID", "test");
+      vi.stubEnv("R2_SECRET_ACCESS_KEY", "test");
+      vi.stubEnv("R2_BUCKET", "elbravo-media");
+      vi.stubEnv("R2_PUBLIC_BASE_URL", "https://media.test");
+      try {
+        const u = await loggedIn();
+        const photoUrl = `https://media.test/avatars/${u.id}/abc.webp`;
+        const r = await updateProfileAction({ ...base, photoUrl });
+        expect(r.ok).toBe(true);
+        const after = await prisma.user.findUniqueOrThrow({ where: { id: u.id } });
+        expect(after).toMatchObject({ name: "Ana María", bio: "Corro", timezone: "America/Montevideo", photoUrl, email: "ana@test.com" });
+        expect(recomputeUserBadges).not.toHaveBeenCalled();
+
+        // Ni hosts externos ni fotos de otro usuario (se borrarían al cambiar la foto).
+        for (const bad of ["https://img.test/a.webp", "https://media.test/avatars/otro/abc.webp", "https://media.test/activities/x/abc.webp"]) {
+          const res = await updateProfileAction({ ...base, photoUrl: bad });
+          expect(res).toMatchObject({ ok: false, fieldErrors: { photoUrl: ["Subí la foto desde la app."] } });
+        }
+        // Mantener la que ya tenía o sacarla sí se puede.
+        expect((await updateProfileAction({ ...base, photoUrl })).ok).toBe(true);
+        expect((await updateProfileAction({ ...base, photoUrl: null })).ok).toBe(true);
+      } finally {
+        vi.unstubAllEnvs();
+      }
     });
 
     it("si cambia el objetivo semanal recalcula insignias", async () => {

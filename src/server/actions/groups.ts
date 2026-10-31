@@ -19,6 +19,10 @@ import {
   updateGroup,
 } from "@/src/server/groups/membership";
 import { createGroupSchema, idSchema, inviteCodeInputSchema, roleSchema, updateGroupSchema } from "@/src/server/groups/schemas";
+import { prisma } from "@/src/lib/db";
+import { isAllowedPhotoUrl } from "@/src/server/media/service";
+
+const PHOTO_URL_ERROR = "Subí la foto desde la app.";
 
 const JOIN_LIMIT = { max: 10, windowMs: 15 * 60_000 };
 
@@ -48,6 +52,8 @@ export async function createGroupAction(input: {
     const me = await requireUser();
     const parsed = parseInput(createGroupSchema, input);
     if (!parsed.ok) return parsed.result;
+    // La foto del grupo se sube después, desde la configuración (con confirmUpload).
+    if (parsed.data.photoUrl !== null) return fail(PHOTO_URL_ERROR, { photoUrl: [PHOTO_URL_ERROR] });
     const r = await createGroup(me.id, parsed.data);
     return ok(r, "Grupo creado.");
   });
@@ -63,6 +69,10 @@ export async function updateGroupAction(
     await requireGroupAdmin(id.data);
     const parsed = parseInput(updateGroupSchema, input);
     if (!parsed.ok) return parsed.result;
+    const current = await prisma.group.findUniqueOrThrow({ where: { id: id.data }, select: { photoUrl: true } });
+    if (!isAllowedPhotoUrl(parsed.data.photoUrl, current.photoUrl, { kind: "group", groupId: id.data })) {
+      return fail(PHOTO_URL_ERROR, { photoUrl: [PHOTO_URL_ERROR] });
+    }
     await updateGroup(id.data, parsed.data);
     revalidatePath(`/group/${id.data}`);
     return ok(undefined, "Grupo actualizado.");

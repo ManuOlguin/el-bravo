@@ -17,9 +17,11 @@ import {
   updateProfileSchema,
 } from "@/src/server/account/schemas";
 import { recomputeUserBadges } from "@/src/server/badges";
+import { isAllowedPhotoUrl } from "@/src/server/media/service";
 
 const LOGIN_LIMIT = { max: 5, windowMs: 15 * 60_000 };
 const BAD_CREDENTIALS = "Email o contraseña incorrectos.";
+const PHOTO_URL_ERROR = "Subí la foto desde la app.";
 
 function formValue(form: FormData, key: string): string | undefined {
   const v = form.get(key);
@@ -158,7 +160,10 @@ export async function updateProfileAction(input: {
     if (!parsed.ok) return parsed.result;
     const data = parsed.data;
 
-    const before = await prisma.user.findUniqueOrThrow({ where: { id: me.id }, select: { weeklyGoal: true } });
+    const before = await prisma.user.findUniqueOrThrow({ where: { id: me.id }, select: { weeklyGoal: true, photoUrl: true } });
+    if (!isAllowedPhotoUrl(data.photoUrl, before.photoUrl, { kind: "avatar", userId: me.id })) {
+      return fail(PHOTO_URL_ERROR, { photoUrl: [PHOTO_URL_ERROR] });
+    }
     await prisma.user.update({
       where: { id: me.id },
       data: { name: data.name, bio: data.bio, weeklyGoal: data.weeklyGoal, timezone: data.timezone, photoUrl: data.photoUrl },
