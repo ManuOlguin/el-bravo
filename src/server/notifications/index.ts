@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars -- stub: los parámetros se usan en la implementación real */
 // STUB (W0-C). W2-3 lo reemplaza por las implementaciones reales MANTENIENDO estos exports (§5.10).
 import type { NotificationType } from "@prisma/client";
 import type { ActivityChange, ActivityEffects } from "@/src/server/activities/effects";

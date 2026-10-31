@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars -- stub: los parámetros se usan en la implementación real */
 // STUB (W0-C). W1-1 lo reemplaza por las implementaciones reales MANTENIENDO estos exports (§5.5).
 // Hasta entonces los puntos quedan en 0: no se escriben ScoreEntry ni SeasonStanding.
 // Sin "server-only" a propósito: scripts/migrate-v2-data.ts lo importa desde tsx.

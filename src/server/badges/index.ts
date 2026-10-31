@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars -- stub: los parámetros se usan en la implementación real */
 // STUB (W0-C). W1-2 lo reemplaza por las implementaciones reales MANTENIENDO estos exports (§5.6).
 // Sin "server-only" a propósito: scripts/migrate-v2-data.ts lo importa desde tsx.
 
