@@ -136,5 +136,5 @@ test("entrenamiento olvidado: avisa en toda la app y al volver propone guardarlo
 
   // Guardado: el aviso desaparece.
   await page.goto("/home");
-  await expect(page.getByRole("link", { name: /Olvidada E2E/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Entrenando · Olvidada E2E|¿Terminaste «Olvidada E2E»\?/ })).toHaveCount(0);
 });
