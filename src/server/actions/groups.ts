@@ -135,6 +135,7 @@ export async function kickMemberAction(groupId: string, userId: string): Promise
 
 export async function inviteFriendsToGroupAction(groupId: string, userIds: string[]): Promise<ActionResult<{ invited: number }>> {
   return groupAction(async () => {
+    await requireUser();
     const gid = parseId(groupId);
     if (!gid.ok) return gid.result;
     const ids = parseInput(z.array(idSchema).min(1, { error: "Elegí al menos un amigo." }).max(100), userIds);
@@ -160,6 +161,7 @@ export async function joinGroupByInviteTokenAction(token: string): Promise<Actio
 
 export async function setMemberRoleAction(groupId: string, userId: string, role: "admin" | "member"): Promise<ActionResult<void>> {
   return groupAction(async () => {
+    await requireUser();
     const gid = parseId(groupId);
     if (!gid.ok) return gid.result;
     const uid = parseId(userId);

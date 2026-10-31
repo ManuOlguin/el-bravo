@@ -34,9 +34,9 @@ vi.mock("@/src/server/auth/dal", async () => {
 import { revalidatePath } from "next/cache";
 import {
   createSeasonAction, updateSeasonAction, deleteSeasonAction, joinSeasonAction, leaveSeasonAction,
-  finalizeSeasonAction, publishSeasonResultsAction, reopenSeasonAction, ensureSeasonFinalizedIfDue,
+  finalizeSeasonAction, publishSeasonResultsAction, reopenSeasonAction,
 } from "./seasons";
-import { finalizeDueSeasons } from "@/src/server/seasons/lifecycle";
+import { finalizeDueSeasons, finalizeSeasonIfDue } from "@/src/server/seasons/lifecycle";
 import type { SeasonInput } from "@/src/schemas/season";
 
 const TZ = "America/Argentina/Buenos_Aires";
@@ -252,12 +252,12 @@ describe("finalizar / publicar / reabrir", () => {
 });
 
 describe("finalización automática (página + cron)", () => {
-  it("ensureSeasonFinalizedIfDue solo finaliza temporadas terminadas con resultsReveal auto", async () => {
+  it("finalizeSeasonIfDue (respaldo de las páginas) solo finaliza temporadas terminadas con resultsReveal auto", async () => {
     const { admin, gym, group } = await setup();
     const ended = await seasonRow(group.id, gym.id, addDays(today, -60), addDays(today, -40), { members: [admin.id] });
     const manual = await seasonRow(group.id, gym.id, addDays(today, -30), addDays(today, -20), { resultsReveal: "manual" });
     const active = await seasonRow(group.id, gym.id, addDays(today, -5), addDays(today, 5));
-    await Promise.all([ended, manual, active].map((s) => ensureSeasonFinalizedIfDue(s.id)));
+    await Promise.all([ended, manual, active].map((s) => finalizeSeasonIfDue(s.id)));
     const rows = await prisma.season.findMany({ select: { id: true, finalizedAt: true, resultsPublishedAt: true } });
     const byId = new Map(rows.map((r) => [r.id, r]));
     expect(byId.get(ended.id)!.finalizedAt).not.toBeNull();

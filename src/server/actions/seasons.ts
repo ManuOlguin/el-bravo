@@ -7,11 +7,11 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/src/lib/db";
 import { localDateToDbDate } from "@/src/lib/time";
-import { requireGroupAdmin, requireGroupMember, AuthError } from "@/src/server/auth/dal";
+import { requireGroupAdmin, requireGroupMember, requireUser, AuthError } from "@/src/server/auth/dal";
 import { ok, fail, parseInput, runAction, type ActionResult } from "@/src/server/http/result";
 import { seasonInputSchema, type SeasonInput } from "@/src/schemas/season";
 import { recomputeSeason, finalizeSeason, publishSeasonResults, reopenSeason } from "@/src/server/scoring/recompute";
-import { statusOfDbSeason, finalizeSeasonIfDue } from "@/src/server/seasons/lifecycle";
+import { statusOfDbSeason } from "@/src/server/seasons/lifecycle";
 import { emitSeasonPublished } from "@/src/server/notifications";
 
 /** Las notificaciones nunca rompen la acción; el cron de notificaciones reintenta. */
@@ -88,6 +88,7 @@ async function withRules<T>(fn: () => Promise<ActionResult<T>>): Promise<ActionR
 export async function createSeasonAction(input: SeasonInput): Promise<ActionResult<{ seasonId: string }>> {
   return runAction(() =>
     withRules(async () => {
+      await requireUser(); // sesión antes de validar o tocar la DB
       const parsed = parseInput(seasonInputSchema, input);
       if (!parsed.ok) return parsed.result;
       const d = parsed.data;
@@ -121,6 +122,7 @@ export async function createSeasonAction(input: SeasonInput): Promise<ActionResu
 export async function updateSeasonAction(seasonId: string, input: SeasonInput): Promise<ActionResult<void>> {
   return runAction(() =>
     withRules(async () => {
+      await requireUser(); // sesión antes de validar o tocar la DB
       const parsed = parseInput(seasonInputSchema, input);
       if (!parsed.ok) return parsed.result;
       const d = parsed.data;
@@ -158,6 +160,7 @@ export async function updateSeasonAction(seasonId: string, input: SeasonInput): 
 
 export async function deleteSeasonAction(seasonId: string): Promise<ActionResult<void>> {
   return runAction(async () => {
+    await requireUser(); // sesión antes de buscar la temporada
     const s = await loadSeason(seasonId);
     await requireGroupAdmin(s.groupId);
     await prisma.season.delete({ where: { id: seasonId } });
@@ -168,6 +171,7 @@ export async function deleteSeasonAction(seasonId: string): Promise<ActionResult
 
 export async function joinSeasonAction(seasonId: string): Promise<ActionResult<void>> {
   return runAction(async () => {
+    await requireUser(); // sesión antes de buscar la temporada
     const s = await loadSeason(seasonId);
     const { user } = await requireGroupMember(s.groupId);
     const status = statusOfDbSeason(s);
@@ -185,6 +189,7 @@ export async function joinSeasonAction(seasonId: string): Promise<ActionResult<v
 
 export async function leaveSeasonAction(seasonId: string): Promise<ActionResult<void>> {
   return runAction(async () => {
+    await requireUser(); // sesión antes de buscar la temporada
     const s = await loadSeason(seasonId);
     const { user } = await requireGroupMember(s.groupId);
     const status = statusOfDbSeason(s);
@@ -199,6 +204,7 @@ export async function leaveSeasonAction(seasonId: string): Promise<ActionResult<
 /** Admin: finaliza (también antes de la fecha de fin). Publica sola si `resultsReveal` es `auto`. */
 export async function finalizeSeasonAction(seasonId: string): Promise<ActionResult<void>> {
   return runAction(async () => {
+    await requireUser(); // sesión antes de buscar la temporada
     const s = await loadSeason(seasonId);
     await requireGroupAdmin(s.groupId);
     const status = statusOfDbSeason(s);
@@ -214,6 +220,7 @@ export async function finalizeSeasonAction(seasonId: string): Promise<ActionResu
 
 export async function publishSeasonResultsAction(seasonId: string): Promise<ActionResult<void>> {
   return runAction(async () => {
+    await requireUser(); // sesión antes de buscar la temporada
     const s = await loadSeason(seasonId);
     await requireGroupAdmin(s.groupId);
     if (!s.finalizedAt) return fail("Primero finalizá la temporada");
@@ -227,6 +234,7 @@ export async function publishSeasonResultsAction(seasonId: string): Promise<Acti
 /** Admin: borra `finalizedAt`, ganadores y puntos de premios, y recalcula. */
 export async function reopenSeasonAction(seasonId: string): Promise<ActionResult<void>> {
   return runAction(async () => {
+    await requireUser(); // sesión antes de buscar la temporada
     const s = await loadSeason(seasonId);
     await requireGroupAdmin(s.groupId);
     if (!s.finalizedAt) return fail("La temporada no está finalizada");
@@ -234,12 +242,4 @@ export async function reopenSeasonAction(seasonId: string): Promise<ActionResult
     revalidateGroup(s.groupId);
     return ok(undefined, "Temporada reabierta");
   });
-}
-
-/**
- * Para las páginas (respaldo del cron, D3): si la temporada terminó y es `auto`, la finaliza publicando.
- * Idempotente; no requiere permisos porque solo hace lo que el cron haría igual.
- */
-export async function ensureSeasonFinalizedIfDue(seasonId: string): Promise<void> {
-  await finalizeSeasonIfDue(seasonId);
 }
