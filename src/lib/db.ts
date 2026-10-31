@@ -14,6 +14,21 @@ function createPrismaClient() {
   return new PrismaClient({ adapter });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+function client(): PrismaClient {
+  const c = globalForPrisma.prisma ?? createPrismaClient();
+  // En dev se reusa entre recargas en caliente; en producción, uno por instancia (se cachea igual).
+  globalForPrisma.prisma = c;
+  return c;
+}
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+/**
+ * Cliente perezoso: se crea en el primer uso, no al importar el módulo. Así `next build` (que carga los
+ * módulos para recolectar datos de las páginas) no necesita `DATABASE_URL` ni conectarse a la base.
+ */
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    const c = client();
+    const value = Reflect.get(c, prop, c);
+    return typeof value === "function" ? value.bind(c) : value;
+  },
+});
