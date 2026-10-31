@@ -8,6 +8,13 @@
 
 **Tech Stack:** Next.js 16, React 19, Prisma 7 (MySQL/TiDB), Zod 4, Vitest, Playwright. Sin SDK de OpenAI.
 
+> **⚠️ Actualizar antes de ejecutar (31-oct-2026, tras implementar la fase 1).** La fase 1 cambió respecto de su plan y este documento quedó desfasado:
+> - `ImportReview.tsx` ya tiene editor de músculos y equipo para los nuevos (`MuscleShareEditor`, validación con `isValidShare`), aviso de líneas no entendidas (`ImportDraft.unparsedLines`), bloqueo de nombres que ya existen en el catálogo, botón "Es otro ejercicio" y `flex-wrap`. **No reemplazar el archivo completo** (Task 6 Step 4): agregar solo el badge "Creado con IA" y lo específico de la IA.
+> - `importDraftToRoutine(draft, muscles?)` toma los músculos del catálogo para calcular `primaryGroupKey`; `RoutineEditorScreen` acepta `onBack` (ImportScreen lo usa para volver a la revisión).
+> - En el formato, `máx` = "sin reps fijas" (tipo según prefijo W/D/F); `fallo` = al fallo. El prompt y el mapeo de la IA tienen que respetarlo.
+> - `matchImport` aplica los hints sin pisar `tempId` ni `name`; el matcher acepta solo coincidencia exacta o distancia de edición ≤ 1 (≥ 5 letras) / ≤ 2 (≥ 10 letras), sin prefijos.
+> - Pendientes de la revisión de la fase 1 que tocan la fase 3: un `muscleSlug` repetido en una definición da un P2002 genérico (deduplicar al validar la respuesta de la IA); `normalizeShares` puede dejar 0 % al primer músculo (usar mayor resto con mínimo 1); los slugs desconocidos se descartan en la UI pero cuentan en la validación de porcentajes.
+
 **Spec:** `docs/superpowers/specs/2026-10-31-rutinas-compartibles-ia-design.md` (Fase 3, decisiones R1 y R4, Pruebas, Migraciones) · Índice e interfaces compartidas: `docs/superpowers/plans/2026-10-31-rutinas/README.md` · Construye sobre: `fase-1-formato-texto.md` (tiene que estar implementada).
 
 ## Global Constraints
