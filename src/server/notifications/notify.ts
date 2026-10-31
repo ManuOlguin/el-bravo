@@ -6,6 +6,7 @@ import { createHash } from "node:crypto";
 import { Prisma, type NotificationType } from "@prisma/client";
 import { prisma } from "@/src/lib/db";
 import { loadPrefs } from "./preferences";
+import { dispatchPush } from "./push";
 
 export type NotifyInput = {
   recipientIds: string[];
@@ -46,6 +47,8 @@ export async function notify(input: NotifyInput): Promise<string[]> {
     data: input.data ? (input.data as Prisma.InputJsonValue) : Prisma.DbNull,
     dedupeKey: normalizeDedupeKey(input.dedupeKey(recipientId)),
   }));
-  await prisma.notification.createMany({ data: rows, skipDuplicates: true });
-  return rows.map((r) => r.dedupeKey);
+  const { count } = await prisma.notification.createMany({ data: rows, skipDuplicates: true });
+  const keys = rows.map((r) => r.dedupeKey);
+  if (count > 0) dispatchPush(keys); // fire-and-forget; el cron reintenta lo que no salió
+  return keys;
 }

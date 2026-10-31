@@ -5,6 +5,7 @@
 import type { NotificationType } from "@prisma/client";
 import type { ActivityEffects } from "@/src/server/activities/effects";
 import { romanLevel } from "@/src/features/badges/levels";
+import { formatDuration } from "@/src/lib/time";
 import { emojiFromKey, isReactionEmoji } from "@/src/server/social/reaction-types";
 
 export type GroupContext = {
@@ -159,6 +160,17 @@ export function planActivityNotifications(ctx: RuleContext, activityId: string):
     });
   }
 
+  const friends = others(ctx.friendIdsOutsideGroups, actorId);
+  push({
+    recipientIds: friends,
+    type: "friend_workout",
+    actorId,
+    activityId,
+    data: { categoryName: ctx.activity.categoryName, durationMinutes: ctx.activity.durationMinutes },
+    // Throttle: como máximo 1 cada ventana de 2 h por par actor-destinatario.
+    dedupe: (r) => `friend_workout:${actorId}:${r}:${ctx.windowKey}`,
+  });
+
   return out;
 }
 
@@ -238,10 +250,17 @@ export function renderNotification(type: NotificationType, data: Record<string, 
         return { icon: "✉️", title: `${actor} te invitó a ${group}`, href: internalHref(data.href) ?? groupHref, emphasis: [actor, group] };
       }
       return { icon: "🙌", title: `${actor} se unió a ${group}`, href: groupHref, emphasis: [actor, group] };
-    case "friend_workout":
-      return { icon: "🏋️", title: `${actor} entrenó`, href: activityHref, emphasis: [actor] };
+    case "friend_workout": {
+      const minutes = num(data.durationMinutes);
+      const body = [str(data.categoryName), minutes ? formatDuration(minutes) : null].filter(Boolean).join(" · ");
+      return { icon: "🏋️", title: `${actor} entrenó`, ...(body ? { body } : {}), href: activityHref, emphasis: [actor] };
+    }
     case "reaction_received": {
       const emoji = reactionEmoji(data.emoji);
+      const more = num(data.othersCount) ?? 0;
+      if (more > 0) {
+        return { icon: emoji, title: `${actor} y ${more} más reaccionaron a tu entrenamiento`, href: activityHref, emphasis: [actor] };
+      }
       return { icon: emoji, title: `${actor} reaccionó ${emoji} a tu entrenamiento`, href: activityHref, emphasis: [actor] };
     }
     case "weekly_digest":

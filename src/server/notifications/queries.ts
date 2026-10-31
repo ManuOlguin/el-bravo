@@ -51,8 +51,8 @@ export function renderData(row: Pick<Row, "data" | "actorId" | "groupId" | "seas
   };
 }
 
-function toView(row: Row, viewerId: string): NotificationView {
-  const r = renderNotification(row.type, renderData(row), viewerId);
+function toView(row: Row, viewerId: string, extra: Record<string, unknown> = {}): NotificationView {
+  const r = renderNotification(row.type, { ...renderData(row), ...extra }, viewerId);
   return {
     id: row.id,
     type: row.type,
@@ -85,14 +85,47 @@ export async function listNotifications(
     select: rowSelect,
   });
   const page = rows.slice(0, limit);
-  return {
-    items: page.map((r) => toView(r, userId)),
-    nextCursor: rows.length > limit ? page[page.length - 1].id : null,
-  };
+  const groups = await reactionGroups(userId, page);
+  const items: NotificationView[] = [];
+  for (const r of page) {
+    const g = r.type === "reaction_received" && !r.readAt && r.activityId ? groups.get(r.activityId) : undefined;
+    if (!g) items.push(toView(r, userId));
+    else if (g.newestId === r.id) items.push(toView(r, userId, { othersCount: g.count - 1 }));
+    // las demás reacciones no leídas del mismo entrenamiento quedan dentro del grupo
+  }
+  return { items, nextCursor: rows.length > limit ? page[page.length - 1].id : null };
 }
 
+/** Más de 3 reacciones no leídas sobre el mismo entrenamiento se muestran como un solo ítem ("Lucio y 3 más…"). */
+export const REACTION_GROUP_MIN = 4;
+
+async function reactionGroups(userId: string, page: Row[]): Promise<Map<string, { newestId: string; count: number }>> {
+  const activityIds = [...new Set(page.filter((r) => r.type === "reaction_received" && !r.readAt && r.activityId).map((r) => r.activityId!))];
+  const out = new Map<string, { newestId: string; count: number }>();
+  if (!activityIds.length) return out;
+  const unread = await prisma.notification.findMany({
+    where: { recipientId: userId, type: "reaction_received", readAt: null, activityId: { in: activityIds } },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: { id: true, activityId: true },
+  });
+  for (const u of unread) {
+    const g = out.get(u.activityId!);
+    if (g) g.count++;
+    else out.set(u.activityId!, { newestId: u.id, count: 1 });
+  }
+  for (const [k, g] of out) if (g.count < REACTION_GROUP_MIN) out.delete(k);
+  return out;
+}
+
+/** Marca una como leída. Si es una reacción, marca todas las reacciones no leídas de ese entrenamiento (el grupo). */
 export async function markRead(userId: string, id: string, now: Date = new Date()): Promise<void> {
-  await prisma.notification.updateMany({ where: { id, recipientId: userId, readAt: null }, data: { readAt: now } });
+  const n = await prisma.notification.findFirst({ where: { id, recipientId: userId }, select: { type: true, activityId: true } });
+  if (!n) return;
+  const where: Prisma.NotificationWhereInput =
+    n.type === "reaction_received" && n.activityId
+      ? { recipientId: userId, type: "reaction_received", activityId: n.activityId, readAt: null }
+      : { id, recipientId: userId, readAt: null };
+  await prisma.notification.updateMany({ where, data: { readAt: now } });
 }
 
 export async function markAllRead(userId: string, now: Date = new Date()): Promise<number> {

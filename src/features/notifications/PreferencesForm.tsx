@@ -67,11 +67,11 @@ export function PreferencesForm({
                 <p className="font-semibold">{r.label}</p>
                 <p className="text-sm text-fg-muted">{r.description}</p>
               </div>
-              <div className="flex flex-wrap gap-x-6 gap-y-2">
+              <div className="grid grid-cols-3 gap-x-3">
                 {channels.map((ch) => (
                   <Switch
                     key={ch}
-                    className="min-w-24 justify-start gap-3"
+                    className="justify-start gap-2"
                     checked={r[ch]}
                     disabled={saving === `${r.type}:${ch}`}
                     onChange={(v) => change(r.type, ch, v)}

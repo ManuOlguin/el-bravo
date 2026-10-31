@@ -4,6 +4,7 @@ import type { BadgeChange } from "@/src/server/badges/types";
 import {
   planActivityNotifications,
   renderNotification,
+  pushWindowKey,
   type RuleContext,
   type GroupContext,
   type SeasonContext,
@@ -215,6 +216,31 @@ describe("planActivityNotifications", () => {
     });
   });
 
+  describe("friend_workout", () => {
+    it("notifica a los amigos que no comparten grupo, con throttle por ventana de 2 h", () => {
+      const c = ctx({ friendIdsOutsideGroups: ["ana"], windowKey: "2026-11-02T18" });
+      const ps = byType(planActivityNotifications(c, ACT), "friend_workout");
+      expect(ps).toHaveLength(1);
+      expect(ps[0].recipientIds).toEqual(["ana"]);
+      expect(ps[0].activityId).toBe(ACT);
+      expect(ps[0].data).toMatchObject({ categoryName: "Gimnasio", durationMinutes: 45 });
+      expect(ps[0].dedupe("ana")).toBe("friend_workout:manu:ana:2026-11-02T18");
+    });
+    it("sin amigos fuera de los grupos no notifica; editar tampoco", () => {
+      expect(types(planActivityNotifications(ctx(), ACT))).not.toContain("friend_workout");
+      expect(planActivityNotifications(ctx({ friendIdsOutsideGroups: ["ana"], isNewActivity: false }), ACT)).toEqual([]);
+    });
+    it("nunca se notifica a sí mismo", () => {
+      expect(byType(planActivityNotifications(ctx({ friendIdsOutsideGroups: ["manu", "ana"] }), ACT), "friend_workout")[0].recipientIds).toEqual(["ana"]);
+    });
+    it("pushWindowKey redondea a ventanas de 2 h (UTC)", () => {
+      expect(pushWindowKey(new Date("2026-11-02T18:59:00Z"))).toBe("2026-11-02T18");
+      expect(pushWindowKey(new Date("2026-11-02T19:59:00Z"))).toBe("2026-11-02T18");
+      expect(pushWindowKey(new Date("2026-11-02T20:00:00Z"))).toBe("2026-11-02T20");
+      expect(pushWindowKey(new Date("2026-11-02T01:00:00Z"))).toBe("2026-11-02T00");
+    });
+  });
+
   it("nunca incluye al actor como destinatario de reglas de grupo", () => {
     const c = ctx({ groups: [group({ weeklyGoal: 1 })], seasons: [season({ actorStreak: 3 })], effects: { scoring: [effect()], badges: [] } });
     for (const p of planActivityNotifications(c, ACT)) expect(p.recipientIds).not.toContain("manu");
@@ -281,6 +307,19 @@ describe("renderNotification", () => {
   it("una invitación con href externo cae en el grupo (no abre links de afuera)", () => {
     expect(renderNotification("member_joined", { ...base, kind: "invite", href: "https://evil.com" }, "ana").href).toBe("/group/g1");
     expect(renderNotification("member_joined", { ...base, kind: "invite", href: "//evil.com" }, "ana").href).toBe("/group/g1");
+  });
+  it("friend_workout", () => {
+    expect(renderNotification("friend_workout", { ...base, categoryName: "Running", durationMinutes: 70 }, "ana")).toMatchObject({
+      title: "Manu entrenó",
+      body: "Running · 1 h 10 min",
+      href: "/workout/a1",
+    });
+  });
+  it("reaction_received agrupada", () => {
+    expect(renderNotification("reaction_received", { ...base, actorName: "Lucio", emoji: "muscle", othersCount: 3 }, "manu")).toMatchObject({
+      icon: "💪",
+      title: "Lucio y 3 más reaccionaron a tu entrenamiento",
+    });
   });
   it("reaction_received: emoji por clave ASCII o literal", () => {
     expect(renderNotification("reaction_received", { ...base, emoji: "muscle" }, "lucio")).toMatchObject({
