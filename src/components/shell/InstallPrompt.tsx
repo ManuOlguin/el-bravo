@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button, IconButton } from "@/src/components/ui/Button";
 
 const DISMISS_KEY = "elbravo:install-dismissed-at";
+const SHOWN_KEY = "elbravo:install-shown"; // sessionStorage: una vez por sesión del navegador
 const DISMISS_MS = 30 * 24 * 60 * 60 * 1000; // 30 días
 const SHOW_DELAY_MS = 2500;
 
@@ -26,6 +27,26 @@ function isIosSafari() {
   const iDevice = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && nav.maxTouchPoints > 1);
   // `standalone` solo existe en Safari de iOS; otros navegadores de iOS no pueden "Agregar a inicio".
   return iDevice && nav.standalone === false && !/CriOS|FxiOS|EdgiOS/i.test(ua);
+}
+
+function isAndroid() {
+  return /Android/i.test(navigator.userAgent);
+}
+
+function wasShownThisSession() {
+  try {
+    return sessionStorage.getItem(SHOWN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function rememberShown() {
+  try {
+    sessionStorage.setItem(SHOWN_KEY, "1");
+  } catch {
+    // Sin storage: no pasa nada, como mucho se vuelve a mostrar.
+  }
 }
 
 function wasDismissedRecently() {
@@ -69,6 +90,7 @@ function ShareIcon() {
 /**
  * Tarjeta descartable para instalar la PWA.
  * Android/Chrome: usa `beforeinstallprompt`. iOS Safari: explica "Compartir → Agregar a inicio".
+ * Solo en celulares (en desktop no se ofrece) y como mucho una vez por sesión del navegador.
  * Si se descarta, no vuelve a aparecer por 30 días. Nunca aparece si la app ya corre instalada.
  */
 export function InstallPrompt() {
@@ -77,12 +99,19 @@ export function InstallPrompt() {
   const deferred = useRef<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
-    if (isStandalone() || wasDismissedRecently()) return;
+    if (isStandalone() || wasDismissedRecently() || wasShownThisSession()) return;
+    const ios = isIosSafari();
+    if (!ios && !isAndroid()) return;
+
+    const show = (m: Exclude<Mode, null>) => {
+      rememberShown();
+      setMode(m);
+    };
 
     const onBeforeInstall = (e: Event) => {
       e.preventDefault();
       deferred.current = e as BeforeInstallPromptEvent;
-      setMode("android");
+      show("android");
     };
     const onInstalled = () => {
       deferred.current = null;
@@ -91,7 +120,7 @@ export function InstallPrompt() {
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
     window.addEventListener("appinstalled", onInstalled);
 
-    const timer = isIosSafari() ? window.setTimeout(() => setMode("ios"), SHOW_DELAY_MS) : undefined;
+    const timer = ios ? window.setTimeout(() => show("ios"), SHOW_DELAY_MS) : undefined;
 
     return () => {
       window.removeEventListener("beforeinstallprompt", onBeforeInstall);

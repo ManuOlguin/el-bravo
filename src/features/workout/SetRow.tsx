@@ -173,7 +173,7 @@ export function SetRow({
             className={cn(
               "grid h-11 w-11 place-items-center rounded-lg transition-[transform,background-color] duration-100 active:scale-90",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-              set.completed ? "bg-primary text-on-primary" : "bg-surface-3 text-fg-muted hover:bg-border"
+              set.completed ? "bg-primary-gradient text-on-primary" : "bg-surface-3 text-fg-muted hover:bg-border"
             )}
           >
             <CheckIcon size={20} />

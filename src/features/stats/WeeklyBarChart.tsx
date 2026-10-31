@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { cn } from "@/src/components/ui";
 import { formatDuration, formatLocalDate } from "@/src/lib/time";
 import { useWidth } from "./useWidth";
@@ -13,7 +13,7 @@ const MAX_BAR = 24;
 const GAP = 2;
 
 /**
- * Entrenamientos por semana (una sola serie, color `primary`) con la línea del objetivo semanal.
+ * Entrenamientos por semana (una sola serie, degradé `primary` → `primary-strong`) con la línea del objetivo semanal.
  * SVG en píxeles reales (mide el contenedor), tooltip al pasar el mouse, al tocar o con el teclado,
  * y una tabla equivalente para lectores de pantalla.
  */
@@ -21,6 +21,7 @@ export function WeeklyBarChart({ weeks, goal }: { weeks: Week[]; goal: number })
   const [wrapRef, width] = useWidth<HTMLDivElement>();
   const [active, setActive] = useState<number | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const gradientId = useId();
 
   // Tocar afuera cierra el tooltip (en touch no hay "mouseleave").
   useEffect(() => {
@@ -50,6 +51,12 @@ export function WeeklyBarChart({ weeks, goal }: { weeks: Week[]; goal: number })
     <div ref={rootRef} className="space-y-2">
       <div ref={wrapRef} className="relative w-full" onPointerLeave={(e) => e.pointerType === "mouse" && setActive(null)}>
         <svg width={width} height={H} viewBox={`0 0 ${width} ${H}`} role="img" aria-label={`Entrenamientos por semana, últimas ${n} semanas`} className="block">
+          <defs>
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" style={{ stopColor: "var(--color-primary)" }} />
+              <stop offset="1" style={{ stopColor: "var(--color-primary-strong)" }} />
+            </linearGradient>
+          </defs>
           {/* Grilla mínima: base y máximo. */}
           {[0, maxValue].map((v) => (
             <g key={v}>
@@ -70,7 +77,7 @@ export function WeeklyBarChart({ weeks, goal }: { weeks: Week[]; goal: number })
             const base = PAD.top + plotH;
             // Extremo de datos redondeado (4 px) y base recta.
             const d = `M${x0},${base} V${top + r} Q${x0},${top} ${x0 + r},${top} H${x1 - r} Q${x1},${top} ${x1},${top + r} V${base} Z`;
-            return <path key={w.weekKey} d={d} className={cn("fill-primary transition-opacity", active !== null && active !== i && "opacity-40")} />;
+            return <path key={w.weekKey} d={d} fill={`url(#${gradientId})`} className={cn("transition-opacity", active !== null && active !== i && "opacity-40")} />;
           })}
 
           {/* Línea del objetivo semanal: su valor va en el eje (no sobre las barras) y la leyenda abajo la nombra. */}

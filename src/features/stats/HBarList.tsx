@@ -16,7 +16,7 @@ export function HBarList({ rows, ariaLabel }: { rows: { key: string; label: stri
             </span>
           </div>
           <div className="h-2 w-full" aria-hidden="true">
-            <div className="h-full rounded-r-[4px] bg-primary" style={{ width: `${Math.max(1.5, (r.value / max) * 100)}%` }} />
+            <div className="h-full rounded-r-[4px] bg-primary-gradient-x" style={{ width: `${Math.max(1.5, (r.value / max) * 100)}%` }} />
           </div>
         </li>
       ))}

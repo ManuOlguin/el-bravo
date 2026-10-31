@@ -3,10 +3,10 @@
   <defs>
     <linearGradient id="lime" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#8ac617"/>
-      <stop offset="1" stop-color="#63710b"/>
+      <stop offset="1" stop-color="#3d6b0b"/>
     </linearGradient>
   </defs>
-  <rect width="512" height="512" fill="#08142d"/>
+  <rect width="512" height="512" fill="#0a0a0a"/>
   <circle cx="256" cy="256" r="196" fill="url(#lime)"/>
   <g fill="#0b1500" fill-rule="evenodd" transform="translate(-4 0)">
     <path d="M150 181H245V215H186V239H236V273H186V297H245V331H150Z"/>

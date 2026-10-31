@@ -27,7 +27,7 @@ export function MyWeekCard({ week, today }: { week: MyWeek; today: string }) {
                 className={cn(
                   "grid h-9 w-9 place-items-center rounded-full border text-xs font-bold",
                   d.counted
-                    ? "border-primary bg-primary text-on-primary"
+                    ? "border-primary bg-primary-gradient text-on-primary"
                     : d.count > 0
                       ? "border-primary/60 bg-primary/15 text-primary"
                       : "border-border bg-surface-2 text-fg-subtle",

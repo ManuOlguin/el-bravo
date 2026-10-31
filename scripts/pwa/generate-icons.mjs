@@ -22,7 +22,7 @@ const outputs = [
 for (const { file, size } of outputs) {
   await sharp(svg, { density: Math.ceil((72 * size) / 512) * 2 })
     .resize(size, size)
-    .flatten({ background: "#08142d" })
+    .flatten({ background: "#0a0a0a" })
     .png({ compressionLevel: 9 })
     .toFile(path.join(dir, file));
   console.log(`✓ public/icons/${file} (${size}×${size})`);

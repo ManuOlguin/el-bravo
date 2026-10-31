@@ -59,7 +59,7 @@ export function RestTimer({
     >
       <div className="mx-auto max-w-screen-sm overflow-hidden rounded-card border border-border bg-surface-2/95 shadow-card backdrop-blur">
         <div className="h-1 bg-surface-3">
-          <div className="h-full bg-primary transition-[width] duration-200 ease-linear" style={{ width: `${Math.min(100, elapsed * 100)}%` }} />
+          <div className="h-full bg-primary-gradient-x transition-[width] duration-200 ease-linear" style={{ width: `${Math.min(100, elapsed * 100)}%` }} />
         </div>
         <div className="flex items-center gap-2 p-2">
           <div className="min-w-0 flex-1 pl-1">

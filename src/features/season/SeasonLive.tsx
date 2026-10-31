@@ -6,7 +6,7 @@ import { medalOf } from "./format";
 import type { UserWeekCell, WeekState } from "./data";
 
 const CELL: Record<WeekState, { icon: string; className: string; label: string }> = {
-  met: { icon: "✓", className: "border-primary bg-primary text-on-primary", label: "cumplida" },
+  met: { icon: "✓", className: "border-primary bg-primary-gradient text-on-primary", label: "cumplida" },
   current: { icon: "·", className: "border-primary/60 bg-primary/10 text-primary", label: "en curso" },
   missed: { icon: "✗", className: "border-border bg-surface-3 text-fg-subtle", label: "no cumplida" },
   future: { icon: "", className: "border-dashed border-border text-fg-subtle", label: "por venir" },

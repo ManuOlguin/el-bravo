@@ -44,7 +44,7 @@ export function WeekProgress({
                 aria-hidden="true"
                 className={cn(
                   "grid h-9 w-9 place-items-center rounded-full border-2 text-xs font-bold tabular-nums",
-                  trained ? "border-primary bg-primary text-on-primary" : "border-border text-fg-subtle",
+                  trained ? "border-primary bg-primary-gradient text-on-primary" : "border-border text-fg-subtle",
                   isToday && !trained && "border-primary text-primary",
                   isToday && "ring-2 ring-primary/40 ring-offset-2 ring-offset-surface-1"
                 )}

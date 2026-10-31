@@ -21,7 +21,7 @@ function Step({ state, children }: { state: StepState; children: React.ReactNode
       <span
         className={cn(
           "grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold",
-          state === "done" && "bg-primary text-on-primary",
+          state === "done" && "bg-primary-gradient text-on-primary",
           state === "active" && "bg-surface-3 text-fg",
           state === "pending" && "bg-surface-2 text-fg-subtle",
           state === "error" && "bg-danger/20 text-danger"
