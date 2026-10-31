@@ -10,9 +10,11 @@ export function RoutineCounts({ exerciseCount, setCount, className }: { exercise
   return <p className={className ?? "text-sm text-fg-muted"}>{routineCountsLabel(exerciseCount, setCount)}</p>;
 }
 
-/** Pastilla "Pública" (las privadas no llevan nada). */
-export function VisibilityPill({ visibility }: { visibility: RoutineVisibility | undefined }) {
-  return visibility === "public" ? <Pill tone="primary">Pública</Pill> : null;
+/** Pastilla "Pública"; las privadas no llevan nada, salvo con `showPrivate` (lista propia: "Privada" neutra). */
+export function VisibilityPill({ visibility, showPrivate = false }: { visibility: RoutineVisibility | undefined; showPrivate?: boolean }) {
+  if (visibility === "public") return <Pill tone="primary">Pública</Pill>;
+  if (visibility === "private" && showPrivate) return <Pill>Privada</Pill>;
+  return null;
 }
 
 export function copiedFromLabel(userName: string): string {

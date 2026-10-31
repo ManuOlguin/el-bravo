@@ -5,8 +5,10 @@ import type { PublicProfile } from "@/src/server/social/profile";
 import type { UserBadgeView } from "@/src/server/badges";
 import type { UserStats } from "@/src/server/stats";
 import type { HistoryItem } from "@/src/server/stats/history";
+import type { RoutineSummary } from "@/src/server/routines/service";
 import { BadgeGrid } from "@/src/features/badges";
 import { ProfileHeader } from "./ProfileHeader";
+import { ProfileRoutines } from "./ProfileRoutines";
 import { ProfileStatsRow } from "./ProfileStatsRow";
 import { WorkoutHistory } from "./WorkoutHistory";
 
@@ -33,6 +35,7 @@ export function ProfileView({
   stats,
   isOwner = profile.relation.isMe,
   history,
+  routines,
 }: {
   profile: PublicProfile;
   badges: UserBadgeView[];
@@ -41,6 +44,8 @@ export function ProfileView({
   isOwner?: boolean;
   /** Primera página del historial (solo el dueño). */
   history?: { items: HistoryItem[]; nextCursor: string | null };
+  /** Propio: todas (`listRoutines`); ajeno: solo las públicas (`listPublicRoutines`). */
+  routines?: RoutineSummary[];
 }) {
   const { sharedGroups, recentActivities } = profile;
   const earned = badges.filter((b) => b.level > 0).length;
@@ -58,15 +63,30 @@ export function ProfileView({
             minutes={stats.totals.minutes}
           />
           {isOwner && (
-            <div className="flex justify-end gap-4 text-sm font-semibold text-primary">
-              <Link href="/routines" className="hover:underline">
-                Mis rutinas →
-              </Link>
+            <div className="flex justify-end text-sm font-semibold text-primary">
               <Link href="/stats" className="hover:underline">
                 Ver mis stats →
               </Link>
             </div>
           )}
+        </section>
+      )}
+
+      {routines && (isOwner || routines.length > 0) && (
+        <section aria-labelledby="routines-title" className="space-y-2">
+          <SectionTitle
+            id="routines-title"
+            action={
+              isOwner ? (
+                <Link href="/routines" className="text-sm font-semibold normal-case tracking-normal text-primary hover:underline">
+                  Ver todas →
+                </Link>
+              ) : undefined
+            }
+          >
+            Rutinas
+          </SectionTitle>
+          <ProfileRoutines routines={routines} isOwner={isOwner} />
         </section>
       )}
 
