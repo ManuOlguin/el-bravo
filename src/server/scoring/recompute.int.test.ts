@@ -208,6 +208,51 @@ describe("finalizeSeason / publishSeasonResults", () => {
     expect((await standing(s.id, u1.id))!.points).toBe(89 + 10);
   });
 
+  it("premios divertidos: series por músculo, fotos y reacciones desde la DB; los de la vergüenza no suman", async () => {
+    const { u1, u2, gym, group } = await setup();
+    const legs = await prisma.muscle.create({ data: { name: "Cuádriceps", slug: "cuadriceps", groupKey: "legs" } });
+    const glutes = await prisma.muscle.create({ data: { name: "Glúteos", slug: "gluteos", groupKey: "legs" } });
+    const chest = await prisma.muscle.create({ data: { name: "Pectoral", slug: "pectoral", groupKey: "chest" } });
+    const squat = await prisma.exercise.create({
+      data: { slug: "sentadilla", name: "Sentadilla", muscles: { create: [{ muscleId: legs.id, percentage: 70 }, { muscleId: glutes.id, percentage: 30 }] } },
+    });
+    const bench = await prisma.exercise.create({ data: { slug: "banca", name: "Banca", muscles: { create: [{ muscleId: chest.id, percentage: 100 }] } } });
+    const s = await makeSeason(group.id, [u1.id, u2.id], [{ id: gym.id, weight: 1 }], {
+      awards: [
+        { awardType: "legs", bonusPoints: 5 },
+        { awardType: "volume", bonusPoints: 0 },
+        { awardType: "influencer", bonusPoints: 0 },
+        { awardType: "popular", bonusPoints: 0 },
+        { awardType: "ghost", bonusPoints: 50 },
+      ],
+    });
+    const a1 = await act(u1.id, gym.id, W1);
+    const a2 = await act(u2.id, gym.id, W1);
+    await act(u2.id, gym.id, plus(W1, 1));
+    const setsOf = (n: number, kg: number, completed = true) => Array.from({ length: n }, (_, i) => ({ position: i, reps: 10, weightKg: kg, completed }));
+    // u1: 4 series de sentadilla (todas piernas) + 1 sin completar; u2: 3 de sentadilla y 5 de banca pesada.
+    await prisma.activityExercise.create({ data: { activityId: a1.id, exerciseId: squat.id, position: 0, sets: { create: [...setsOf(4, 60), { position: 9, reps: 10, weightKg: 200, completed: false }] } } });
+    await prisma.activityExercise.create({ data: { activityId: a2.id, exerciseId: squat.id, position: 0, sets: { create: setsOf(3, 60) } } });
+    await prisma.activityExercise.create({ data: { activityId: a2.id, exerciseId: bench.id, position: 1, sets: { create: setsOf(5, 80) } } });
+    await prisma.activityMedia.createMany({ data: [{ activityId: a1.id, url: "https://x/1.webp" }, { activityId: a1.id, url: "https://x/2.webp" }] });
+    // Reacciones a u2: una de u1 y una propia (no cuenta).
+    await prisma.reaction.createMany({ data: [{ activityId: a2.id, userId: u1.id, emoji: "fire" }, { activityId: a2.id, userId: u2.id, emoji: "fire" }] });
+
+    await finalizeSeason(s.id, { publish: true });
+    const winners = await prisma.seasonAwardWinner.findMany({ include: { seasonAward: true } });
+    const byType = Object.fromEntries(winners.map((w) => [w.seasonAward.awardType, [w.userId, w.value]]));
+    expect(byType).toEqual({
+      legs: [u1.id, 4],
+      volume: [u2.id, 3 * 600 + 5 * 800],
+      influencer: [u1.id, 2],
+      popular: [u2.id, 1],
+      ghost: [u1.id, 1],
+    });
+    // +5 de El Piernas para u1; El Fantasma no suma aunque tenga 50 cargados.
+    const awardEntries = await prisma.scoreEntry.findMany({ where: { seasonId: s.id, kind: "award" } });
+    expect(awardEntries.map((e) => [e.userId, e.points])).toEqual([[u1.id, 5]]);
+  });
+
   it("después de finalizar, recomputeSeason no cambia nada salvo con force", async () => {
     const { u1, gym, group } = await setup();
     const s = await makeSeason(group.id, [u1.id], [{ id: gym.id, weight: 1 }], { awards: [{ awardType: "most_days", bonusPoints: 10 }] });

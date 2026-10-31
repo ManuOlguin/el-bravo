@@ -9,7 +9,7 @@ import { prisma } from "@/src/lib/db";
 import { dbDateToLocalDate, localDateOf } from "@/src/lib/time";
 import type { ActivityChange } from "@/src/server/activities/effects";
 import { computeSeasonScores, rankTotals } from "./compute";
-import { computeAwardWinners, isSeasonAwardType } from "./awards";
+import { computeAwardWinners, isSeasonAwardType, needsAwardContext, SEASON_AWARD_INFO, type AwardContext } from "./awards";
 import type { ScoringEffect, SeasonRules, SeasonScores, UserTotals, ScoringActivity } from "./types";
 
 type Tx = Prisma.TransactionClient;
@@ -223,6 +223,50 @@ export async function finalizeSeason(seasonId: string, opts: { publish: boolean;
   }, TX_OPTS);
 }
 
+/**
+ * Datos de los premios divertidos: categoría, series por grupo muscular (repartidas por el % de cada
+ * músculo del ejercicio), kilos (peso × reps), fotos y reacciones entre miembros (sin contar las propias).
+ */
+async function loadAwardContext(tx: Tx, activities: ScoringActivity[], members: Set<string>): Promise<AwardContext> {
+  const ids = activities.map((a) => a.id);
+  const ctx: AwardContext = { activities: new Map(), reactionsReceived: new Map(), reactionsGiven: new Map() };
+  if (ids.length === 0) return ctx;
+  const [categories, sets, media, reactions] = await Promise.all([
+    tx.activityCategory.findMany({ where: { id: { in: [...new Set(activities.map((a) => a.activityCategoryId))] } }, select: { id: true, slug: true } }),
+    tx.activitySet.findMany({
+      where: { completed: true, activityExercise: { activityId: { in: ids } } },
+      select: {
+        weightKg: true,
+        reps: true,
+        activityExercise: { select: { activityId: true, exercise: { select: { muscles: { select: { percentage: true, muscle: { select: { groupKey: true } } } } } } } },
+      },
+    }),
+    tx.activityMedia.groupBy({ by: ["activityId"], where: { activityId: { in: ids }, status: "ready" }, _count: { _all: true } }),
+    tx.reaction.findMany({ where: { activityId: { in: ids } }, select: { userId: true, activity: { select: { userId: true } } } }),
+  ]);
+  const slug = new Map(categories.map((c) => [c.id, c.slug]));
+  for (const a of activities) ctx.activities.set(a.id, { categorySlug: slug.get(a.activityCategoryId) ?? null, setsByGroup: {}, volumeKg: 0, photos: 0 });
+  for (const s of sets) {
+    const e = ctx.activities.get(s.activityExercise.activityId);
+    if (!e) continue;
+    if (s.weightKg && s.reps) e.volumeKg += s.weightKg * s.reps;
+    const muscles = s.activityExercise.exercise.muscles.filter((m) => m.percentage > 0);
+    const total = muscles.reduce((acc, m) => acc + m.percentage, 0);
+    for (const m of muscles) e.setsByGroup[m.muscle.groupKey] = (e.setsByGroup[m.muscle.groupKey] ?? 0) + m.percentage / total;
+  }
+  for (const m of media) {
+    const e = ctx.activities.get(m.activityId);
+    if (e) e.photos = m._count._all;
+  }
+  for (const r of reactions) {
+    const owner = r.activity.userId;
+    if (r.userId === owner) continue;
+    if (members.has(owner)) ctx.reactionsReceived.set(owner, (ctx.reactionsReceived.get(owner) ?? 0) + 1);
+    if (members.has(r.userId)) ctx.reactionsGiven.set(r.userId, (ctx.reactionsGiven.get(r.userId) ?? 0) + 1);
+  }
+  return ctx;
+}
+
 async function grantAwards(
   tx: Tx,
   seasonId: string,
@@ -231,14 +275,17 @@ async function grantAwards(
   activities: ScoringActivity[],
   rules: SeasonRules
 ) {
+  const ctx = awards.some((a) => isSeasonAwardType(a.awardType) && needsAwardContext(a.awardType))
+    ? await loadAwardContext(tx, activities, new Set(scores.totals.map((t) => t.userId)))
+    : undefined;
   for (const award of awards) {
     if (!isSeasonAwardType(award.awardType)) continue;
-    const winners = computeAwardWinners(award.awardType, scores, activities, rules);
+    const winners = computeAwardWinners(award.awardType, scores, activities, rules, ctx);
     if (!winners.length) continue;
     await tx.seasonAwardWinner.createMany({
       data: winners.map((w) => ({ seasonAwardId: award.id, userId: w.userId, value: w.value })),
     });
-    if (award.bonusPoints > 0) {
+    if (award.bonusPoints > 0 && !SEASON_AWARD_INFO[award.awardType].shame) {
       await tx.scoreEntry.createMany({
         data: winners.map((w) => ({
           seasonId,

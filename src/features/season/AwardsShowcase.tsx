@@ -3,10 +3,13 @@ import { Avatar, Card, Pill, cn } from "@/src/components/ui";
 import { SEASON_AWARD_INFO } from "@/src/server/scoring/awards";
 import type { SeasonAwardView } from "./data";
 
+const KG = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 });
+
 export function formatAwardValue(award: Pick<SeasonAwardView, "awardType">, value: number) {
   const info = SEASON_AWARD_INFO[award.awardType];
   const n = Math.round(value * 10) / 10;
-  if (award.awardType === "most_minutes" || award.awardType === "longest_session") {
+  if (info.format === "kg") return `${KG.format(Math.round(n))} kg`;
+  if (info.format === "minutes") {
     const h = Math.floor(n / 60);
     const m = Math.round(n % 60);
     return h ? `${h} h${m ? ` ${m} min` : ""}` : `${m} min`;
