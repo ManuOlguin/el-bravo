@@ -1,5 +1,5 @@
 "use client";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, toast, type ButtonSize, type ButtonVariant } from "@/src/components/ui";
 import { refreshCatalogIfLoaded } from "@/src/features/exercises/useExerciseCatalog";
@@ -25,6 +25,8 @@ export function CopyRoutineButton({
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  // Tras copiar con éxito el botón sigue deshabilitado hasta que la navegación lo desmonte (evita un segundo toque = otra copia).
+  const [done, setDone] = useState(false);
   return (
     <Button
       variant={variant}
@@ -32,6 +34,7 @@ export function CopyRoutineButton({
       fullWidth={fullWidth}
       className={className}
       pending={pending}
+      disabled={done}
       onClick={() =>
         start(async () => {
           try {
@@ -40,6 +43,7 @@ export function CopyRoutineButton({
               toast.error(r.error);
               return;
             }
+            setDone(true);
             toast.success(r.message ?? "Rutina copiada");
             onDone?.();
             router.push("/routines");
