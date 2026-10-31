@@ -13,6 +13,7 @@
  *   temporadas crea la suya y verifica los puntos exactos.
  * - "Social E2E": grupo sin entrenamientos (para "fue el primero en arrancar la semana").
  * - Una rutina para Ana.
+ * - Una rutina PRIVADA de Vale con un ejercicio propio (el E2E de rutinas públicas la publica y Juli la copia).
  */
 import { randomBytes } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -31,6 +32,8 @@ export const E2E_USERS = {
   olga: "Olga E2E",
   sara: "Sara E2E",
   nico: "Nico E2E",
+  vale: "Vale E2E",
+  juli: "Juli E2E",
   lock: "Lock E2E",
   pass: "Pass E2E",
 } as const;
@@ -43,7 +46,7 @@ export type E2ECredentials = {
     temporadas: { id: string };
     social: { id: string };
   };
-  routines: { anaPush: string };
+  routines: { anaPush: string; valeBack: string };
 };
 
 async function main() {
@@ -186,10 +189,36 @@ async function main() {
     },
   });
 
+  // --- Rutina de Vale (fase 2): arranca PRIVADA, con un ejercicio propio; el E2E la hace pública y Juli la copia ---
+  const espalda = await prisma.muscle.findUniqueOrThrow({ where: { slug: "espalda" }, select: { id: true } });
+  const valeRow = await prisma.exercise.create({
+    data: {
+      slug: "remo-vale-e2e",
+      name: "Remo Vale E2E",
+      equipment: "machine",
+      createdByUserId: users.vale.id,
+      muscles: { create: [{ muscleId: espalda.id, percentage: 100 }] },
+    },
+    select: { id: true },
+  });
+  const valeBack = await prisma.routine.create({
+    data: {
+      name: "Espalda de Vale",
+      userId: users.vale.id,
+      exercises: {
+        create: [
+          { exerciseId: bench.id, position: 0, restSeconds: 90, sets: { create: [0, 1, 2].map((position) => ({ position, targetReps: 8, targetWeightKg: 60 })) } },
+          { exerciseId: valeRow.id, position: 1, sets: { create: [0, 1].map((position) => ({ position, targetReps: 12 })) } },
+        ],
+      },
+    },
+    select: { id: true },
+  });
+
   const creds: E2ECredentials = {
     users,
     groups: { bravos: { id: bravos.id, seasonId: season.id }, temporadas: { id: temporadas.id }, social: { id: social.id } },
-    routines: { anaPush: routine.id },
+    routines: { anaPush: routine.id, valeBack: valeBack.id },
   };
   const out = path.join(__dirname, "..", ".auth", "credentials.json");
   mkdirSync(path.dirname(out), { recursive: true });
