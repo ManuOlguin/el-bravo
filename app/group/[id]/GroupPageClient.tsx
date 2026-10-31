@@ -26,8 +26,10 @@ type MemberWithStats = {
   photoUrl: string | null;
   role: string;
   currentWeekCount: number;
-  activeWeeks: number;
-  perfectWeeks: number;
+  activeWeeks: number; // racha actual de semanas cumplidas (standing)
+  perfectWeeks: number; // semanas cumplidas (standing)
+  points: number | null; // null = no participa de la temporada activa
+  rank: number | null;
   badges: MemberBadge[];
 };
 
@@ -66,6 +68,9 @@ type SeasonLeaderboardEntry = {
 type UserSeasonStanding = {
   rank: number;
   totalPoints: number;
+  weeksGoalMet: number;
+  currentStreak: number;
+  daysTrained: number;
   totalParticipants: number;
   pointsToNextAbove: number | null;
   nextAbove: SeasonLeaderboardEntry | null;
@@ -470,6 +475,18 @@ export default function GroupPageClient({
                             </div>
                           </div>
 
+                          <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-200">
+                            <span className="rounded-full bg-slate-700 px-2 py-1">
+                              {userSeasonStanding.daysTrained} días entrenados
+                            </span>
+                            <span className="rounded-full bg-slate-700 px-2 py-1">
+                              {userSeasonStanding.weeksGoalMet} semanas cumplidas
+                            </span>
+                            <span className="rounded-full bg-slate-700 px-2 py-1">
+                              Racha: {userSeasonStanding.currentStreak}
+                            </span>
+                          </div>
+
                           {userSeasonStanding.pointsToNextAbove !== null ? (
                             <div className="mt-3 text-sm text-lime-400">
                               A {userSeasonStanding.pointsToNextAbove} puntos del puesto superior
@@ -514,8 +531,13 @@ export default function GroupPageClient({
                                     </div>
 
                                     <div className="mt-2 flex flex-wrap items-center gap-2">
+                                      {member.rank !== null ? (
+                                        <span className="rounded-full bg-slate-700 px-2 py-1 text-xs font-semibold text-lime-400">
+                                          {member.rank}° · {member.points} pts
+                                        </span>
+                                      ) : null}
                                       <span className="rounded-full bg-slate-700 px-2 py-1 text-xs text-slate-200">
-                                        {member.currentWeekCount} esta semana
+                                        {member.currentWeekCount} {member.currentWeekCount === 1 ? "día" : "días"} esta semana
                                       </span>
                                     </div>
                                   </div>
@@ -537,14 +559,14 @@ export default function GroupPageClient({
                                     : null}
 
                                   <div
-                                    title="Racha activa"
+                                    title="Racha (semanas cumplidas seguidas)"
                                     className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-500 text-sm font-bold text-white"
                                   >
                                     {member.activeWeeks}
                                   </div>
 
                                   <div
-                                    title="Racha perfecta"
+                                    title="Semanas cumplidas"
                                     className="flex h-10 w-10 items-center justify-center rounded-full bg-lime-600 text-sm font-bold text-white"
                                   >
                                     {member.perfectWeeks}
