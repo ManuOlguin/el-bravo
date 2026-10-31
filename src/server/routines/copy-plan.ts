@@ -4,6 +4,7 @@
  * - Propio de otro (el autor) → si el que copia ya ve uno con el mismo nombre normalizado (catálogo o suyo), se reusa;
  *   si no, se duplica como privado suyo. Dos del autor con el mismo nombre normalizado comparten un único duplicado.
  * El "ya ve uno con ese nombre" usa la misma regla que importar rutinas (`buildVisibleNameIndex`).
+ * Un nombre que normaliza a "" (solo emoji o escritura no latina) no se reusa ni se comparte: se duplica uno por ejercicio.
  */
 import { normalize } from "@/src/features/exercises/search";
 import { buildVisibleNameIndex, type NameIndexRow } from "@/src/server/exercises/name-index";
@@ -26,6 +27,10 @@ export function planExerciseCopies(
       continue;
     }
     const key = normalize(e.name);
+    if (!key) {
+      plan.set(e.id, { kind: "duplicate", sourceId: e.id });
+      continue;
+    }
     const reuse = visibleByName.get(key);
     if (reuse) {
       plan.set(e.id, { kind: "reference", exerciseId: reuse });

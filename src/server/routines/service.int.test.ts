@@ -212,6 +212,35 @@ describe("routines service", () => {
       expect(mine.name).toBe("Secreto");
     });
 
+    it("dos ejercicios nuevos distintos con nombre sin letras latinas crean dos ejercicios (no se mapean al mismo)", async () => {
+      const { user } = await fixtures();
+      const { routineId } = await createRoutine(user.id, {
+        name: "X",
+        newExercises: [draft({ tempId: "t1", name: "Жим лёжа" }), draft({ tempId: "t2", name: "Тяга" })],
+        exercises: [
+          { exerciseId: "new:t1", restSeconds: null, notes: null, sets: [oneSet] },
+          { exerciseId: "new:t2", restSeconds: null, notes: null, sets: [oneSet] },
+          { exerciseId: "new:t1", restSeconds: null, notes: null, sets: [oneSet] },
+        ],
+      });
+      expect(await prisma.exercise.count({ where: { createdByUserId: user.id } })).toBe(2);
+      const ids = (await getRoutineForEditor(user.id, routineId)).exercises.map((e) => e.exercise.id);
+      expect(ids[0]).not.toBe(ids[1]);
+      expect(ids[2]).toBe(ids[0]);
+    });
+
+    it("un nombre solo-emoji que el usuario ya tiene (la colación de la base los considera iguales) se reusa en vez de chocar con el único (dueño, nombre)", async () => {
+      const { user } = await fixtures();
+      const mine = await prisma.exercise.create({ data: { slug: "mio-emoji", name: "💪💪", createdByUserId: user.id } });
+      const { routineId } = await createRoutine(user.id, {
+        name: "X",
+        newExercises: [draft({ name: "💪💪" })],
+        exercises: [{ exerciseId: "new:t1", restSeconds: null, notes: null, sets: [oneSet] }],
+      });
+      expect((await getRoutineForEditor(user.id, routineId)).exercises[0].exercise.id).toBe(mine.id);
+      expect(await prisma.exercise.count({ where: { createdByUserId: user.id } })).toBe(1);
+    });
+
     it("renormaliza los porcentajes a 100 y descarta músculos desconocidos", async () => {
       const { user } = await fixtures();
       await createRoutine(user.id, {
@@ -389,6 +418,21 @@ describe("copiar rutinas (fase 2)", () => {
     const { routineId } = await copyRoutine(user.id, publicId);
     expect((await getRoutineForEditor(user.id, routineId)).exercises[1].exercise.id).toBe(mine.id);
     expect(await prisma.exercise.count({ where: { createdByUserId: user.id } })).toBe(1);
+  });
+
+  it("un ejercicio del autor sin letras latinas se duplica aunque el que copia tenga otro distinto sin letras latinas (no se reusa)", async () => {
+    const { user, other } = await publicFixtures();
+    const theirs = await prisma.exercise.create({ data: { slug: "cirilico-b", name: "Тяга", createdByUserId: other.id } });
+    const mine = await prisma.exercise.create({ data: { slug: "cirilico-a", name: "Жим лёжа", createdByUserId: user.id } });
+    const { routineId: srcId } = await createRoutine(other.id, {
+      name: "Cirílico", visibility: "public",
+      exercises: [{ exerciseId: theirs.id, restSeconds: null, notes: null, sets: [oneSet()] }],
+    });
+    const { routineId } = await copyRoutine(user.id, srcId);
+    const copiedId = (await getRoutineForEditor(user.id, routineId)).exercises[0].exercise.id;
+    expect(copiedId).not.toBe(mine.id);
+    expect(copiedId).not.toBe(theirs.id);
+    expect(await prisma.exercise.findUniqueOrThrow({ where: { id: copiedId } })).toMatchObject({ name: "Тяга", createdByUserId: user.id });
   });
 
   it("copiar dos veces duplica el ejercicio una sola vez (la segunda reusa el duplicado)", async () => {

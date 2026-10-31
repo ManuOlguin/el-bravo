@@ -19,4 +19,10 @@ describe("buildVisibleNameIndex", () => {
     expect(buildVisibleNameIndex([row("x", "Remo", "me"), row("y", "remo", "me")]).get("remo")).toBe("x");
     expect(buildVisibleNameIndex([row("o1", "Remo"), row("o2", "remo")]).get("remo")).toBe("o1");
   });
+
+  it("no indexa nombres que normalizan a vacío (solo emoji o escritura no latina)", () => {
+    const index = buildVisibleNameIndex([row("e1", "💪💪"), row("e2", "Жим лёжа"), row("a", "Remo")]);
+    expect(index.has("")).toBe(false);
+    expect([...index.keys()]).toEqual(["remo"]);
+  });
 });

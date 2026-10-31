@@ -55,6 +55,14 @@ describe("matchImport", () => {
     expect(ids[0]).toBe(ids[1]);
   });
 
+  it("un nombre sin letras ni números (emoji, escritura no latina) nunca se asocia ni comparte tempId con otro", () => {
+    const ex = (name: string) => ({ name, restSeconds: null, sets: [{ kind: "normal" as const, reps: 8, weightKg: null, durationSeconds: null }] });
+    const catalog = [cat("Press de Banca"), cat("💪💪")];
+    const d = matchImport({ name: "X", notes: null, unparsedLines: [], exercises: [ex("💪💪"), ex("🔥"), ex("Жим лёжа"), ex("💪💪")] }, catalog);
+    const ids = d.items.map((i) => (i.match.kind === "new" ? i.match.draft.tempId : `found:${i.match.exercise.name}`));
+    expect(ids).toEqual(["t1", "t2", "t3", "t4"]);
+  });
+
   it("los hints (fase 3) completan el ejercicio nuevo", () => {
     const d = matchImport(parseRoutineText(`X\nRemo Hammer — 3×12`), CATALOG, new Map([["remo hammer", { equipment: "machine", muscles: [{ muscleSlug: "dorsal", percentage: 100 }], source: "ai" }]]));
     expect(d.items[0].match).toMatchObject({ kind: "new", draft: { equipment: "machine", source: "ai", muscles: [{ muscleSlug: "dorsal", percentage: 100 }] } });

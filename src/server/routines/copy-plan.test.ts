@@ -36,6 +36,17 @@ describe("planExerciseCopies", () => {
     expect(plan.get("a")).toEqual({ kind: "duplicate", sourceId: "a" });
     expect(plan.get("b")).toEqual({ kind: "duplicate", sourceId: "a" });
   });
+
+  it("un nombre que normaliza a vacío (emoji, escritura no latina) nunca se reusa ni comparte duplicado", () => {
+    const plan = planExerciseCopies(
+      [ex("a", "💪💪", "author"), ex("b", "🔥", "author"), ex("c", "Жим лёжа", "author")],
+      "me",
+      [ex("mine", "💥", "me"), ex("mine2", "Жим", "me")]
+    );
+    expect(plan.get("a")).toEqual({ kind: "duplicate", sourceId: "a" });
+    expect(plan.get("b")).toEqual({ kind: "duplicate", sourceId: "b" });
+    expect(plan.get("c")).toEqual({ kind: "duplicate", sourceId: "c" });
+  });
 });
 
 describe("copyRoutineName", () => {

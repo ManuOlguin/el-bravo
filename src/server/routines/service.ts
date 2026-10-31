@@ -89,7 +89,11 @@ async function resolvePendingExercises(tx: Tx, userId: string, input: RoutineInp
   const pending = input.exercises.filter((e) => isPendingExerciseId(e.exerciseId));
   if (pending.length === 0) return input;
   const defs = new Map((input.newExercises ?? []).map((n) => [n.tempId, n]));
-  const visible = await tx.exercise.findMany({ where: visibleTo(userId), select: { id: true, name: true, createdByUserId: true } });
+  const visible = await tx.exercise.findMany({
+    where: visibleTo(userId),
+    orderBy: { id: "asc" },
+    select: { id: true, name: true, createdByUserId: true },
+  });
   const byName = buildVisibleNameIndex(visible);
   const muscleRows = await tx.muscle.findMany({ select: { id: true, slug: true } });
   const muscleId = new Map(muscleRows.map((m) => [m.slug, m.id]));
@@ -100,7 +104,13 @@ async function resolvePendingExercises(tx: Tx, userId: string, input: RoutineInp
     if (resolved.has(tempId)) continue;
     const def = defs.get(tempId);
     if (!def) throw new RoutineError("Falta la definición de un ejercicio nuevo. Volvé a importar la rutina.");
-    const existing = byName.get(normalize(def.name));
+    const name = def.name.replace(/\s+/g, " ");
+    // Un nombre que normaliza a "" (solo emoji o escritura no latina) no se busca por clave ni se agrega al mapa: cada
+    // ejercicio nuevo es distinto. Solo se reusa uno propio con ese mismo nombre, porque (dueño, nombre) es único.
+    const key = normalize(def.name);
+    const existing = key
+      ? byName.get(key)
+      : (await tx.exercise.findFirst({ where: { createdByUserId: userId, name }, select: { id: true } }))?.id;
     if (existing) {
       resolved.set(tempId, existing);
       continue;
@@ -111,7 +121,7 @@ async function resolvePendingExercises(tx: Tx, userId: string, input: RoutineInp
     const created = await tx.exercise.create({
       data: {
         slug: privateSlug(def.name),
-        name: def.name.replace(/\s+/g, " "),
+        name,
         nameEn: def.nameEn,
         measureType: def.measureType,
         equipment: def.equipment,
@@ -123,7 +133,7 @@ async function resolvePendingExercises(tx: Tx, userId: string, input: RoutineInp
       select: { id: true },
     });
     resolved.set(tempId, created.id);
-    byName.set(normalize(def.name), created.id);
+    if (key) byName.set(key, created.id);
   }
   return {
     ...input,
@@ -217,6 +227,9 @@ type CopySourceExerciseRow = CopySourceRow["exercises"][number]["exercise"];
 
 /** Duplica un ejercicio propio del autor como privado de `userId` (músculos, equipamiento, tipo, textos y alias). */
 async function duplicateExercise(tx: Tx, userId: string, e: CopySourceExerciseRow): Promise<string> {
+  // (dueño, nombre) es único: si ya tiene uno con ese mismo nombre (p. ej. nombres solo-emoji, que no se reusan por clave), se usa ese.
+  const same = await tx.exercise.findFirst({ where: { createdByUserId: userId, name: e.name }, select: { id: true } });
+  if (same) return same.id;
   const row = await tx.exercise.create({
     data: {
       slug: privateSlug(e.name),
@@ -249,7 +262,11 @@ export async function copyRoutine(userId: string, routineId: string): Promise<{ 
       const own = src?.userId === userId;
       if (!src || (!own && (src.visibility !== "public" || !src.user.isActive))) throw new AuthError("NOT_FOUND");
 
-      const visible = await tx.exercise.findMany({ where: visibleTo(userId), select: { id: true, name: true, createdByUserId: true } });
+      const visible = await tx.exercise.findMany({
+        where: visibleTo(userId),
+        orderBy: { id: "asc" },
+        select: { id: true, name: true, createdByUserId: true },
+      });
       const plan = planExerciseCopies(src.exercises.map((e) => e.exercise), userId, visible);
       const byId = new Map(src.exercises.map((e) => [e.exercise.id, e.exercise]));
       const duplicates = new Map<string, string>(); // sourceId → id del duplicado

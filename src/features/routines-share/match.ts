@@ -58,18 +58,20 @@ export function newExerciseFromName(name: string, tempId: string, sets: ParsedSe
 
 export function matchImport(parsed: ParsedRoutine, catalog: CatalogEntry[], hints?: Map<string, Partial<NewExerciseDraft>>): ImportDraft {
   const pending = new Map<string, NewExerciseDraft>();
+  let draftCount = 0;
   const items: ImportItem[] = parsed.exercises.map((e, i) => {
     const found = findInCatalog(e.name, catalog);
     let match: ImportItem["match"];
     if (found) match = { kind: "found", exercise: summary(found) };
     else {
       const key = normalize(e.name);
-      let draft = pending.get(key);
+      // Un nombre sin letras ni números (key "") nunca comparte borrador: cada ítem es su propio ejercicio nuevo.
+      let draft = key ? pending.get(key) : undefined;
       if (!draft) {
-        const base = newExerciseFromName(e.name, `t${pending.size + 1}`, e.sets);
+        const base = newExerciseFromName(e.name, `t${++draftCount}`, e.sets);
         // Los hints completan el ejercicio, pero no pueden cambiar su identidad.
-        draft = { ...base, ...(hints?.get(key) ?? {}), tempId: base.tempId, name: base.name };
-        pending.set(key, draft);
+        draft = { ...base, ...(key ? (hints?.get(key) ?? {}) : {}), tempId: base.tempId, name: base.name };
+        if (key) pending.set(key, draft);
       }
       match = { kind: "new", draft };
     }
