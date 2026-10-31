@@ -62,6 +62,16 @@ export const changePasswordSchema = z.object({
   newPassword: newPasswordSchema,
 });
 
+export const forgotPasswordSchema = z.object({ email: emailSchema });
+
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().trim().min(1, { error: "El link no es válido. Pedí uno nuevo." }),
+    newPassword: newPasswordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((v) => v.newPassword === v.confirmPassword, { path: ["confirmPassword"], error: "Las contraseñas no coinciden." });
+
 export const optionalUrl = z
   .string().trim().nullish()
   .transform((v) => (v ? v : null))

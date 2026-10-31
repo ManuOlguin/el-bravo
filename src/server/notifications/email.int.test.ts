@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { onTestFinished, describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { resetDb, prisma } from "@/tests/setup/db";
 import { localDateToDbDate, zonedToUtc } from "@/src/lib/time";
 
@@ -45,8 +45,13 @@ describe("email (Resend mockeado)", () => {
     return { manu, ana };
   }
 
-  it("sin RESEND_API_KEY: deshabilitado, no falla y no toca nada", async () => {
+  it("sin RESEND_API_KEY ni SMTP: deshabilitado, no falla y no toca nada", async () => {
     delete process.env.RESEND_API_KEY;
+    const prevHost = process.env.EMAIL_HOST;
+    delete process.env.EMAIL_HOST;
+    onTestFinished(() => {
+      if (prevHost !== undefined) process.env.EMAIL_HOST = prevHost;
+    });
     await seedNotifs();
     expect(getEmailSender()).toBeNull();
     expect(await sendPendingEmails(NOW)).toMatchObject({ disabled: true, sent: 0 });

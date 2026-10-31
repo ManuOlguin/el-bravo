@@ -10,8 +10,13 @@ import { clearSessionCookie, setSessionCookie } from "@/src/server/auth/session"
 import { fail, ok, parseInput, runAction, type ActionResult } from "@/src/server/http/result";
 import { burnPasswordCheck, hashPassword, verifyPassword } from "@/src/server/account/passwords";
 import { rateLimit, resetRateLimit, retryAfterMinutes } from "@/src/server/account/rate-limit";
+import { consumePasswordReset, createPasswordReset } from "@/src/server/account/password-reset";
+import { absoluteUrl, renderPasswordResetEmail } from "@/src/emails/render";
+import { appUrl, getEmailSender } from "@/src/server/notifications/email";
 import {
   changePasswordSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
   loginSchema,
   registerSchema,
   updateProfileSchema,
@@ -23,6 +28,9 @@ const LOGIN_LIMIT = { max: 5, windowMs: 15 * 60_000 }; // por IP + email
 const LOGIN_EMAIL_LIMIT = { max: 20, windowMs: 15 * 60_000 }; // por email, desde cualquier IP (ataque distribuido)
 const LOGIN_IP_LIMIT = { max: 50, windowMs: 15 * 60_000 }; // por IP, contra cualquier email (password spraying)
 const REGISTER_IP_LIMIT = { max: 10, windowMs: 60 * 60_000 };
+const RESET_EMAIL_LIMIT = { max: 3, windowMs: 60 * 60_000 }; // mails de recuperación por cuenta
+const RESET_IP_LIMIT = { max: 10, windowMs: 60 * 60_000 }; // pedidos por IP (cualquier email)
+const RESET_SENT = "Si hay una cuenta con ese email, te mandamos un link para elegir una contraseña nueva. Revisá también el spam.";
 const BAD_CREDENTIALS = "Email o contraseña incorrectos.";
 const PHOTO_URL_ERROR = "Subí la foto desde la app.";
 
@@ -124,6 +132,64 @@ export async function registerAction(_prev: unknown, form: FormData): Promise<Ac
 
     await setSessionCookie({ userId: user.id, email: user.email, ver: user.tokenVersion });
     return ok({ next: safeNextPath(next) });
+  });
+}
+
+/**
+ * "Olvidé mi contraseña": manda un link de un solo uso (30 min). La respuesta es la misma exista o no la
+ * cuenta (no revela qué emails están registrados). Con límite por cuenta y por IP para que no se use
+ * para mandar mails en masa.
+ */
+export async function requestPasswordResetAction(_prev: unknown, form: FormData): Promise<ActionResult<{ message: string }>> {
+  return runAction(async () => {
+    const parsed = parseInput(forgotPasswordSchema, { email: formValue(form, "email") ?? "" });
+    if (!parsed.ok) return parsed.result;
+    const { email } = parsed.data;
+
+    const sender = getEmailSender();
+    if (!sender) return fail("La recuperación por email todavía no está configurada. Pedile a un admin que te ayude.");
+
+    const blocked = firstBlocked([
+      [`reset-ip:${await clientIp()}`, RESET_IP_LIMIT],
+      [`reset-email:${email}`, RESET_EMAIL_LIMIT],
+    ]);
+    if (blocked) return fail(`Pediste demasiados links. Probá de nuevo en ${retryAfterMinutes(blocked.retryAfterS)} minutos.`);
+
+    const reset = await createPasswordReset(email);
+    if (reset) {
+      const base = appUrl();
+      const link = absoluteUrl(base, `/reset-password?token=${reset.token}`);
+      try {
+        await sender({ to: reset.email, ...renderPasswordResetEmail(link, base) });
+      } catch (e) {
+        console.error("[password-reset] no se pudo mandar el email", e);
+        return fail("No pudimos mandar el email. Probá de nuevo en unos minutos.");
+      }
+    }
+    return ok({ message: RESET_SENT });
+  });
+}
+
+const RESET_ERRORS = {
+  invalid: "El link no es válido. Pedí uno nuevo.",
+  used: "Este link ya se usó. Si necesitás, pedí uno nuevo.",
+  expired: "El link venció (dura 30 minutos). Pedí uno nuevo.",
+} as const;
+
+/** Elige la contraseña nueva con el token del email, cierra las otras sesiones y deja logueado. */
+export async function resetPasswordAction(_prev: unknown, form: FormData): Promise<ActionResult<{ next: string }>> {
+  return runAction(async () => {
+    const parsed = parseInput(resetPasswordSchema, {
+      token: formValue(form, "token") ?? "",
+      newPassword: formValue(form, "newPassword") ?? "",
+      confirmPassword: formValue(form, "confirmPassword") ?? "",
+    });
+    if (!parsed.ok) return parsed.result;
+    const outcome = await consumePasswordReset(parsed.data.token, await hashPassword(parsed.data.newPassword));
+    if (!outcome.ok) return fail(RESET_ERRORS[outcome.reason]);
+    resetRateLimit(`reset-email:${outcome.email}`);
+    await setSessionCookie({ userId: outcome.userId, email: outcome.email, ver: outcome.tokenVersion });
+    return ok({ next: "/home" }, "Listo: contraseña nueva. Cerramos tus otras sesiones.");
   });
 }
 

@@ -4,12 +4,12 @@
  */
 
 const C = {
-  bg: "rgb(8, 20, 45)", // --color-bg
-  surface: "rgb(15, 29, 53)", // --color-surface-1
-  border: "rgb(44, 66, 104)", // --color-border
+  bg: "rgb(10, 10, 10)", // --color-bg
+  surface: "rgb(23, 23, 23)", // --color-surface-1
+  border: "rgb(42, 42, 42)", // --color-border
   fg: "rgb(255, 255, 255)", // --color-fg
-  muted: "rgb(163, 179, 204)", // --color-fg-muted
-  subtle: "rgb(107, 127, 158)", // --color-fg-subtle
+  muted: "rgb(163, 163, 163)", // --color-fg-muted
+  subtle: "rgb(110, 110, 110)", // --color-fg-subtle
   primary: "rgb(138, 198, 23)", // --color-primary
   onPrimary: "rgb(11, 21, 0)", // --color-on-primary
 } as const;
@@ -25,8 +25,12 @@ export function absoluteUrl(appUrl: string, path: string): string {
   return `${appUrl.replace(/\/+$/, "")}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-function layout(opts: { appUrl: string; preheader: string; content: string }): string {
+function layout(opts: { appUrl: string; preheader: string; content: string; footer?: string }): string {
   const settings = absoluteUrl(opts.appUrl, "/settings/notifications");
+  const footer =
+    opts.footer ??
+    `Recibís este email porque tenés una cuenta en El Bravo.
+<a href="${escapeHtml(settings)}" style="color:${C.muted};text-decoration:underline;">Dejar de recibir estos emails</a>`;
   return `<!doctype html>
 <html lang="es-AR">
 <head>
@@ -45,8 +49,7 @@ function layout(opts: { appUrl: string; preheader: string; content: string }): s
 ${opts.content}
 </td></tr>
 <tr><td style="padding:16px 4px;font-size:12px;line-height:18px;color:${C.subtle};">
-Recibís este email porque tenés una cuenta en El Bravo.
-<a href="${escapeHtml(settings)}" style="color:${C.muted};text-decoration:underline;">Dejar de recibir estos emails</a>
+${footer}
 </td></tr>
 </table>
 </td></tr>
@@ -128,4 +131,32 @@ ${d.news.map((n) => `<p style="margin:0 0 6px;font-size:14px;line-height:20px;co
     `Dejar de recibir estos emails: ${absoluteUrl(appUrl, "/settings/notifications")}`,
   ].join("\n");
   return { subject: `📬 Tu semana en El Bravo`, html: layout({ appUrl, preheader: trained, content }), text };
+}
+
+/** Recuperar contraseña: link de un solo uso que vence en 30 minutos. */
+export function renderPasswordResetEmail(resetUrl: string, appUrl: string): RenderedEmail {
+  const content = [
+    `<p style="margin:0;font-size:18px;line-height:26px;font-weight:700;color:${C.fg};">Recuperar contraseña</p>`,
+    `<p style="margin:6px 0 0;font-size:14px;line-height:20px;color:${C.muted};">Recibimos un pedido para cambiar la contraseña de tu cuenta. Tocá el botón para elegir una nueva.</p>`,
+    button(resetUrl, "Elegir contraseña nueva"),
+    `<p style="margin:20px 0 0;font-size:12px;line-height:18px;color:${C.subtle};">El link vence en 30 minutos y sirve una sola vez. Al cambiarla, se cierran tus sesiones abiertas.</p>`,
+    `<p style="margin:8px 0 0;font-size:11px;line-height:16px;color:${C.subtle};word-break:break-all;">O copiá: ${escapeHtml(resetUrl)}</p>`,
+  ].join("\n");
+  return {
+    subject: "Recuperar contraseña — El Bravo",
+    html: layout({
+      appUrl,
+      preheader: "Elegí una contraseña nueva (el link vence en 30 minutos).",
+      content,
+      footer: "Si no lo pediste vos, ignorá este email: tu contraseña no cambia.",
+    }),
+    text: [
+      "Recibimos un pedido para cambiar la contraseña de tu cuenta en El Bravo.",
+      "",
+      "Elegí una nueva acá (vence en 30 minutos y sirve una sola vez):",
+      resetUrl,
+      "",
+      "Si no lo pediste vos, ignorá este email: tu contraseña no cambia.",
+    ].join("\n"),
+  };
 }

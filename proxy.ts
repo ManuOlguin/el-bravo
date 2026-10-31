@@ -5,6 +5,8 @@ import { jwtVerify } from "jose";
 const PUBLIC = [
   /^\/login$/,
   /^\/register$/,
+  /^\/forgot-password$/,
+  /^\/reset-password$/,
   /^\/api\/health$/,
   /^\/api\/cron\//,
   /^\/manifest\.webmanifest$/,

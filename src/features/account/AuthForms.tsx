@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Field, Input } from "@/src/components/ui";
-import { loginAction, registerAction } from "@/src/server/actions/account";
+import { loginAction, registerAction, requestPasswordResetAction, resetPasswordAction } from "@/src/server/actions/account";
 import type { ActionResult } from "@/src/server/http/result";
 
 type AuthState = ActionResult<{ next: string }> | null;
@@ -81,6 +81,11 @@ export function LoginForm({ next, expired }: { next: string | null; expired: boo
         <Field label="Contraseña" htmlFor="password" error={firstError(state, "password")}>
           <Input name="password" type="password" autoComplete="current-password" placeholder="Tu contraseña" required />
         </Field>
+        <p className="-mt-2 text-right text-sm">
+          <Link href="/forgot-password" className="font-semibold text-fg-muted hover:text-fg">
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </p>
         <FormError message={generalError(state)} />
         <Button type="submit" size="lg" fullWidth pending={pending || !!state?.ok}>
           Ingresar
@@ -135,6 +140,92 @@ export function RegisterForm({ next }: { next: string | null }) {
           Iniciá sesión
         </Link>
       </p>
+    </AuthCard>
+  );
+}
+
+/** Paso 1: pedir el link de recuperación por email. */
+export function ForgotPasswordForm() {
+  const [state, formAction, pending] = useActionState(requestPasswordResetAction, null);
+  const [email, setEmail] = useState("");
+  const sent = state?.ok ? state.data.message : null;
+
+  return (
+    <AuthCard title="Recuperar contraseña" subtitle="Te mandamos un link por email para elegir una contraseña nueva.">
+      {sent ? (
+        <div className="space-y-4">
+          <p role="status" className="rounded-xl border border-primary/40 bg-primary/10 px-3 py-3 text-sm">
+            {sent}
+          </p>
+          <p className="text-xs text-fg-subtle">El link vence en 30 minutos y sirve una sola vez.</p>
+        </div>
+      ) : (
+        <form action={formAction} className="space-y-4" noValidate>
+          <Field label="Email" htmlFor="email" error={state && !state.ok ? state.fieldErrors?.email?.[0] : undefined}>
+            <Input
+              name="email"
+              type="email"
+              autoComplete="email"
+              inputMode="email"
+              placeholder="tu@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </Field>
+          <FormError message={state && !state.ok && !state.fieldErrors?.email ? state.error : null} />
+          <Button type="submit" size="lg" fullWidth pending={pending}>
+            Mandarme el link
+          </Button>
+        </form>
+      )}
+      <p className="mt-6 text-center text-sm text-fg-muted">
+        <Link href="/login" className="font-semibold text-primary">
+          Volver a iniciar sesión
+        </Link>
+      </p>
+    </AuthCard>
+  );
+}
+
+/** Paso 2 (desde el link del email): elegir la contraseña nueva. */
+export function ResetPasswordForm({ token }: { token: string | null }) {
+  const [state, formAction, pending] = useActionState(resetPasswordAction, null);
+  useAuthRedirect(state);
+
+  if (!token) {
+    return (
+      <AuthCard title="Link inválido" subtitle="Este link no sirve para cambiar la contraseña.">
+        <Link href="/forgot-password" className="font-semibold text-primary">
+          Pedir un link nuevo
+        </Link>
+      </AuthCard>
+    );
+  }
+
+  const failed = state && !state.ok && !state.fieldErrors ? state.error : null;
+  return (
+    <AuthCard title="Contraseña nueva" subtitle="Elegí una contraseña nueva. Al guardarla se cierran tus otras sesiones.">
+      <form action={formAction} className="space-y-4" noValidate>
+        <input type="hidden" name="token" value={token} />
+        <Field label="Contraseña nueva" htmlFor="newPassword" error={firstError(state as AuthState, "newPassword")}>
+          <Input name="newPassword" type="password" autoComplete="new-password" placeholder="Mínimo 8 caracteres" required />
+        </Field>
+        <Field label="Repetila" htmlFor="confirmPassword" error={firstError(state as AuthState, "confirmPassword")}>
+          <Input name="confirmPassword" type="password" autoComplete="new-password" placeholder="La misma contraseña" required />
+        </Field>
+        <FormError message={failed} />
+        {failed && (
+          <p className="text-sm">
+            <Link href="/forgot-password" className="font-semibold text-primary">
+              Pedir un link nuevo
+            </Link>
+          </p>
+        )}
+        <Button type="submit" size="lg" fullWidth pending={pending || !!state?.ok}>
+          Guardar y entrar
+        </Button>
+      </form>
     </AuthCard>
   );
 }

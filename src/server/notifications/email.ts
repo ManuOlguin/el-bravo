@@ -1,8 +1,9 @@
 /**
  * Canal email (D9): outbox sobre `Notification.emailedAt` + resumen semanal. Lo corre el cron
- * `/api/cron/notifications`. Sin `RESEND_API_KEY` queda deshabilitado (loguea y no falla).
+ * `/api/cron/notifications`. Sin proveedor configurado (Resend o SMTP, ver `src/server/email/transport.ts`)
+ * queda deshabilitado (loguea y no falla).
  */
-import { Resend } from "resend";
+import { emailProvider, getMailSender, type MailMessage, type MailSender } from "@/src/server/email/transport";
 import { prisma } from "@/src/lib/db";
 import { addDays, addWeeks, formatLocalDate, localDateOf, weekKeyOf, zonedToUtc } from "@/src/lib/time";
 import { renderDigestEmail, renderNotificationEmail, type RenderedEmail } from "@/src/emails/render";
@@ -10,9 +11,9 @@ import { loadPrefs } from "./preferences";
 import { renderData } from "./queries";
 import { renderNotification } from "./rules";
 
-export type EmailMessage = RenderedEmail & { to: string; idempotencyKey?: string };
+export type EmailMessage = MailMessage & RenderedEmail;
 /** Envía o lanza. */
-export type EmailSender = (m: EmailMessage) => Promise<void>;
+export type EmailSender = MailSender;
 
 const HOUR_MS = 3_600_000;
 /** Solo se mandan por email las notificaciones de las últimas 48 h (no un backlog viejo al activar el canal). */
@@ -24,28 +25,18 @@ export function appUrl(): string {
 }
 
 export function isEmailEnabled(): boolean {
-  return !!process.env.RESEND_API_KEY;
+  return emailProvider() !== null;
 }
 
-/** Sender real con Resend, o `null` si falta `RESEND_API_KEY`. */
+/** Sender real (Resend o SMTP), o `null` si no hay proveedor configurado. */
 export function getEmailSender(): EmailSender | null {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) return null;
-  const resend = new Resend(key);
-  const from = process.env.EMAIL_FROM || "El Bravo <onboarding@resend.dev>";
-  return async (m) => {
-    const { error } = await resend.emails.send(
-      { from, to: m.to, subject: m.subject, html: m.html, text: m.text },
-      m.idempotencyKey ? { idempotencyKey: m.idempotencyKey } : undefined
-    );
-    if (error) throw new Error(`Resend: ${error.message}`);
-  };
+  return getMailSender();
 }
 
 export type EmailRunResult = { disabled: boolean; sent: number; failed: number; skipped: number };
 
 function disabled(): EmailRunResult {
-  console.info("[email] email deshabilitado (falta RESEND_API_KEY)");
+  console.info("[email] email deshabilitado (falta RESEND_API_KEY o EMAIL_HOST/EMAIL_USER/EMAIL_PASSWORD)");
   return { disabled: true, sent: 0, failed: 0, skipped: 0 };
 }
 

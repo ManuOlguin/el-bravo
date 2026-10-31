@@ -19,7 +19,7 @@ export const NAV_ITEMS: NavItem[] = [
 ];
 
 /** Rutas donde no se muestra el shell (pantallas de auth). */
-export const SHELL_HIDDEN_PATHS = ["/login", "/register"];
+export const SHELL_HIDDEN_PATHS = ["/login", "/register", "/forgot-password", "/reset-password"];
 
 export function isNavItemActive(item: Pick<NavItem, "href">, pathname: string | null) {
   if (!pathname) return false;
