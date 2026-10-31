@@ -4,7 +4,7 @@ Registro del orquestador. Cada ola se ejecuta con subagentes en worktrees separa
 
 | Ola | Workstream | Estado | Rama | Notas |
 |---|---|---|---|---|
-| 0a | W0-A Base técnica | ⏳ en curso | `v2/w0-a-base` | |
+| 0a | W0-A Base técnica | ✅ mergeado | `v2/w0-a-base` | 6 commits; typecheck, tests (38 unit + 1 int), build y colores OK. Lint: quedan 55 errores heredados (`no-explicit-any`) que se van con las reescrituras |
 | 0a | W0-B Base UI + PWA | ⏳ en curso | `v2/w0-b-ui` | |
 | 0b | W0-C Schema v2 | pendiente | `v2/w0-c-schema` | |
 | 1 | W1-1 … W1-5 | pendiente | | |
@@ -14,3 +14,4 @@ Registro del orquestador. Cada ola se ejecuta con subagentes en worktrees separa
 
 ## Bitácora
 - 31-oct: arranca la Ola 0a.
+- W0-A terminado y mergeado. Desvíos: arreglos en `db-worktree.sh` (bash 3.2, seed a la DB correcta) y en el setup de Vitest (`resetDb` en transacción, setupFiles). Se creó `elbravo_main` y `elbravo_main_test` en el repo principal (`.env.local`).
