@@ -6,7 +6,8 @@ import { getLastPerformanceAction } from "@/src/server/actions/activities";
 import { ExerciseBlock } from "./ExerciseBlock";
 import type { PreviousSetLike } from "./format";
 import { PlusIcon } from "./icons";
-import { RestTimer, type RestTimerState } from "./RestTimer";
+import { primeRestAudio } from "./rest-alerts";
+import { RestTimer, useRestTimer } from "./RestTimer";
 import { restFor } from "./rest-timer";
 import type { ExerciseDraft, SetDraft, WorkoutAction, WorkoutDraft } from "./state";
 
@@ -27,6 +28,7 @@ export function WorkoutEditor({
   excludeActivityId,
   loadPrevious = defaultLoader,
   restTimerClassName,
+  restTimerKey,
   className,
 }: {
   draft: WorkoutDraft;
@@ -37,13 +39,14 @@ export function WorkoutEditor({
   loadPrevious?: PreviousLoader;
   /** Posición vertical de la barra de descanso (por defecto, arriba de la navegación inferior). */
   restTimerClassName?: string;
+  /** Modo live: clave para guardar el descanso en curso (ver `useRestTimer`). */
+  restTimerKey?: string;
   className?: string;
 }) {
   const [picker, setPicker] = useState<{ mode: "add" } | { mode: "replace"; key: string } | null>(null);
   const [previous, setPrevious] = useState<Record<string, PreviousSetLike[]>>({});
-  const [timer, setTimer] = useState<RestTimerState | null>(null);
+  const [timer, setTimer] = useRestTimer(restTimerKey);
   const requested = useRef(new Set<string>());
-  const timerSeq = useRef(0);
   const mode = draft.mode;
 
   // "Anterior": pide solo los ejercicios que todavía no se pidieron.
@@ -77,10 +80,12 @@ export function WorkoutEditor({
       dispatch({ type: "toggleSetDone", exerciseKey: ex.key, setKey: set.key, nowMs: now });
       if (mode !== "live") return;
       const rest = restFor(set, ex);
-      if (becomingDone && rest > 0) setTimer({ id: ++timerSeq.current, startMs: now, totalS: rest });
+      // Dentro del toque: habilita el audio para que los pitidos del fin puedan sonar.
+      if (becomingDone && rest > 0) primeRestAudio();
+      if (becomingDone && rest > 0) setTimer({ id: now, startMs: now, totalS: rest });
       else if (!becomingDone) setTimer(null);
     },
-    [dispatch, mode, previous]
+    [dispatch, mode, previous, setTimer],
   );
 
   const onPick = (exercises: ExerciseSummary[]) => {

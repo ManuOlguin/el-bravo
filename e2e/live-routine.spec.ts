@@ -57,6 +57,8 @@ test("rutina con un ejercicio por tiempo: en vivo, retomar, terminar y actualiza
   await expect(page.getByText("Tenés un entrenamiento en curso")).toBeVisible();
   await page.getByRole("button", { name: "Retomar entrenamiento" }).click();
   await expect(page.getByText(/^2\/5 series/)).toBeVisible();
+  // El descanso que corría antes de recargar sigue (no vuelve a empezar ni se pierde).
+  await expect(page.getByRole("timer", { name: /^Descanso: faltan/ })).toBeVisible();
   await expect(liveBlock(page, "Press de Banca").getByLabel("Kilos de la serie 1", { exact: true })).toHaveValue("55");
   await liveBlock(page, "Press de Banca").getByRole("button", { name: "Marcar serie 2 como hecha" }).click();
   await expect(page.getByText(/^3\/5 series/)).toBeVisible();

@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { restTimerKey } from "./rest-alerts";
 import type { WorkoutDraft, WorkoutMode } from "./state";
 
 /**
@@ -49,6 +50,7 @@ export function writeDraft(key: string, draft: WorkoutDraft) {
 export function clearDraft(key: string) {
   try {
     window.localStorage.removeItem(key);
+    window.localStorage.removeItem(restTimerKey(key)); // el descanso en curso de ese entrenamiento
   } catch {
     // ídem
   }

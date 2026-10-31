@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, NumberInput, Sheet, cn, toast, useConfirm } from "@/src/components/ui";
 import { formatDuration, localTimeOf } from "@/src/lib/time";
@@ -12,6 +12,7 @@ import { endMsFor, isResumable, liveStatus, needsEndConfirmation, type EndChoice
 import { WorkoutDraftError, defaultStart, draftFromRoutine, draftSummary, inputSummary, toActivityInput, workoutReducer, type WorkoutDraft } from "./state";
 import { SubmitWorkoutScreen } from "./SubmitWorkoutScreen";
 import type { CategoryOption } from "./types";
+import { askRestNotifications, canAskRestNotifications, dismissRestNotifications, restTimerKey } from "./rest-alerts";
 import { draftKey, readDraft, useDraftPersistence } from "./useDraftPersistence";
 import { WorkoutEditor } from "./WorkoutEditor";
 
@@ -60,6 +61,49 @@ function useScrollLock() {
 }
 
 const minutes = (ms: number) => Math.max(1, Math.round(ms / 60_000));
+
+const subscribeNothing = () => () => undefined;
+
+/** Una vez: ofrecer avisos del fin del descanso con el celular bloqueado (notificación del sistema). */
+function RestNotifyPrompt() {
+  const canAsk = useSyncExternalStore(subscribeNothing, canAskRestNotifications, () => false);
+  const [hidden, setHidden] = useState(false);
+  if (!canAsk || hidden) return null;
+  return (
+    <Card className="mb-3 flex items-start gap-3 p-3">
+      <span aria-hidden="true" className="text-xl">
+        🔔
+      </span>
+      <div className="min-w-0 flex-1 space-y-2">
+        <p className="text-sm">
+          <strong>¿Te avisamos cuando termina el descanso?</strong> <span className="text-fg-muted">Aunque bloquees el celular o estés en otra app.</span>
+        </p>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            onClick={async () => {
+              setHidden(true);
+              const ok = await askRestNotifications();
+              toast[ok ? "success" : "info"](ok ? "Listo: te avisamos al terminar cada descanso" : "Sin permiso: te avisamos solo con la app abierta");
+            }}
+          >
+            Activar
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              dismissRestNotifications();
+              setHidden(true);
+            }}
+          >
+            Ahora no
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 /** "¿Cuándo terminaste?": aparece al terminar si el entrenamiento parece olvidado o es muy largo. */
 function EndTimePicker({ status, value, onChange, tz }: { status: LiveStatus; value: EndChoice; onChange(c: EndChoice): void; tz: string }) {
@@ -313,7 +357,15 @@ export function LiveWorkoutScreen({ routine, categories, tz }: { routine: Routin
               );
             })()
           ) : (
-            <WorkoutEditor draft={draft} dispatch={dispatch} restTimerClassName="bottom-[calc(1rem+env(safe-area-inset-bottom))]" />
+            <>
+              <RestNotifyPrompt />
+              <WorkoutEditor
+                draft={draft}
+                dispatch={dispatch}
+                restTimerKey={restTimerKey(key)}
+                restTimerClassName="bottom-[calc(1rem+env(safe-area-inset-bottom))]"
+              />
+            </>
           )}
         </div>
       </div>
