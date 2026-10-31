@@ -19,6 +19,10 @@
   --color-silver: #d4d4d4;
   --color-bronze: #d97706;
 
+  /* Tailwind 4 ya no trae max-w-screen-*: se usan en todo el shell y las páginas. */
+  --container-screen-sm: 40rem;
+  --container-screen-md: 48rem;
+
   --font-sans: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   --radius-card: 1.25rem;
   --shadow-card: 0 1px 0 0 rgb(255 255 255 / 0.04) inset, 0 8px 24px -12px rgb(0 0 0 / 0.6);

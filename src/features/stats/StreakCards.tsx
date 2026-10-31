@@ -2,6 +2,8 @@ import { cn } from "@/src/components/ui";
 import type { UserStats } from "@/src/server/stats";
 import { formatInt } from "./format";
 
+const weeks = (n: number) => (n === 1 ? "semana" : "semanas");
+
 function StreakCard({
   title,
   rule,
@@ -17,30 +19,39 @@ function StreakCard({
   total: number;
   highlight?: boolean;
 }) {
+  const muted = highlight ? "text-on-primary/70" : "text-fg-muted";
+  const line = highlight ? "border-on-primary/20" : "border-border";
   return (
     <section
       aria-label={title}
-      className={cn(
-        "flex flex-col gap-3 rounded-card p-4 shadow-card",
-        highlight ? "bg-primary-gradient text-on-primary" : "border border-border bg-surface-1"
-      )}
+      className={cn("overflow-hidden rounded-card shadow-card", highlight ? "bg-primary-gradient text-on-primary" : "border border-border bg-surface-1")}
     >
-      <div>
+      <header className={cn("border-b px-4 py-3", line)}>
         <h2 className="text-sm font-bold">{title}</h2>
-        <p className={cn("text-xs", highlight ? "text-on-primary/75" : "text-fg-subtle")}>{rule}</p>
+        <p className={cn("text-xs", muted)}>{rule}</p>
+      </header>
+      <div className="grid grid-cols-[1fr_auto]">
+        {/* Racha actual: el número protagonista. */}
+        <div className="flex flex-col justify-center px-4 py-3">
+          <span className={cn("text-[11px] font-semibold uppercase tracking-wide", muted)}>Racha actual</span>
+          <span className="flex items-baseline gap-1.5">
+            <span className="text-4xl font-extrabold leading-none tabular-nums">{formatInt(current)}</span>
+            <span className={cn("text-sm", muted)}>{weeks(current)}</span>
+          </span>
+        </div>
+        {/* Mejor y total: filas etiqueta / valor separadas por líneas. */}
+        <dl className={cn("min-w-32 divide-y border-l text-sm", line, highlight ? "divide-on-primary/20" : "divide-border")}>
+          {[
+            { label: "Mejor racha", value: best },
+            { label: "En total", value: total },
+          ].map((i) => (
+            <div key={i.label} className="flex items-center justify-between gap-3 px-4 py-2.5">
+              <dt className={muted}>{i.label}</dt>
+              <dd className="text-lg font-extrabold tabular-nums">{formatInt(i.value)}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
-      <dl className="grid grid-cols-3 gap-2">
-        {[
-          { label: "racha actual", value: current, big: true },
-          { label: "mejor racha", value: best },
-          { label: "en total", value: total },
-        ].map((i) => (
-          <div key={i.label} className="flex min-w-0 flex-col-reverse justify-end gap-0.5">
-            <dt className={cn("text-[11px] leading-tight", highlight ? "text-on-primary/75" : "text-fg-muted")}>{i.label}</dt>
-            <dd className={cn("font-extrabold leading-none tabular-nums", i.big ? "text-4xl" : "pt-2 text-2xl")}>{formatInt(i.value)}</dd>
-          </div>
-        ))}
-      </dl>
     </section>
   );
 }
@@ -62,7 +73,7 @@ export function StreakCards({ stats }: { stats: UserStats }) {
       />
       <StreakCard
         title="Semanas perfectas"
-        rule={`Tu objetivo cumplido: ${goal} ${goal === 1 ? "entrenamiento" : "entrenamientos"}`}
+        rule={`Objetivo cumplido: ${goal} ${goal === 1 ? "entrenamiento" : "entrenamientos"}`}
         current={stats.currentStreakWeeks}
         best={stats.bestStreakWeeks}
         total={stats.perfectWeeks}

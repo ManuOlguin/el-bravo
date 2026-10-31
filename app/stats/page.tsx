@@ -20,12 +20,12 @@ const RANGE_LABEL: Record<StatsRange, string> = { "4w": "últimas 4 semanas", "1
 
 function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <Card as="section" className="space-y-3">
-      <div>
+    <Card as="section" className="p-0">
+      <header className="border-b border-border px-4 py-3">
         <h2 className="text-base font-bold">{title}</h2>
         {subtitle && <p className="text-xs text-fg-subtle">{subtitle}</p>}
-      </div>
-      {children}
+      </header>
+      <div className="p-4">{children}</div>
     </Card>
   );
 }
