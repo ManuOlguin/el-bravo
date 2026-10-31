@@ -29,6 +29,7 @@ import {
   toastResult,
   useConfirm,
 } from "@/src/components/ui";
+import { BadgesSection } from "./sections/badges";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -349,6 +350,7 @@ export function DevUiCatalog() {
       <LayoutSection />
       <DataSection />
       <FormSection />
+      <BadgesSection />
     </div>
   );
 }
