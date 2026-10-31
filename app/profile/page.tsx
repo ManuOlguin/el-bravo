@@ -1,5 +1,5 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import LogoutButton from "@/src/components/LogoutButton";
 import { prisma } from "@/src/lib/db";
 import { addWeeks, formatDate, formatDateTime, weekKeyOf, type WeekKey } from "@/src/lib/time";
 import { requirePageUser } from "@/src/server/auth/dal";
@@ -279,7 +279,9 @@ export default async function ProfilePage() {
             </a>
           </div>
 
-          <LogoutButton />
+          <Link href="/settings" className="inline-flex items-center rounded-md bg-surface-3 px-3 py-2 text-sm font-medium hover:bg-border">
+            Ajustes
+          </Link>
         </div>
 
         <section className="rounded-2xl bg-slate-800 p-6 shadow-lg">

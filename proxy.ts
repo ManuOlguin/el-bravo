@@ -5,7 +5,6 @@ import { jwtVerify } from "jose";
 const PUBLIC = [
   /^\/login$/,
   /^\/register$/,
-  /^\/api\/auth\/(login|register|logout)$/,
   /^\/api\/health$/,
   /^\/api\/cron\//,
   /^\/manifest\.webmanifest$/,
@@ -31,7 +30,8 @@ export async function proxy(req: NextRequest) {
   const reqHeaders = new Headers(req.headers);
   reqHeaders.set("x-pathname", pathname + search);
 
-  if (AUTH_PAGES.some((r) => r.test(pathname)) && loggedIn) {
+  // `expired=1`: la firma es válida pero la sesión fue revocada (dal.ts); hay que dejar ver /login.
+  if (AUTH_PAGES.some((r) => r.test(pathname)) && loggedIn && req.nextUrl.searchParams.get("expired") !== "1") {
     return NextResponse.redirect(new URL("/home", req.url));
   }
   if (PUBLIC.some((r) => r.test(pathname)) || loggedIn) {

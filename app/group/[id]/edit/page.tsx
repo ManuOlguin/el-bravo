@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/src/lib/currentUser";
 import { prisma } from "@/src/lib/db";
 import EditGroupForm from "@/src/components/EditGroupForm";
-import LogoutButton from "@/src/components/LogoutButton";
 
 export default async function EditGroupByIdPage({
   params,
@@ -40,7 +39,6 @@ export default async function EditGroupByIdPage({
           >
             ← Volver al grupo
           </a>
-          <LogoutButton />
         </div>
 
         <div className="bg-gray-800 rounded-lg p-6">

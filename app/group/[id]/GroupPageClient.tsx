@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import UserActiveStats from "@/src/components/UserActiveStats";
 import GroupUserCalendar from "@/src/components/GroupUserCalendar";
@@ -85,14 +85,6 @@ type GroupPageClientProps = {
   timezone: string;
 };
 
-type MeResponse = {
-  user: {
-    id: string;
-    name?: string | null;
-    image?: string | null;
-  } | null;
-};
-
 function getInitial(value?: string | null) {
   return (value || "G").charAt(0).toUpperCase();
 }
@@ -145,47 +137,10 @@ export default function GroupPageClient({
   const [settingsPopupOpen, setSettingsPopupOpen] = useState(false);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
-  const [me, setMe] = useState<MeResponse["user"]>(null);
-  const [meLoading, setMeLoading] = useState(true);
-  const [meError, setMeError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-
-    async function loadMe() {
-      try {
-        setMeLoading(true);
-        setMeError(null);
-
-        const res = await fetch("/api/auth/me", {
-          method: "GET",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-        });
-
-        if (!res.ok) {
-          throw new Error(`GET /api/auth/me failed (${res.status})`);
-        }
-
-        const data = (await res.json()) as MeResponse;
-
-        if (!alive) return;
-        setMe(data.user ?? null);
-      } catch (err) {
-        if (!alive) return;
-        setMe(null);
-        setMeError(err instanceof Error ? err.message : "Unknown error");
-      } finally {
-        if (!alive) return;
-        setMeLoading(false);
-      }
-    }
-
-    loadMe();
-    return () => {
-      alive = false;
-    };
-  }, []);
+  // El usuario actual llega por props (antes se pedía a /api/auth/me, que ya no existe).
+  const me = useMemo(() => ({ id: currentUserId }), [currentUserId]);
+  const meLoading = false;
+  const meError: string | null = null;
 
   const myActivities = useMemo(
     () => (me ? activities.filter((activity) => activity.user?.id === me.id) : []),

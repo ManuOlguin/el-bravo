@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/src/lib/currentUser";
 import { prisma } from "@/src/lib/db";
 import EditProfileForm from "@/src/components/EditProfileForm";
-import LogoutButton from "@/src/components/LogoutButton";
 
 export default async function EditProfilePage() {
   const user = await getCurrentUser();
@@ -28,7 +27,6 @@ export default async function EditProfilePage() {
             ← Volver al perfil
           </a>
 
-          <LogoutButton />
         </div>
 
         <section className="rounded-2xl bg-slate-800 p-6 shadow-lg">
