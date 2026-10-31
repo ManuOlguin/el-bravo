@@ -38,6 +38,9 @@ export const newExerciseInputSchema = z.object({
 });
 export type NewExerciseInput = z.infer<typeof newExerciseInputSchema>;
 
+/** Nombre a mostrar (y a guardar en "Basada en la rutina de…") cuando el autor no tiene nombre. */
+export const FALLBACK_AUTHOR_NAME = "Usuario de El Bravo";
+
 export const ROUTINE_VISIBILITIES = ["private", "public"] as const;
 export const routineVisibilitySchema = z.enum(ROUTINE_VISIBILITIES);
 export type RoutineVisibility = z.infer<typeof routineVisibilitySchema>;

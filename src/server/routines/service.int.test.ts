@@ -388,7 +388,8 @@ describe("copiar rutinas (fase 2)", () => {
 
   it("copiar una pública ajena: referencia el catálogo, duplica el ejercicio propio del autor y guarda el origen", async () => {
     const { user, bench, hammer, pectoral, publicId } = await publicFixtures();
-    const { routineId } = await copyRoutine(user.id, publicId);
+    const { routineId, own } = await copyRoutine(user.id, publicId);
+    expect(own).toBe(false);
     expect(await prisma.routine.findUniqueOrThrow({ where: { id: routineId } })).toMatchObject({
       userId: user.id, name: "Espalda de B", notes: "al fallo la última", visibility: "private",
       copiedFromRoutineId: publicId, copiedFromUserName: "B",
@@ -459,6 +460,7 @@ describe("copiar rutinas (fase 2)", () => {
     const { user, bench, plank, publicId } = await publicFixtures();
     const own = await createRoutine(user.id, { ...routineInput(bench.id, plank.id), visibility: "public" });
     const dup = await copyRoutine(user.id, own.routineId);
+    expect(dup.own).toBe(true);
     expect(await prisma.routine.findUniqueOrThrow({ where: { id: dup.routineId } })).toMatchObject({
       name: "Pecho y core (copia)", visibility: "private", copiedFromRoutineId: null, copiedFromUserName: null,
     });
@@ -469,6 +471,13 @@ describe("copiar rutinas (fase 2)", () => {
     expect(await prisma.routine.findUniqueOrThrow({ where: { id: again.routineId } })).toMatchObject({
       name: "Espalda de B (copia)", copiedFromRoutineId: publicId, copiedFromUserName: "B",
     });
+  });
+
+  it("si el autor no tiene nombre, la atribución usa el nombre por defecto de la app", async () => {
+    const { user, other, publicId } = await publicFixtures();
+    await prisma.user.update({ where: { id: other.id }, data: { name: null } });
+    const { routineId } = await copyRoutine(user.id, publicId);
+    expect(await prisma.routine.findUniqueOrThrow({ where: { id: routineId } })).toMatchObject({ copiedFromUserName: "Usuario de El Bravo" });
   });
 
   it("borrar la original deja la copia con el nombre del autor y sin link", async () => {

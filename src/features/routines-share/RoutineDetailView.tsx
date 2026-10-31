@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Avatar, Card, LinkButton, PageHeader, Pill } from "@/src/components/ui";
 import { ExerciseThumb } from "@/src/features/exercises/ExerciseThumb";
+import { FALLBACK_AUTHOR_NAME } from "@/src/schemas/routine";
 import { restLabel, setLabels } from "@/src/features/workout/format";
 import { PlayIcon } from "@/src/features/workout/icons";
 import { CopiedFromNote, VisibilityPill, routineCountsLabel } from "@/src/features/workout/RoutineMeta";
@@ -33,7 +34,7 @@ export function RoutineDetailView({ routine, shareUrl }: { routine: RoutineView;
           <p className="text-sm text-fg-muted">
             Rutina de{" "}
             <Link href={`/u/${owner.id}`} className="font-semibold text-fg hover:underline">
-              {owner.name ?? "Usuario de El Bravo"}
+              {owner.name ?? FALLBACK_AUTHOR_NAME}
             </Link>
           </p>
         </div>

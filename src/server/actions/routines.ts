@@ -96,9 +96,9 @@ export async function copyRoutineAction(routineId: string): Promise<ActionResult
     const user = await requireUser();
     const id = idSchema.safeParse(routineId);
     if (!id.success) return fail(NOT_FOUND);
-    const copy = await copyRoutine(user.id, id.data);
+    const { routineId: copyId, own } = await copyRoutine(user.id, id.data);
     revalidateRoutines();
-    return ok(copy, "Listo: la rutina ya está en tus rutinas");
+    return ok({ routineId: copyId }, own ? "Rutina duplicada" : "Listo: la rutina ya está en tus rutinas");
   });
 }
 

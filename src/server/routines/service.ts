@@ -10,6 +10,7 @@ import { normalize } from "@/src/features/exercises/search";
 import { isPendingExerciseId, PENDING_PREFIX } from "@/src/features/routines-share/match";
 import { GROUP_KEYS, type ExerciseSummary } from "@/src/features/exercises/types";
 import {
+  FALLBACK_AUTHOR_NAME,
   routineInputSchema,
   type RoutineForEditor,
   type RoutineInput,
@@ -253,10 +254,10 @@ async function duplicateExercise(tx: Tx, userId: string, e: CopySourceExerciseRo
 /**
  * "Copiar a mis rutinas" (pública de otro) o "Duplicar" (propia): rutina nueva PRIVADA de `userId` con los mismos
  * ejercicios y series, en una transacción. Ver `planExerciseCopies` para qué se referencia, reusa o duplica.
- * La privada de otro, una inexistente o la de un autor desactivado → `NOT_FOUND`.
+ * La privada de otro, una inexistente o la de un autor desactivado → `NOT_FOUND`. `own` = era una rutina del propio usuario.
  */
-export async function copyRoutine(userId: string, routineId: string): Promise<{ routineId: string }> {
-  const newId = await prisma.$transaction(
+export async function copyRoutine(userId: string, routineId: string): Promise<{ routineId: string; own: boolean }> {
+  const result = await prisma.$transaction(
     async (tx) => {
       const src = await tx.routine.findUnique({ where: { id: routineId }, include: copySourceInclude });
       const own = src?.userId === userId;
@@ -292,7 +293,7 @@ export async function copyRoutine(userId: string, routineId: string): Promise<{ 
           visibility: "private",
           // Duplicar una propia conserva la atribución del original; copiar de otro apunta a esa rutina y su autor.
           copiedFromRoutineId: own ? src.copiedFromRoutineId : src.id,
-          copiedFromUserName: own ? src.copiedFromUserName : (src.user.name ?? "otro usuario").slice(0, 80),
+          copiedFromUserName: own ? src.copiedFromUserName : (src.user.name ?? FALLBACK_AUTHOR_NAME).slice(0, 80),
         },
         select: { id: true },
       });
@@ -312,12 +313,12 @@ export async function copyRoutine(userId: string, routineId: string): Promise<{ 
           })),
         })),
       });
-      return r.id;
+      return { routineId: r.id, own };
     },
     // Hasta 40 ejercicios (+ duplicados) contra TiDB: el default de 5 s de Prisma queda justo.
     { timeout: 20_000, maxWait: 5_000 }
   );
-  return { routineId: newId };
+  return result;
 }
 
 /** Los entrenamientos hechos con la rutina se conservan (`routineId` → null por `onDelete: SetNull`). */
