@@ -4,12 +4,11 @@
  */
 import type { ScoringEffect } from "@/src/server/scoring/types";
 import type { BadgeChange } from "@/src/server/badges/types";
-import type { Celebration, NewRecord } from "./types";
+import type { Celebration, MiniStanding, NewRecord, SeasonStandingWindow } from "./types";
 
 export type CelebrationStep =
   | { kind: "complete"; totalPoints: number; workoutNumber: number | null }
-  | { kind: "points"; seasons: ScoringEffect[] }
-  | { kind: "rank"; effect: ScoringEffect; passed: string[] }
+  | { kind: "points"; seasons: { effect: ScoringEffect; standings: SeasonStandingWindow | null }[] }
   | { kind: "week"; workouts: number; goal: number; justMet: boolean; perfectStreak: number }
   | { kind: "records"; records: NewRecord[] }
   | { kind: "badgeProgress"; changes: BadgeChange[] }
@@ -31,7 +30,7 @@ export function firstName(name: string | null): string {
 }
 
 /**
- * Orden: completo → puntos → puesto (uno por temporada en la que subió) → semana → récords → avance de
+ * Orden: completo → puntos (con la mini tabla de cada temporada: si subió de puesto, se anima ahí) → semana → récords → avance de
  * insignias (las más cerca del próximo nivel) → insignias (una por cada subida de nivel, como cierre).
  * Lo que no pasó no tiene pantalla.
  */
@@ -40,11 +39,11 @@ export function buildCelebrationSteps(scoring: ScoringEffect[], badges: BadgeCha
   const steps: CelebrationStep[] = [
     { kind: "complete", totalPoints: scored.reduce((acc, e) => acc + pointsGained(e), 0), workoutNumber: c?.workoutNumber ?? null },
   ];
-  if (scored.length > 0) steps.push({ kind: "points", seasons: scored });
-  for (const e of scoring) {
-    if (e.rankBefore !== null && e.rankAfter > 0 && e.rankAfter < e.rankBefore) {
-      steps.push({ kind: "rank", effect: e, passed: c?.passed.find((p) => p.seasonId === e.seasonId)?.names ?? [] });
-    }
+  if (scored.length > 0) {
+    steps.push({
+      kind: "points",
+      seasons: scored.map((effect) => ({ effect, standings: c?.standings.find((s) => s.seasonId === effect.seasonId) ?? null })),
+    });
   }
   if (c?.week) steps.push({ kind: "week", ...c.week });
   if (c && c.records.length > 0) steps.push({ kind: "records", records: c.records.slice(0, MAX_RECORDS) });
@@ -77,6 +76,32 @@ export function findNewRecords(
     if (prev !== undefined && s.weightKg > prev) out.push({ ...s, previousKg: prev });
   }
   return out.sort((a, b) => b.weightKg - b.previousKg - (a.weightKg - a.previousKg) || a.exerciseName.localeCompare(b.exerciseName));
+}
+
+/** Subió de puesto en la temporada (tenía puesto antes y ahora está más arriba). */
+export const climbed = (e: ScoringEffect) => e.rankBefore !== null && e.rankAfter > 0 && e.rankAfter < e.rankBefore;
+
+/**
+ * Ventana de `size` filas del ranking (ordenado por puesto) con el usuario y sus vecinos: uno arriba y
+ * uno abajo; si es primero o último, se corre para seguir mostrando `size`. Sin el usuario: vacía.
+ */
+export function standingsWindow<T extends { userId: string }>(rows: T[], userId: string, size = 3): T[] {
+  const i = rows.findIndex((r) => r.userId === userId);
+  if (i < 0) return [];
+  const start = Math.max(0, Math.min(i - 1, rows.length - size));
+  return rows.slice(start, start + size);
+}
+
+/**
+ * Orden de las filas ANTES del entrenamiento: los demás no cambiaron sus puntos, el usuario tenía
+ * `pointsBefore`. A igual puntaje el usuario queda abajo (todavía no los había pasado).
+ */
+export function orderBefore(rows: MiniStanding[], userId: string, pointsBefore: number): string[] {
+  const pts = (r: MiniStanding) => (r.userId === userId ? pointsBefore : r.points);
+  return rows
+    .map((r, i) => ({ r, i }))
+    .sort((a, b) => pts(b.r) - pts(a.r) || (a.r.userId === userId ? 1 : b.r.userId === userId ? -1 : a.i - b.i))
+    .map(({ r }) => r.userId);
 }
 
 /** Quiénes quedaron entre el puesto nuevo y el anterior: son los que el usuario pasó. */

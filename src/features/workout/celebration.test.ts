@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { ScoringEffect } from "@/src/server/scoring/types";
 import type { BadgeChange } from "@/src/server/badges/types";
-import { buildCelebrationSteps, findNewRecords, firstName, passedUsers } from "./celebration";
-import type { Celebration } from "./types";
+import { buildCelebrationSteps, climbed, findNewRecords, firstName, orderBefore, passedUsers, standingsWindow } from "./celebration";
+import type { Celebration, MiniStanding, SeasonStandingWindow } from "./types";
 
 const effect = (o: Partial<ScoringEffect> = {}): ScoringEffect => ({
   seasonId: "s1",
@@ -30,7 +30,7 @@ const badge = (o: Partial<BadgeChange> = {}): BadgeChange => ({
   ...o,
 });
 
-const celebration = (o: Partial<Celebration> = {}): Celebration => ({ workoutNumber: 7, week: null, records: [], passed: [], ...o });
+const celebration = (o: Partial<Celebration> = {}): Celebration => ({ workoutNumber: 7, week: null, records: [], standings: [], ...o });
 
 describe("buildCelebrationSteps", () => {
   it("siempre arranca con 'completo' y suma lo que subió el total en todas las temporadas", () => {
@@ -54,25 +54,26 @@ describe("buildCelebrationSteps", () => {
     expect(steps).toEqual([{ kind: "complete", totalPoints: 0, workoutNumber: null }]);
   });
 
-  it("orden completo → puntos → puesto → semana → récords → insignias, solo lo que pasó", () => {
+  it("orden completo → puntos → semana → récords → insignias, solo lo que pasó; la tabla va en puntos", () => {
+    const window: SeasonStandingWindow = { seasonId: "s1", meId: "me", rows: [], passed: ["Beto", "Caro"] };
     const steps = buildCelebrationSteps(
       [effect({ rankBefore: 3, rankAfter: 1 })],
       [badge(), badge({ code: "p", levelBefore: 1, levelAfter: 1 })],
       celebration({
         week: { workouts: 3, goal: 3, justMet: true, perfectStreak: 2 },
         records: [{ exerciseId: "e", exerciseName: "Banca", weightKg: 85, reps: 5, previousKg: 80 }],
-        passed: [{ seasonId: "s1", names: ["Beto", "Caro"] }],
+        standings: [window],
       })
     );
-    expect(steps.map((s) => s.kind)).toEqual(["complete", "points", "rank", "week", "records", "badgeProgress", "badge"]);
-    expect(steps[2]).toMatchObject({ kind: "rank", passed: ["Beto", "Caro"] });
+    expect(steps.map((s) => s.kind)).toEqual(["complete", "points", "week", "records", "badgeProgress", "badge"]);
+    expect(steps[1]).toMatchObject({ kind: "points", seasons: [{ standings: window }] });
   });
 
-  it("puesto: solo si mejoró (no si bajó, se mantuvo o es su primer puesto)", () => {
-    const kinds = (e: ScoringEffect) => buildCelebrationSteps([e], [], null).map((s) => s.kind);
-    expect(kinds(effect({ rankBefore: 2, rankAfter: 3 }))).not.toContain("rank");
-    expect(kinds(effect({ rankBefore: 2, rankAfter: 2 }))).not.toContain("rank");
-    expect(kinds(effect({ rankBefore: null, rankAfter: 1 }))).not.toContain("rank");
+  it("climbed: solo si mejoró (no si bajó, se mantuvo o es su primer puesto)", () => {
+    expect(climbed(effect({ rankBefore: 3, rankAfter: 1 }))).toBe(true);
+    expect(climbed(effect({ rankBefore: 2, rankAfter: 3 }))).toBe(false);
+    expect(climbed(effect({ rankBefore: 2, rankAfter: 2 }))).toBe(false);
+    expect(climbed(effect({ rankBefore: null, rankAfter: 1 }))).toBe(false);
   });
 
   it("insignias: una pantalla por subida de nivel; el progreso sin subir no tiene pantalla", () => {
@@ -144,5 +145,28 @@ describe("passedUsers", () => {
 
   it("firstName", () => {
     expect([firstName("  Beto  Pérez "), firstName(null), firstName("")]).toEqual(["Beto", "alguien", "alguien"]);
+  });
+});
+
+describe("mini tabla del ranking", () => {
+  const row = (userId: string, rank: number, points: number): MiniStanding => ({ userId, name: userId, photoUrl: null, rank, points });
+  const table = [row("a", 1, 300), row("b", 2, 250), row("me", 3, 240), row("c", 4, 200), row("d", 5, 100)];
+
+  it("ventana: uno arriba y uno abajo; en los bordes se corre para mostrar 3", () => {
+    expect(standingsWindow(table, "me").map((r) => r.userId)).toEqual(["b", "me", "c"]);
+    expect(standingsWindow(table, "a").map((r) => r.userId)).toEqual(["a", "b", "me"]);
+    expect(standingsWindow(table, "d").map((r) => r.userId)).toEqual(["me", "c", "d"]);
+    expect(standingsWindow(table.slice(0, 2), "a").map((r) => r.userId)).toEqual(["a", "b"]);
+    expect(standingsWindow(table, "nadie")).toEqual([]);
+  });
+
+  it("orden de antes: con los puntos previos del usuario, que pierde los empates", () => {
+    // Ahora: a 300, me 260, b 250. Antes tenía 240: estaba abajo de b.
+    const after = [row("a", 1, 300), row("me", 2, 260), row("b", 3, 250)];
+    expect(orderBefore(after, "me", 240)).toEqual(["a", "b", "me"]);
+    // Empate antes (250 = 250): queda abajo, todavía no lo había pasado.
+    expect(orderBefore(after, "me", 250)).toEqual(["a", "b", "me"]);
+    // No subió: mismo orden.
+    expect(orderBefore(after, "me", 255)).toEqual(["a", "me", "b"]);
   });
 });

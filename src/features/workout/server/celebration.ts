@@ -4,12 +4,13 @@ import { weekKeyOf } from "@/src/lib/time";
 import type { ScoringEffect } from "@/src/server/scoring";
 import { getSeasonStandings } from "@/src/server/scoring/queries";
 import { getUserStats } from "@/src/server/stats";
-import { findNewRecords, passedUsers } from "../celebration";
+import { climbed, findNewRecords, passedUsers, standingsWindow } from "../celebration";
 import type { Celebration } from "../types";
 
 /**
  * Datos de la secuencia de festejo de un entrenamiento recién creado: número de entrenamiento,
- * la semana (si es la actual), récords de peso y a quiénes pasó en cada temporada donde subió.
+ * la semana (si es la actual), récords de peso y, por temporada, su lugar en el ranking con sus vecinos
+ * y a quiénes pasó.
  * Se llama después de guardar; si algo falla, el que llama sigue sin festejo (no rompe el guardado).
  */
 export async function getWorkoutCelebration(userId: string, activityId: string, scoring: ScoringEffect[]): Promise<Celebration> {
@@ -29,7 +30,7 @@ export async function getWorkoutCelebration(userId: string, activityId: string, 
   });
 
   const exerciseIds = [...new Set(activity.exercises.map((e) => e.exerciseId))];
-  const [workoutNumber, stats, previous, passed] = await Promise.all([
+  const [workoutNumber, stats, previous, standings] = await Promise.all([
     prisma.activity.count({ where: { userId } }),
     getUserStats(userId),
     exerciseIds.length
@@ -44,8 +45,16 @@ export async function getWorkoutCelebration(userId: string, activityId: string, 
       : [],
     Promise.all(
       scoring
-        .filter((e) => e.rankBefore !== null && e.rankAfter > 0 && e.rankAfter < e.rankBefore)
-        .map(async (e) => ({ seasonId: e.seasonId, names: passedUsers(await getSeasonStandings(e.seasonId), userId, e.rankBefore!, e.rankAfter) }))
+        .filter((e) => e.rankAfter > 0)
+        .map(async (e) => {
+          const rows = await getSeasonStandings(e.seasonId);
+          return {
+            seasonId: e.seasonId,
+            meId: userId,
+            rows: standingsWindow(rows, userId).map(({ userId, name, photoUrl, rank, points }) => ({ userId, name, photoUrl, rank, points })),
+            passed: climbed(e) ? passedUsers(rows, userId, e.rankBefore!, e.rankAfter) : [],
+          };
+        })
     ),
   ]);
 
@@ -67,6 +76,6 @@ export async function getWorkoutCelebration(userId: string, activityId: string, 
     workoutNumber,
     week: inCurrentWeek ? { workouts, goal, justMet: workouts === goal, perfectStreak: stats.currentStreakWeeks } : null,
     records,
-    passed: passed.filter((p) => p.names.length > 0),
+    standings,
   };
 }

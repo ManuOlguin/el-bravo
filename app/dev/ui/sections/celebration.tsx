@@ -26,13 +26,35 @@ const CELEBRATION: Celebration = {
     { exerciseId: "bench", exerciseName: "Press de banca", weightKg: 85, reps: 5, previousKg: 80 },
     { exerciseId: "squat", exerciseName: "Sentadillas", weightKg: 102.5, reps: 6, previousKg: 100 },
   ],
-  passed: [{ seasonId: "s1", names: ["Beto", "Caro"] }],
+  standings: [
+    {
+      seasonId: "s1",
+      meId: "me",
+      // Subió de 3° a 1°: pasó a Beto y a Caro.
+      rows: [
+        { userId: "me", name: "Ana Demo", photoUrl: null, rank: 1, points: 334 },
+        { userId: "beto", name: "Beto Demo", photoUrl: null, rank: 2, points: 310 },
+        { userId: "caro", name: "Caro Demo", photoUrl: null, rank: 3, points: 295 },
+      ],
+      passed: ["Beto", "Caro"],
+    },
+    {
+      seasonId: "s2",
+      meId: "me",
+      rows: [
+        { userId: "lu", name: "Lucía", photoUrl: null, rank: 1, points: 180 },
+        { userId: "me", name: "Ana Demo", photoUrl: null, rank: 2, points: 146 },
+        { userId: "tomi", name: "Tomi", photoUrl: null, rank: 3, points: 90 },
+      ],
+      passed: [],
+    },
+  ],
 };
 
 const VARIANTS = {
   completo: buildCelebrationSteps(SCORING, BADGES, CELEBRATION),
-  "semana a medias": buildCelebrationSteps([{ ...SCORING[1], rankBefore: 2 }], [], { ...CELEBRATION, week: { workouts: 2, goal: 3, justMet: false, perfectStreak: 0 }, records: [], passed: [] }),
-  "sin temporadas": buildCelebrationSteps([], [], { workoutNumber: 1, week: null, records: [], passed: [] }),
+  "semana a medias": buildCelebrationSteps([{ ...SCORING[1], rankBefore: 2 }], [], { ...CELEBRATION, week: { workouts: 2, goal: 3, justMet: false, perfectStreak: 0 }, records: [], standings: [CELEBRATION.standings[1]] }),
+  "sin temporadas": buildCelebrationSteps([], [], { workoutNumber: 1, week: null, records: [], standings: [] }),
 };
 
 export function CelebrationSection() {

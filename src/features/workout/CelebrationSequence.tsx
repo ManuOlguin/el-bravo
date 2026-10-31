@@ -1,13 +1,15 @@
 "use client";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { Button, cn } from "@/src/components/ui";
+import { Avatar, Button, cn } from "@/src/components/ui";
 import { BadgeMedallion, BadgeTitle } from "@/src/features/badges";
 import { romanLevel } from "@/src/features/badges/levels";
 import { formatDuration } from "@/src/lib/time";
-import { pointsGained, type CelebrationStep } from "./celebration";
+import { climbed, orderBefore, pointsGained, type CelebrationStep } from "./celebration";
 import { displayReason, formatKg, formatVolume } from "./format";
 import { CheckIcon } from "./icons";
 import type { BadgeChange } from "@/src/server/badges/types";
+import type { ScoringEffect } from "@/src/server/scoring/types";
+import type { SeasonStandingWindow } from "./types";
 import type { WorkoutSummaryNumbers } from "./WorkoutResult";
 
 /* ───────────────────────── utilidades de animación ───────────────────────── */
@@ -165,13 +167,71 @@ function CompleteStep({ step, summary }: { step: Extract<CelebrationStep, { kind
   );
 }
 
+const ROW_H = 52; // px por fila de la mini tabla
+const MOVE_DELAY = 900; // ms antes de que la fila del usuario suba
+
+/**
+ * Mini tabla de la temporada: el usuario y sus vecinos. Arranca en el orden de ANTES del entrenamiento
+ * y, si subió, su fila se desliza hacia arriba pasando a los que superó (los demás bajan un lugar).
+ */
+function MiniStandings({ effect, standings, delay }: { effect: ScoringEffect; standings: SeasonStandingWindow; delay: number }) {
+  const reduced = useReducedMotion();
+  const { rows, meId } = standings;
+  const before = orderBefore(rows, meId, effect.totalBefore);
+  const after = rows.map((r) => r.userId);
+  const [moved, setMoved] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setMoved(true), delay + MOVE_DELAY);
+    return () => clearTimeout(t);
+  }, [delay]);
+  const showAfter = moved || reduced;
+  const order = showAfter ? after : before;
+  const meBefore = before.indexOf(meId);
+  const meAfter = after.indexOf(meId);
+
+  return (
+    <ol className="relative" style={{ height: rows.length * ROW_H }} aria-label={`Ranking de ${effect.seasonName}`}>
+      {rows.map((r) => {
+        const me = r.userId === meId;
+        // Los que el usuario pasó estaban arriba suyo y ahora están abajo: antes tenían un puesto menos.
+        const wasPassed = !me && before.indexOf(r.userId) < meBefore && after.indexOf(r.userId) > meAfter;
+        const rank = showAfter ? r.rank : me ? (effect.rankBefore ?? r.rank) : wasPassed ? r.rank - 1 : r.rank;
+        return (
+          <li
+            key={r.userId}
+            aria-current={me ? "true" : undefined}
+            className={cn(
+              "absolute inset-x-0 flex items-center gap-3 px-4 transition-transform duration-700 ease-[cubic-bezier(0.34,1.4,0.64,1)]",
+              me ? "z-10 rounded-xl bg-surface-2 ring-2 ring-primary" : "z-0"
+            )}
+            style={{ height: ROW_H, transform: `translateY(${order.indexOf(r.userId) * ROW_H}px)` }}
+          >
+            <span className={cn("w-7 text-right text-sm font-extrabold tabular-nums", me ? "text-primary" : "text-fg-subtle")}>#{rank}</span>
+            <Avatar name={r.name} src={r.photoUrl} size="sm" />
+            <span className={cn("min-w-0 flex-1 truncate text-sm", me ? "font-extrabold" : "font-semibold text-fg-muted")}>{me ? "Vos" : r.name ?? "Sin nombre"}</span>
+            {me ? (
+              <CountUp to={effect.totalAfter} from={effect.totalBefore} delay={delay + 400} className="text-sm font-extrabold" />
+            ) : (
+              <span className="text-sm tabular-nums text-fg-muted">{r.points}</span>
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 function PointsStep({ step, sharedDaySeasonIds }: { step: Extract<CelebrationStep, { kind: "points" }>; sharedDaySeasonIds: string[] }) {
+  const anyClimb = step.seasons.some((s) => climbed(s.effect));
   return (
     <>
+      {anyClimb && <Confetti />}
       <Title sub={step.seasons.length > 1 ? `En ${step.seasons.length} temporadas` : undefined}>Sumaste puntos</Title>
       <div className="w-full max-w-sm space-y-3">
-        {step.seasons.map((e, i) => {
+        {step.seasons.map(({ effect: e, standings }, i) => {
           const reason = displayReason(e.activityReason) ?? (sharedDaySeasonIds.includes(e.seasonId) ? "Se sumó al tiempo de tu día" : null);
+          const delay = 300 + i * 500;
+          const up = climbed(e) ? e.rankBefore! - e.rankAfter : 0;
           return (
             <Rise key={e.seasonId} i={i + 1} className="overflow-hidden rounded-card border border-border bg-surface-1">
               <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
@@ -179,48 +239,41 @@ function PointsStep({ step, sharedDaySeasonIds }: { step: Extract<CelebrationSte
                   <p className="truncate font-bold">{e.seasonName}</p>
                   <p className="truncate text-xs text-fg-subtle">{e.groupName}</p>
                 </div>
-                <p className="shrink-0 animate-pop-in text-3xl font-extrabold text-primary motion-reduce:animate-none" style={{ animationDelay: `${300 + i * 120}ms` }}>
+                <p className="shrink-0 animate-pop-in text-3xl font-extrabold text-primary motion-reduce:animate-none" style={{ animationDelay: `${delay}ms` }}>
                   +{pointsGained(e)}
                 </p>
               </div>
-              <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                <span className="text-fg-muted">Total</span>
-                <span className="text-fg-muted">
-                  {e.totalBefore} →{" "}
-                  <CountUp to={e.totalAfter} from={e.totalBefore} delay={500 + i * 120} className="text-lg font-extrabold text-fg" />
-                </span>
-              </div>
+              {standings && standings.rows.length > 0 ? (
+                <div className="space-y-2 py-2">
+                  <MiniStandings effect={e} standings={standings} delay={delay} />
+                  {up > 0 && (
+                    <p
+                      className="animate-pop-in px-4 text-center text-sm motion-reduce:animate-none"
+                      style={{ animationDelay: `${delay + MOVE_DELAY + 500}ms` }}
+                    >
+                      <span className="font-extrabold text-primary">▲ Subiste {plural(up, "puesto", "puestos")}</span>
+                      {standings.passed.length > 0 && (
+                        <span className="text-fg-muted">
+                          {" "}
+                          · pasaste a <strong className="text-fg">{joinNames(standings.passed)}</strong>
+                        </span>
+                      )}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                  <span className="text-fg-muted">Total</span>
+                  <span className="text-fg-muted">
+                    {e.totalBefore} → <CountUp to={e.totalAfter} from={e.totalBefore} delay={delay + 200} className="text-lg font-extrabold text-fg" />
+                  </span>
+                </div>
+              )}
               {reason && <p className="border-t border-border px-4 py-2 text-xs text-fg-muted">{reason}</p>}
             </Rise>
           );
         })}
       </div>
-    </>
-  );
-}
-
-function RankStep({ step }: { step: Extract<CelebrationStep, { kind: "rank" }> }) {
-  const { effect, passed } = step;
-  return (
-    <>
-      <Confetti />
-      <div className="flex items-end gap-4">
-        <Rise className="pb-3 text-3xl font-extrabold text-fg-subtle line-through decoration-2">#{effect.rankBefore}</Rise>
-        <span aria-hidden="true" className="animate-rise-in pb-4 text-3xl text-primary motion-reduce:animate-none" style={{ animationDelay: "250ms" }}>
-          →
-        </span>
-        <span className={cn("animate-pop-in text-8xl font-extrabold leading-none motion-reduce:animate-none", effect.rankAfter === 1 ? "text-gold" : "text-primary")} style={{ animationDelay: "400ms" }}>
-          #{effect.rankAfter}
-        </span>
-      </div>
-      <Title sub={effect.seasonName}>{effect.rankAfter === 1 ? "¡Estás primero!" : `¡Subiste al puesto ${effect.rankAfter}!`}</Title>
-      {passed.length > 0 && (
-        <Rise i={2}>
-          <p className="rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-center text-sm">
-            Pasaste a <strong>{joinNames(passed)}</strong> 💨
-          </p>
-        </Rise>
-      )}
     </>
   );
 }
@@ -369,11 +422,11 @@ function BadgeStep({ step }: { step: Extract<CelebrationStep, { kind: "badge" }>
 
 /* ───────────────────────── secuencia ───────────────────────── */
 
-const MILESTONES = new Set<CelebrationStep["kind"]>(["rank", "records", "badge"]);
+const MILESTONES = new Set<CelebrationStep["kind"]>(["records", "badge"]);
 
 /**
  * Festejo post-entrenamiento: una pantalla completa por logro, de a una, con "Continuar".
- * "Saltar" va directo al resumen (`onDone`). Vibra en los hitos (puesto, semana cumplida, récord, insignia).
+ * "Saltar" va directo al resumen (`onDone`). Vibra en los hitos (subir de puesto, semana cumplida, récord, insignia).
  */
 export function CelebrationSequence({
   steps,
@@ -393,7 +446,11 @@ export function CelebrationSequence({
 
   useEffect(() => {
     continueRef.current?.focus();
-    if (MILESTONES.has(step.kind) || (step.kind === "week" && step.justMet)) navigator.vibrate?.([30, 60, 30]);
+    const milestone =
+      MILESTONES.has(step.kind) ||
+      (step.kind === "week" && step.justMet) ||
+      (step.kind === "points" && step.seasons.some((x) => climbed(x.effect)));
+    if (milestone) navigator.vibrate?.([30, 60, 30]);
   }, [step]);
 
   return (
@@ -417,7 +474,6 @@ export function CelebrationSequence({
       <section key={index} aria-live="polite" className="flex flex-1 flex-col items-center justify-center gap-6 py-6">
         {step.kind === "complete" && <CompleteStep step={step} summary={summary} />}
         {step.kind === "points" && <PointsStep step={step} sharedDaySeasonIds={sharedDaySeasonIds} />}
-        {step.kind === "rank" && <RankStep step={step} />}
         {step.kind === "week" && <WeekStep step={step} />}
         {step.kind === "records" && <RecordsStep step={step} />}
         {step.kind === "badgeProgress" && <BadgeProgressStep step={step} />}

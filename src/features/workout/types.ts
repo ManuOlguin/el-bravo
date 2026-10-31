@@ -29,6 +29,14 @@ export type Celebration = {
   /** Semana del entrenamiento, solo si es la semana en curso. */
   week: { workouts: number; goal: number; justMet: boolean; perfectStreak: number } | null;
   records: NewRecord[];
-  /** Por temporada en la que subió de puesto: nombres de quienes pasó. */
-  passed: { seasonId: string; names: string[] }[];
+  /**
+   * Por temporada: las filas del ranking alrededor del usuario (él y sus vecinos, después de este
+   * entrenamiento) y los nombres de quienes pasó, si subió de puesto.
+   */
+  standings: SeasonStandingWindow[];
 };
+
+/** Una fila del ranking de temporada para la mini tabla del festejo. */
+export type MiniStanding = { userId: string; name: string | null; photoUrl: string | null; rank: number; points: number };
+
+export type SeasonStandingWindow = { seasonId: string; meId: string; rows: MiniStanding[]; passed: string[] };

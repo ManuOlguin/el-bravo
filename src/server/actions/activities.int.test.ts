@@ -251,6 +251,16 @@ describe("createActivityAction: festejo", () => {
     const r = await createActivityAction(input(running.id, { localDate: "2026-09-09", durationMinutes: 30 }));
     if (!r.ok) throw new Error(r.error);
     expect(r.data.effects.scoring[0]).toMatchObject({ rankBefore: 2, rankAfter: 1 });
-    expect(r.data.celebration?.passed).toEqual([{ seasonId: season.id, names: ["B"] }]);
+    expect(r.data.celebration?.standings).toEqual([
+      {
+        seasonId: season.id,
+        meId: user.id,
+        rows: [
+          expect.objectContaining({ userId: user.id, rank: 1, name: "A" }),
+          expect.objectContaining({ userId: other.id, rank: 2, name: "B" }),
+        ],
+        passed: ["B"],
+      },
+    ]);
   });
 });
