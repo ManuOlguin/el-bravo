@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { setKindSchema } from "./workout";
-import type { ExerciseSummary } from "@/src/features/exercises/types";
+import { EQUIPMENT, type ExerciseSummary } from "@/src/features/exercises/types";
 
 /** Número opcional: `""`, `null` o ausente → `null`. */
 const emptyToNull = (v: unknown) => (v === "" || v === undefined ? null : v);
@@ -25,10 +25,25 @@ export const routineExerciseInputSchema = z.object({
   sets: z.array(routineSetInputSchema).min(1, "Agregá al menos una serie").max(30, "Máximo 30 series por ejercicio"),
 });
 
+/** Ejercicio que todavía no existe: el servidor lo crea (privado del usuario) al guardar la rutina. Misma forma que `NewExerciseDraft`. */
+export const newExerciseInputSchema = z.object({
+  tempId: z.string().regex(/^[a-z0-9]{1,20}$/i),
+  name: z.string().trim().min(2, "El nombre del ejercicio nuevo es muy corto").max(100),
+  nameEn: z.string().trim().max(100).nullable().default(null),
+  measureType: z.enum(["reps", "duration"]),
+  equipment: z.enum(EQUIPMENT),
+  tracksWeight: z.boolean(),
+  muscles: z.array(z.object({ muscleSlug: z.string().min(1).max(60), percentage: z.number().int().min(1).max(100) })).max(8).default([]),
+  source: z.enum(["user", "ai"]).default("user"),
+});
+export type NewExerciseInput = z.infer<typeof newExerciseInputSchema>;
+
 export const routineInputSchema = z.object({
   name: z.string().trim().min(1, "Poné un nombre a la rutina").max(100, "Nombre demasiado largo"),
   notes: z.string().trim().max(2000).optional().nullable(),
   exercises: z.array(routineExerciseInputSchema).min(1, "Agregá al menos un ejercicio").max(40, "Máximo 40 ejercicios"),
+  /** Definiciones de los ejercicios con id `new:<tempId>` de `exercises`. */
+  newExercises: z.array(newExerciseInputSchema).max(40).optional(),
 });
 
 export type RoutineSetInput = z.infer<typeof routineSetInputSchema>;

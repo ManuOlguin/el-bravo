@@ -3,6 +3,9 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/src/lib/db";
 import { AuthError } from "@/src/server/auth/errors";
 import { primaryGroupKeyOf, visibleTo } from "@/src/server/exercises/catalog";
+import { slugify } from "@/prisma/seed/slugify";
+import { normalize } from "@/src/features/exercises/search";
+import { isPendingExerciseId, PENDING_PREFIX } from "@/src/features/routines-share/match";
 import { GROUP_KEYS, type ExerciseSummary } from "@/src/features/exercises/types";
 import { routineInputSchema, type RoutineForEditor, type RoutineInput } from "@/src/schemas/routine";
 import type { ActivityInput } from "@/src/schemas/workout";
@@ -56,6 +59,65 @@ async function assertOwner(db: Tx | typeof prisma, userId: string, routineId: st
   if (!r || r.userId !== userId) throw new AuthError("NOT_FOUND");
 }
 
+/** Porcentajes renormalizados a enteros que suman 100 (la IA puede no sumar exacto); el resto va al primero. */
+function normalizeShares(percentages: number[]): number[] {
+  const total = percentages.reduce((s, p) => s + p, 0);
+  if (total === 0) return [];
+  const rest = percentages.slice(1).map((p) => Math.round((p * 100) / total));
+  return [100 - rest.reduce((s, p) => s + p, 0), ...rest];
+}
+
+/**
+ * Crea (o reusa, si ya hay uno visible con el mismo nombre normalizado) los ejercicios nuevos de la rutina
+ * y reemplaza los ids `new:<tempId>`. Corre dentro de la transacción de la rutina.
+ */
+async function resolvePendingExercises(tx: Tx, userId: string, input: RoutineInput): Promise<RoutineInput> {
+  const pending = input.exercises.filter((e) => isPendingExerciseId(e.exerciseId));
+  if (pending.length === 0) return input;
+  const defs = new Map((input.newExercises ?? []).map((n) => [n.tempId, n]));
+  const visible = await tx.exercise.findMany({ where: visibleTo(userId), select: { id: true, name: true } });
+  const byName = new Map(visible.map((v) => [normalize(v.name), v.id]));
+  const muscleRows = await tx.muscle.findMany({ select: { id: true, slug: true } });
+  const muscleId = new Map(muscleRows.map((m) => [m.slug, m.id]));
+  const tempIdOf = (exerciseId: string) => exerciseId.slice(PENDING_PREFIX.length);
+  const resolved = new Map<string, string>();
+  for (const p of pending) {
+    const tempId = tempIdOf(p.exerciseId);
+    if (resolved.has(tempId)) continue;
+    const def = defs.get(tempId);
+    if (!def) throw new RoutineError("Falta la definición de un ejercicio nuevo. Volvé a importar la rutina.");
+    const existing = byName.get(normalize(def.name));
+    if (existing) {
+      resolved.set(tempId, existing);
+      continue;
+    }
+    // Los músculos que no existen en el catálogo se descartan en silencio.
+    const muscles = def.muscles.filter((m) => muscleId.has(m.muscleSlug));
+    const shares = normalizeShares(muscles.map((m) => m.percentage));
+    const created = await tx.exercise.create({
+      data: {
+        slug: `${slugify(def.name).slice(0, 60) || "ejercicio"}-${Math.random().toString(36).slice(2, 8)}`,
+        name: def.name.replace(/\s+/g, " "),
+        nameEn: def.nameEn,
+        measureType: def.measureType,
+        equipment: def.equipment,
+        tracksWeight: def.tracksWeight,
+        createdByUserId: userId,
+        // `def.source` todavía no se guarda: no hay columna hasta la fase 3.
+        muscles: { create: muscles.map((m, i) => ({ muscleId: muscleId.get(m.muscleSlug)!, percentage: shares[i] })) },
+      },
+      select: { id: true },
+    });
+    resolved.set(tempId, created.id);
+    byName.set(normalize(def.name), created.id);
+  }
+  return {
+    ...input,
+    newExercises: undefined,
+    exercises: input.exercises.map((e) => (isPendingExerciseId(e.exerciseId) ? { ...e, exerciseId: resolved.get(tempIdOf(e.exerciseId))! } : e)),
+  };
+}
+
 /** Todos los ejercicios existen y el usuario puede verlos (oficiales o propios). */
 async function assertExercisesVisible(tx: Tx, userId: string, input: RoutineInput) {
   const ids = [...new Set(input.exercises.map((e) => e.exerciseId))];
@@ -88,8 +150,9 @@ async function writeExercises(tx: Tx, routineId: string, input: RoutineInput) {
 }
 
 export async function createRoutine(userId: string, raw: RoutineInput): Promise<{ routineId: string }> {
-  const input = routineInputSchema.parse(raw);
+  const parsed = routineInputSchema.parse(raw);
   const routineId = await prisma.$transaction(async (tx) => {
+    const input = await resolvePendingExercises(tx, userId, parsed);
     await assertExercisesVisible(tx, userId, input);
     const r = await tx.routine.create({ data: { userId, name: input.name, notes: input.notes ?? null }, select: { id: true } });
     await writeExercises(tx, r.id, input);
@@ -100,9 +163,10 @@ export async function createRoutine(userId: string, raw: RoutineInput): Promise<
 
 /** Reemplaza nombre, notas, ejercicios y series en una transacción (borrar y recrear). */
 export async function updateRoutine(userId: string, routineId: string, raw: RoutineInput): Promise<void> {
-  const input = routineInputSchema.parse(raw);
+  const parsed = routineInputSchema.parse(raw);
   await prisma.$transaction(async (tx) => {
     await assertOwner(tx, userId, routineId);
+    const input = await resolvePendingExercises(tx, userId, parsed);
     await assertExercisesVisible(tx, userId, input);
     await tx.routineExercise.deleteMany({ where: { routineId } });
     await tx.routine.update({ where: { id: routineId }, data: { name: input.name, notes: input.notes ?? null } });
