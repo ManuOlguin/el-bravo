@@ -5,7 +5,8 @@ Los secretos viven en `.env.production.local` (ignorado por git, permisos solo p
 
 ## Decisiones
 
-- **Repo de producción: [`LeonardoMelman/el-bravo-prod`](https://github.com/LeonardoMelman/el-bravo-prod), rama `main`.** Es el que está conectado al proyecto de Vercel. `ManuOlguin/el-bravo` quedó congelado el 2 de abril; v2 se hizo sobre ese y después se unió la historia de el-bravo-prod (merge sin traer su código: v2 lo reescribió). Lo que v2 no tenía se portó: recuperar contraseña, temas Leo/Manu, Novedades y frases.
+- **Dónde quedó (31-oct-2026):** como no hubo acceso al Vercel de Leo, v2 se publicó desde **`ManuOlguin/el-bravo` (`main`)** en un proyecto de Vercel propio, en **https://elbravo.vercel.app**. `el-bravo-prod` sigue con la versión de abril; para pasarla ahí, ver abajo (Leo carga las variables o transfiere el proyecto; el push es fast-forward).
+- **Plan original — repo de producción: [`LeonardoMelman/el-bravo-prod`](https://github.com/LeonardoMelman/el-bravo-prod), rama `main`.** Es el que está conectado al proyecto de Vercel. `ManuOlguin/el-bravo` quedó congelado el 2 de abril; v2 se hizo sobre ese y después se unió la historia de el-bravo-prod (merge sin traer su código: v2 lo reescribió). Lo que v2 no tenía se portó: recuperar contraseña, temas Leo/Manu, Novedades y frases.
 - **Base de datos: TiDB Cloud Starter.** Compatible con MySQL, plan gratis, no se borra por inactividad (la de Aiven se borró por eso, D13). Arranca vacía: v2 no migra datos de la versión vieja.
 - **Región:** AWS `us-east-1` (Virginia) para la base, y la misma para las funciones de Vercel (`iad1`, la que usa Vercel por defecto). App y base juntas = consultas rápidas.
 - **Fotos:** Cloudflare R2 (ver [`r2-setup.md`](r2-setup.md)).
