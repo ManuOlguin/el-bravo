@@ -1,6 +1,34 @@
 "use client";
 import { useState } from "react";
-import { Button, IconButton, LinkButton, Modal, Sheet, Spinner, toast, toastResult, useConfirm } from "@/src/components/ui";
+import {
+  Avatar,
+  Button,
+  Card,
+  CardHeader,
+  Chip,
+  EmptyState,
+  Field,
+  IconButton,
+  Input,
+  LinkButton,
+  Modal,
+  NumberInput,
+  PageHeader,
+  Pill,
+  ProgressBar,
+  Select,
+  Sheet,
+  Skeleton,
+  Slider,
+  Spinner,
+  StatCard,
+  Switch,
+  Tabs,
+  Textarea,
+  toast,
+  toastResult,
+  useConfirm,
+} from "@/src/components/ui";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -158,6 +186,157 @@ function FeedbackSection() {
   );
 }
 
+function LayoutSection() {
+  const [loading, setLoading] = useState(false);
+  return (
+    <Section title="Layout">
+      <Card className="space-y-0 p-0">
+        <div className="p-4">
+          <PageHeader title="Mis entrenamientos" subtitle="Últimos 30 días" back="/home" actions={<Button size="sm">Nuevo</Button>} />
+        </div>
+      </Card>
+      <PageHeader title="Un título bastante largo que tiene que cortar bien en 375 px sin desbordar" />
+      <div className="grid grid-cols-2 gap-3">
+        <StatCard label="Puntos" value={312} hint="+26 esta semana" tone="primary" />
+        <StatCard label="Racha" value="4 sem" tone="gold" />
+        <StatCard label="Días entrenados" value={18} />
+        <StatCard label="Minutos" value="1.240" hint="20 h 40 min" />
+      </div>
+      <Card>
+        <CardHeader title="Temporada de verano" subtitle="Termina el 15 de marzo" action={<Pill tone="primary">Activa</Pill>} />
+        <ProgressBar value={0.62} label="Objetivo semanal" />
+      </Card>
+      <Card interactive as="section">
+        <p className="text-sm">Card interactiva: tocala para ver el estado presionado.</p>
+      </Card>
+      <EmptyState
+        icon={<PlusIcon />}
+        title="Todavía no registraste entrenamientos"
+        description="Cargá el primero y empezá a sumar puntos."
+        action={<Button size="sm">Registrar</Button>}
+      />
+      <Row>
+        <Button variant="secondary" size="sm" onClick={() => setLoading((v) => !v)}>
+          {loading ? "Ocultar" : "Mostrar"} skeletons
+        </Button>
+      </Row>
+      {loading && (
+        <div className="space-y-3">
+          <Skeleton className="h-8 w-2/3" />
+          <Skeleton className="h-24 w-full rounded-card" />
+          <Skeleton className="h-24 w-full rounded-card" />
+        </div>
+      )}
+    </Section>
+  );
+}
+
+function DataSection() {
+  const [tab, setTab] = useState("week");
+  const [chips, setChips] = useState<string[]>(["Fuerza"]);
+  const toggle = (c: string) => setChips((cs) => (cs.includes(c) ? cs.filter((x) => x !== c) : [...cs, c]));
+  return (
+    <Section title="Datos">
+      <Row>
+        {(["xs", "sm", "md", "lg", "xl"] as const).map((size) => (
+          <Avatar key={size} name="Manu" size={size} />
+        ))}
+        <Avatar name="Leo" size="lg" href="/profile" />
+        <Avatar name={null} size="md" />
+      </Row>
+      <Row>
+        {["Fuerza", "Running", "Yoga", "Calistenia", "Crossfit", "Natación"].map((c) => (
+          <Chip key={c} selected={chips.includes(c)} onClick={() => toggle(c)}>
+            {c}
+          </Chip>
+        ))}
+        <Chip size="sm" disabled>
+          Deshabilitado
+        </Chip>
+      </Row>
+      <Row>
+        <Pill>Default</Pill>
+        <Pill tone="primary">+26 pts</Pill>
+        <Pill tone="danger">Vencida</Pill>
+        <Pill tone="gold">Nivel III</Pill>
+      </Row>
+      <ProgressBar value={0.35} tone="gold" label="Gym Rat II → III" />
+      <ProgressBar value={1} />
+      <Tabs
+        aria-label="Período"
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { id: "week", label: "Semana" },
+          { id: "month", label: "Mes" },
+          { id: "season", label: "Temporada" },
+          { id: "year", label: "Año" },
+          { id: "all", label: "Desde siempre" },
+        ]}
+      />
+      <p className="text-xs text-fg-subtle">Tab activa: {tab}</p>
+    </Section>
+  );
+}
+
+function FormSection() {
+  const [name, setName] = useState("");
+  const [weight, setWeight] = useState<number | null>(null);
+  const [reps, setReps] = useState<number | null>(10);
+  const [catWeight, setCatWeight] = useState(1);
+  const [notify, setNotify] = useState(true);
+  const [pending, setPending] = useState(false);
+  const nameError = name.length > 0 && name.length < 3 ? "Tiene que tener al menos 3 letras" : undefined;
+  return (
+    <Section title="Formularios">
+      <Card className="space-y-4">
+        <Field label="Nombre de la rutina" htmlFor="dev-name" error={nameError} hint="Ej.: Empuje A">
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Escribí un nombre" />
+        </Field>
+        <Field label="Con error fijo" htmlFor="dev-error" error="Este campo es obligatorio">
+          <Input placeholder="Vacío" />
+        </Field>
+        <Field label="Notas" htmlFor="dev-notes">
+          <Textarea placeholder="¿Cómo te sentiste?" />
+        </Field>
+        <Field label="Categoría" htmlFor="dev-category">
+          <Select defaultValue="strength">
+            <option value="strength">Fuerza</option>
+            <option value="running">Running</option>
+            <option value="yoga">Yoga</option>
+          </Select>
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Peso" htmlFor="dev-weight" hint={`valor: ${JSON.stringify(weight)}`}>
+            <NumberInput value={weight} onChange={setWeight} min={0} max={500} step={0.5} suffix="kg" placeholder="—" />
+          </Field>
+          <Field label="Reps" htmlFor="dev-reps" hint={`valor: ${JSON.stringify(reps)}`}>
+            <NumberInput value={reps} onChange={setReps} min={1} max={100} step={1} />
+          </Field>
+        </div>
+        <Field label="Peso de la categoría" htmlFor="dev-slider">
+          <Slider value={catWeight} onChange={setCatWeight} min={0} max={2} step={0.25} format={(v) => `×${v.toFixed(2).replace(".", ",")}`} />
+        </Field>
+        <Switch checked={notify} onChange={setNotify} label="Avisarme cuando un amigo entrena" description="Notificación push" />
+        <Switch checked={false} onChange={() => {}} label="Deshabilitado" disabled />
+        <Button
+          fullWidth
+          pending={pending}
+          onClick={() => {
+            setPending(true);
+            setTimeout(() => {
+              setPending(false);
+              toast.success("Rutina guardada");
+            }, 1500);
+          }}
+        >
+          Guardar
+        </Button>
+      </Card>
+    </Section>
+  );
+}
+
 export function DevUiCatalog() {
   return (
     <div className="mx-auto w-full max-w-screen-sm space-y-8 px-4 py-6">
@@ -167,6 +346,9 @@ export function DevUiCatalog() {
       </header>
       <ButtonsSection />
       <FeedbackSection />
+      <LayoutSection />
+      <DataSection />
+      <FormSection />
     </div>
   );
 }
