@@ -28,6 +28,8 @@ export function ImportReview({
         i.match.kind === "new" && i.match.draft.tempId === tempId ? { ...i, match: { kind: "new", draft: { ...i.match.draft, name } } } : i
       ),
     });
+  const invalidName = (i: ImportItem) => i.match.kind === "new" && i.match.draft.name.trim().length < 2;
+  const hasInvalid = draft.items.some(invalidName);
   const news = new Set(draft.items.flatMap((i) => (i.match.kind === "new" ? [i.match.draft.tempId] : []))).size;
 
   return (
@@ -55,12 +57,21 @@ export function ImportReview({
                 {match.kind === "found" ? (
                   <p className="font-bold">{match.exercise.name}</p>
                 ) : (
-                  <Input
-                    aria-label={`Nombre del ejercicio nuevo «${i.sourceName}»`}
-                    value={match.draft.name}
-                    maxLength={100}
-                    onChange={(e) => renameNew(match.draft.tempId, e.target.value)}
-                  />
+                  <div className="space-y-1">
+                    <Input
+                      aria-label={`Nombre del ejercicio nuevo «${i.sourceName}»`}
+                      invalid={invalidName(i)}
+                      aria-describedby={invalidName(i) ? `${i.key}-name-hint` : undefined}
+                      value={match.draft.name}
+                      maxLength={100}
+                      onChange={(e) => renameNew(match.draft.tempId, e.target.value)}
+                    />
+                    {invalidName(i) && (
+                      <p id={`${i.key}-name-hint`} className="text-xs text-danger">
+                        Poné un nombre de al menos 2 letras
+                      </p>
+                    )}
+                  </div>
                 )}
                 <div className="flex gap-2">
                   <Button size="sm" variant="ghost" onClick={() => setPicking(i.key)}>
@@ -87,7 +98,7 @@ export function ImportReview({
         <Button variant="ghost" onClick={onBack}>
           Volver
         </Button>
-        <Button fullWidth size="lg" onClick={onContinue}>
+        <Button fullWidth size="lg" disabled={hasInvalid} onClick={onContinue}>
           Continuar
         </Button>
       </div>

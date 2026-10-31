@@ -25,7 +25,7 @@ export function ImportScreen() {
   const [editing, setEditing] = useState(false);
 
   if (draft && editing) {
-    return <RoutineEditorScreen initial={importDraftToRoutine(draft)} pendingExercises={pendingOf(draft)} />;
+    return <RoutineEditorScreen initial={importDraftToRoutine(draft)} pendingExercises={pendingOf(draft)} onBack={() => setEditing(false)} />;
   }
   if (draft) {
     return <ImportReview draft={draft} onChange={setDraft} onBack={() => setDraft(null)} onContinue={() => setEditing(true)} />;

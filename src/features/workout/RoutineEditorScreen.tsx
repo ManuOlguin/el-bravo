@@ -21,10 +21,13 @@ export function RoutineEditorScreen({
   routine,
   initial,
   pendingExercises = [],
+  onBack,
 }: {
   routine?: RoutineForEditor;
   initial?: RoutineForEditor;
   pendingExercises?: NewExerciseDraft[];
+  /** Si se pasa, la flecha "←" lo llama en vez de navegar (el import vuelve a su pantalla de revisión). */
+  onBack?: () => void;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -70,7 +73,8 @@ export function RoutineEditorScreen({
     <div className="space-y-4 pb-24">
       <PageHeader
         title={routine ? "Editar rutina" : initial ? "Revisá la rutina importada" : "Nueva rutina"}
-        back={initial && !routine ? "/routines/import" : "/routines"}
+        back="/routines"
+        onBack={onBack}
       />
       <Card className="space-y-3">
         <Field label="Nombre" htmlFor="r-name" error={errors.name?.[0]}>
