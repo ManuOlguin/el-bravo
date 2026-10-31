@@ -31,7 +31,7 @@ async function user(name: string) {
 async function as(u: { id: string; email: string }) {
   cookieJar.set(SESSION_COOKIE, await signSessionToken({ userId: u.id, email: u.email, ver: 0 }));
 }
-const sub = (n: number) => ({ endpoint: `https://push.example.com/send/${n}`, keys: { p256dh: `p256-${n}`, auth: `auth-${n}` } });
+const sub = (n: number) => ({ endpoint: `https://fcm.googleapis.com/fcm/send/${n}`, keys: { p256dh: `p256-${n}`, auth: `auth-${n}` } });
 async function device(userId: string, n: number) {
   return prisma.device.create({ data: { userId, platform: "web", pushEndpointHash: `h${n}`, pushSubscription: sub(n) } });
 }
@@ -152,6 +152,8 @@ describe("push web (web-push mockeado)", () => {
     expect(r2.ok && r1.ok && r2.data.deviceId).toBe(r1.ok && r1.data.deviceId);
     expect(await prisma.device.count()).toBe(1);
     expect((await registerWebPushAction({ endpoint: "http://insecure.example.com", keys: { p256dh: "a", auth: "b" } })).ok).toBe(false);
+    // Solo servicios de push conocidos (SSRF ciego).
+    expect((await registerWebPushAction({ endpoint: "https://169.254.169.254/latest", keys: { p256dh: "a", auth: "b" } })).ok).toBe(false);
     expect((await registerWebPushAction({ nope: true })).ok).toBe(false);
 
     await as(ana); // mismo navegador, otra cuenta

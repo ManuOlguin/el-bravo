@@ -6,6 +6,7 @@ import { z } from "zod";
 import { requireUser } from "@/src/server/auth/dal";
 import { ok, parseInput, runAction, type ActionResult } from "@/src/server/http/result";
 import { prisma } from "@/src/lib/db";
+import { isKnownPushEndpoint } from "@/src/server/notifications/push-endpoints";
 
 // Dispositivos para Web Push (D12). W4 agrega los nativos (FCM) y el widget en src/server/devices.
 
@@ -13,7 +14,7 @@ const subscriptionSchema = z.object({
   endpoint: z
     .url({ error: "Suscripción inválida." })
     .max(2048)
-    .refine((u) => u.startsWith("https://"), { error: "Suscripción inválida." }),
+    .refine(isKnownPushEndpoint, { error: "Suscripción inválida." }),
   keys: z.object({
     p256dh: z.string().min(1).max(256),
     auth: z.string().min(1).max(256),

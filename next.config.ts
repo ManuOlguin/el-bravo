@@ -5,6 +5,23 @@ const nextConfig: NextConfig = {
   // Los worktrees viven dentro del repo principal (otro package-lock.json más arriba):
   // fijar la raíz evita que Turbopack infiera la equivocada.
   turbopack: { root: path.resolve(__dirname) },
+  poweredByHeader: false,
+  // Headers de seguridad básicos (W3). Sin CSP todavía: los estilos/scripts inline de Next necesitan
+  // nonces y conviene hacerlo con el deploy real (ver docs/security-review.md).
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" }, // clickjacking de los botones de admin
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
+          { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+        ],
+      },
+    ];
+  },
   async redirects() {
     return [
       { source: "/profile/edit", destination: "/settings/profile", permanent: false }, // W1-4
