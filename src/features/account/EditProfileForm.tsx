@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Avatar, Button, Field, Input, NumberInput, Select, Textarea, toastResult } from "@/src/components/ui";
 import { updateProfileAction } from "@/src/server/actions/account";
+import { PhotoUploader } from "@/src/features/media";
 import { COMMON_TIMEZONES } from "./timezones";
 
 const OTHER = "__other__";
@@ -65,10 +66,31 @@ export function EditProfileForm({ initial, otherTimezones }: { initial: EditProf
         <Textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={280} placeholder="Contá algo sobre vos" />
       </Field>
 
-      {/* TODO(W1-5): reemplazar por PhotoUploader target={{ kind: "avatar" }} */}
-      <Field label="Foto (URL)" htmlFor="photoUrl" hint="Pegá el link a una imagen." error={err("photoUrl")}>
-        <Input value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} inputMode="url" placeholder="https://…" />
-      </Field>
+      <div role="group" aria-labelledby="photo-label" className="flex flex-col gap-1.5">
+        <span id="photo-label" className="text-sm font-semibold text-fg">
+          Foto de perfil
+        </span>
+        <div className="flex flex-wrap items-start gap-2">
+          <PhotoUploader
+            target={{ kind: "avatar" }}
+            label={photoUrl ? "Cambiar foto" : "Subir foto"}
+            onUploaded={(media) => {
+              setPhotoUrl(media.url);
+              router.refresh();
+            }}
+          />
+          {photoUrl && (
+            <Button variant="ghost" onClick={() => setPhotoUrl("")}>
+              Quitar foto
+            </Button>
+          )}
+        </div>
+        {err("photoUrl") ? (
+          <p className="text-xs text-danger">{err("photoUrl")}</p>
+        ) : (
+          <p className="text-xs text-fg-subtle">La foto nueva se guarda apenas termina de subir. Para quitarla, guardá los cambios.</p>
+        )}
+      </div>
 
       <Field
         label="Objetivo semanal"
