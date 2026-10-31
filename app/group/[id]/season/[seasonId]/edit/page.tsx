@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/src/lib/currentUser";
 import { prisma } from "@/src/lib/db";
-import LogoutButton from "@/src/components/LogoutButton";
 import EditSeasonForm from "@/src/components/EditSeasonForm";
 import { dbDateToLocalDate } from "@/src/lib/time";
 
@@ -66,7 +65,6 @@ export default async function EditSeasonPage({
             ← Volver al grupo
           </a>
 
-          <LogoutButton />
         </div>
 
         <section className="rounded-[28px] bg-slate-800/85 p-6 shadow-2xl">

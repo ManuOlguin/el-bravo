@@ -113,7 +113,7 @@ export default async function GroupByIdPage({ params }: { params: Promise<{ id: 
   });
   if (!membership) redirect("/home");
 
-  const userSelect = { id: true, name: true, email: true, photoUrl: true } as const;
+  const userSelect = { id: true, name: true, photoUrl: true } as const; // sin email (W1-4: no se envía al cliente)
   const group = await prisma.group.findUnique({
     where: { id: groupId },
     include: {
@@ -171,11 +171,10 @@ export default async function GroupByIdPage({ params }: { params: Promise<{ id: 
   const standingByUser = new Map(standingsList.map((s) => [s.userId, s]));
   let seasonLeaderboard: SeasonLeaderboardEntry[] = [];
   if (activeSeasonRaw && userJoinedActiveSeason) {
-    const usersById = new Map(activeSeasonRaw.members.map((m) => [m.userId, m.user]));
     seasonLeaderboard = standingsList.map((s) => ({
       userId: s.userId,
       name: s.name,
-      email: usersById.get(s.userId)?.email ?? null,
+      email: null,
       photoUrl: s.photoUrl,
       points: s.points,
       rank: s.rank,
@@ -261,7 +260,7 @@ export default async function GroupByIdPage({ params }: { params: Promise<{ id: 
           id: member.user.id,
           userId: member.userId,
           name: member.user.name,
-          email: member.user.email,
+          email: null,
           photoUrl: member.user.photoUrl,
           role: member.role,
           ...stats,
@@ -288,7 +287,7 @@ export default async function GroupByIdPage({ params }: { params: Promise<{ id: 
       id: m.user.id,
       userId: m.userId,
       name: m.user.name,
-      email: m.user.email,
+      email: null,
       photoUrl: m.user.photoUrl,
     })),
     joined: season.members.some((m) => m.userId === user.id),

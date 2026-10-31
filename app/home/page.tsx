@@ -1,6 +1,6 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requirePageUser } from "@/src/server/auth/dal";
-import LogoutButton from "@/src/components/LogoutButton";
 import JoinGroupModal from "@/src/components/JoinGroupModal";
 import { prisma } from "@/src/lib/db";
 import { addWeeks, dbDateToLocalDate, localDateOf, weekKeyOf, type WeekKey } from "@/src/lib/time";
@@ -240,7 +240,9 @@ export default async function HomePage() {
               >
                 Mi perfil
               </a>
-              <LogoutButton />
+              <Link href="/settings" className="inline-flex items-center rounded-md bg-surface-3 px-3 py-2 text-sm font-medium hover:bg-border">
+                Ajustes
+              </Link>
             </div>
           </div>
 

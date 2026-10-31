@@ -5,7 +5,6 @@ import { jwtVerify } from "jose";
 const PUBLIC = [
   /^\/login$/,
   /^\/register$/,
-  /^\/api\/auth\/(login|register|logout)$/,
   /^\/api\/health$/,
   /^\/api\/cron\//,
   /^\/manifest\.webmanifest$/,
@@ -32,6 +31,13 @@ export async function proxy(req: NextRequest) {
   reqHeaders.set("x-pathname", pathname + search);
 
   if (AUTH_PAGES.some((r) => r.test(pathname)) && loggedIn) {
+    // `expired=1` (lo agrega dal.ts): la firma es válida pero la sesión fue revocada. Se muestra
+    // /login y se borra la cookie vieja (solo en GET: en el POST del login la acción escribe la nueva).
+    if (req.nextUrl.searchParams.get("expired") === "1") {
+      const res = NextResponse.next({ request: { headers: reqHeaders } });
+      if (req.method === "GET") res.cookies.delete(COOKIE);
+      return res;
+    }
     return NextResponse.redirect(new URL("/home", req.url));
   }
   if (PUBLIC.some((r) => r.test(pathname)) || loggedIn) {
