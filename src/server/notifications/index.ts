@@ -1,17 +1,12 @@
-/* eslint-disable @typescript-eslint/no-unused-vars -- stub: los parámetros se usan en la implementación real */
-// STUB (W0-C). W2-3 lo reemplaza por las implementaciones reales MANTENIENDO estos exports (§5.10).
-import type { NotificationType } from "@prisma/client";
-import type { ActivityChange, ActivityEffects } from "@/src/server/activities/effects";
-
-export async function emitActivityNotifications(_change: ActivityChange, _effects: ActivityEffects): Promise<void> {}
-
-export async function notify(_input: {
-  recipientIds: string[];
-  type: NotificationType;
-  actorId?: string;
-  groupId?: string;
-  seasonId?: string;
-  activityId?: string;
-  data?: Record<string, unknown>;
-  dedupeKey: (recipientId: string) => string;
-}): Promise<void> {}
+// Punto de entrada de notificaciones (contrato §5.10, dueño W2-3).
+// Sin "server-only" a propósito: se importa desde scripts con tsx.
+export { notify, normalizeDedupeKey, type NotifyInput } from "./notify";
+export {
+  emitActivityNotifications,
+  emitSeasonPublished,
+  emitSeasonStarted,
+  emitDueSeasonStarts,
+  emitRecentlyPublishedSeasons,
+} from "./emit";
+export { planActivityNotifications, renderNotification, type PlannedNotification, type RuleContext, type RenderedNotification } from "./rules";
+export { CONFIGURABLE_TYPES, TYPE_LABELS, defaultPrefs, loadPrefs, type ConfigurableType, type Channel, type ChannelPrefs } from "./preferences";

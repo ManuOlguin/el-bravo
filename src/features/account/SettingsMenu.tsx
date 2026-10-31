@@ -8,11 +8,10 @@ import { logoutAction, logoutEverywhereAction } from "@/src/server/actions/accou
 
 type Item = { href: string; label: string; description: string; enabled: boolean };
 
-// Notificaciones: la habilita W2-3 cuando exista /settings/notifications.
 const ITEMS: Item[] = [
   { href: "/settings/profile", label: "Perfil", description: "Nombre, foto, bio, objetivo y zona horaria", enabled: true },
   { href: "/settings/password", label: "Contraseña", description: "Cambiá tu contraseña", enabled: true },
-  { href: "/settings/notifications", label: "Notificaciones", description: "Próximamente", enabled: false },
+  { href: "/settings/notifications", label: "Notificaciones", description: "En la app, por email y push", enabled: true },
 ];
 
 function Chevron() {
