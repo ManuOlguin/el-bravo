@@ -1,6 +1,7 @@
 "use client";
 import { useState, useSyncExternalStore, useTransition } from "react";
 import { Button, IconButton, Sheet, toast } from "@/src/components/ui";
+import type { RoutineForEditor } from "@/src/schemas/routine";
 import { getRoutineForEditorAction } from "@/src/server/actions/routines";
 import { routineToText } from "./format";
 
@@ -34,8 +35,9 @@ function ShareIcon({ size = 18 }: { size?: number }) {
  * Comparte la rutina como texto El Bravo en dos pasos. El tap trae el texto (await) y abre una hoja con
  * la vista previa; recién el tap en "Enviar…" o "Copiar" llama a `navigator.share` / `clipboard`, para que
  * iOS Safari vea el gesto del usuario (un await largo lo vence).
+ * `url` va solo si la rutina es pública. Si viene `routine` (p. ej. la de otro, que no se puede pedir), no se pide al server.
  */
-export function ShareRoutineButton({ routineId, url }: { routineId: string; url?: string }) {
+export function ShareRoutineButton({ routineId, url, routine }: { routineId: string; url?: string; routine?: RoutineForEditor }) {
   const [open, setOpen] = useState(false);
   const [shared, setShared] = useState<Shared | null>(null);
   const [pending, start] = useTransition();
@@ -43,6 +45,11 @@ export function ShareRoutineButton({ routineId, url }: { routineId: string; url?
 
   const onOpen = () => {
     if (shared) {
+      setOpen(true);
+      return;
+    }
+    if (routine) {
+      setShared({ title: routine.name, text: routineToText(routine, { url }) });
       setOpen(true);
       return;
     }

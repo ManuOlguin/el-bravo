@@ -1,14 +1,20 @@
 "use client";
 import { useReducer, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, Field, Input, PageHeader, Textarea, toast } from "@/src/components/ui";
-import type { RoutineForEditor } from "@/src/schemas/routine";
+import { Button, Card, Field, Input, PageHeader, Tabs, Textarea, toast, type TabItem } from "@/src/components/ui";
+import type { RoutineForEditor, RoutineVisibility } from "@/src/schemas/routine";
 import { useExerciseCatalog } from "@/src/features/exercises/useExerciseCatalog";
 import { referencedPending } from "@/src/features/routines-share/match";
 import type { NewExerciseDraft } from "@/src/features/routines-share/types";
 import { createRoutineAction, updateRoutineAction } from "@/src/server/actions/routines";
 import { WorkoutDraftError, draftFromRoutine, newDraft, toRoutineInput, workoutReducer } from "./state";
+import { copiedFromLabel } from "./RoutineMeta";
 import { WorkoutEditor } from "./WorkoutEditor";
+
+const VISIBILITY_TABS: TabItem<RoutineVisibility>[] = [
+  { id: "private", label: "Privada" },
+  { id: "public", label: "Pública" },
+];
 
 const NOW = { localDate: "1970-01-01", localTime: "00:00" }; // en modo plan la fecha no se usa
 
@@ -34,6 +40,7 @@ export function RoutineEditorScreen({
   const { refresh: refreshCatalog } = useExerciseCatalog();
   const [pending, start] = useTransition();
   const [errors, setErrors] = useState<Record<string, string[]>>({});
+  const [visibility, setVisibility] = useState<RoutineVisibility>(routine?.visibility ?? initial?.visibility ?? "private");
   const [draft, dispatch] = useReducer(workoutReducer, undefined, () => {
     const base = routine ?? initial;
     return base ? draftFromRoutine(base, "plan", NOW) : newDraft("plan", NOW);
@@ -53,7 +60,7 @@ export function RoutineEditorScreen({
     }
     setErrors({});
     const newExercises = referencedPending(pendingExercises, input.exercises.map((e) => e.exerciseId));
-    const body = newExercises.length ? { ...input, newExercises } : input;
+    const body = { ...input, visibility, ...(newExercises.length ? { newExercises } : {}) };
     start(async () => {
       try {
         const r = routine ? await updateRoutineAction(routine.id, body) : await createRoutineAction(body);
@@ -79,6 +86,7 @@ export function RoutineEditorScreen({
         title={routine ? "Editar rutina" : initial ? "Revisá la rutina importada" : "Nueva rutina"}
         back="/routines"
         onBack={onBack}
+        subtitle={routine?.copiedFromUserName ? copiedFromLabel(routine.copiedFromUserName) : undefined}
       />
       <Card className="space-y-3">
         <Field label="Nombre" htmlFor="r-name" error={errors.name?.[0]}>
@@ -98,6 +106,15 @@ export function RoutineEditorScreen({
             maxLength={2000}
           />
         </Field>
+        <div className="space-y-1.5">
+          <p className="text-sm font-semibold">Visibilidad</p>
+          <Tabs<RoutineVisibility> aria-label="Visibilidad" tabs={VISIBILITY_TABS} value={visibility} onChange={setVisibility} />
+          <p className="text-xs text-fg-subtle">
+            {visibility === "public"
+              ? "Aparece en tu perfil: cualquiera con cuenta en El Bravo la puede ver y copiar (con tus ejercicios propios)."
+              : "Solo la ves vos."}
+          </p>
+        </div>
       </Card>
 
       <section className="space-y-3" aria-label="Ejercicios">

@@ -50,6 +50,11 @@ export function upsertCatalogEntry(entry: CatalogEntry) {
   setState({ exercises: [...list.filter((e) => e.id !== entry.id), entry] });
 }
 
+/** Recarga el catálogo solo si ya se había cargado (p. ej. después de que el servidor creó ejercicios); si no, no hace nada. */
+export function refreshCatalogIfLoaded() {
+  if (state.exercises !== null) void load();
+}
+
 const EMPTY: CatalogEntry[] = [];
 
 export function useExerciseCatalog(): {

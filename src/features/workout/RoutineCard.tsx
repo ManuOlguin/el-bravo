@@ -1,19 +1,34 @@
 "use client";
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, IconButton, LinkButton, Pill, Sheet, toast, useConfirm } from "@/src/components/ui";
 import { GROUP_LABEL } from "@/src/features/exercises";
+import { CopyRoutineButton } from "@/src/features/routines-share/CopyRoutineButton";
 import { ShareRoutineButton } from "@/src/features/routines-share/ShareRoutineButton";
+import type { RoutineVisibility } from "@/src/schemas/routine";
 import { deleteRoutineAction } from "@/src/server/actions/routines";
 import { MoreIcon, PlayIcon, TrashIcon } from "./icons";
+import { CopiedFromNote, RoutineCounts, VisibilityPill } from "./RoutineMeta";
 
 /** Tarjeta de `/routines`: "Empezar" (en vivo) es la acción principal; Editar, Compartir y ⋯ → Borrar. */
 export function RoutineCard({
   routine,
   lastUsedLabel,
+  shareUrl,
 }: {
-  routine: { id: string; name: string; exerciseCount: number; setCount: number; groupKeys: string[] };
+  routine: {
+    id: string;
+    name: string;
+    exerciseCount: number;
+    setCount: number;
+    groupKeys: string[];
+    visibility: RoutineVisibility;
+    copiedFromUserName: string | null;
+  };
   lastUsedLabel: string | null;
+  /** Link absoluto para el pie del texto de Compartir; solo si la rutina es pública. */
+  shareUrl?: string;
 }) {
   const router = useRouter();
   const confirm = useConfirm();
@@ -44,19 +59,22 @@ export function RoutineCard({
     <Card as="li" className={pending ? "opacity-50" : undefined}>
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-lg font-bold">{routine.name}</h2>
-          <p className="text-sm text-fg-muted">
-            {routine.exerciseCount} {routine.exerciseCount === 1 ? "ejercicio" : "ejercicios"} · {routine.setCount}{" "}
-            {routine.setCount === 1 ? "serie" : "series"}
-          </p>
+          <h2 className="truncate text-lg font-bold">
+            <Link href={`/routines/${routine.id}`} className="hover:underline">
+              {routine.name}
+            </Link>
+          </h2>
+          <RoutineCounts exerciseCount={routine.exerciseCount} setCount={routine.setCount} />
+          <CopiedFromNote userName={routine.copiedFromUserName} />
           <p className="text-xs text-fg-subtle">{lastUsedLabel ? `Última vez: ${lastUsedLabel}` : "Todavía no la usaste"}</p>
         </div>
         <IconButton label={`Opciones de ${routine.name}`} onClick={() => setMenu(true)}>
           <MoreIcon />
         </IconButton>
       </div>
-      {routine.groupKeys.length > 0 && (
+      {(routine.visibility === "public" || routine.groupKeys.length > 0) && (
         <div className="mt-2 flex flex-wrap gap-1.5">
+          <VisibilityPill visibility={routine.visibility} />
           {routine.groupKeys.map((k) => (
             <Pill key={k}>{GROUP_LABEL[k] ?? k}</Pill>
           ))}
@@ -70,7 +88,7 @@ export function RoutineCard({
         <LinkButton href={`/routines/${routine.id}/edit`} variant="secondary">
           Editar
         </LinkButton>
-        <ShareRoutineButton routineId={routine.id} />
+        <ShareRoutineButton routineId={routine.id} url={shareUrl} />
       </div>
 
       <Sheet open={menu} onClose={() => setMenu(false)} title={routine.name}>
@@ -78,6 +96,14 @@ export function RoutineCard({
           <LinkButton href={`/workout/new?routine=${routine.id}`} variant="ghost" fullWidth className="justify-start">
             Registrar un entrenamiento ya hecho con esta rutina
           </LinkButton>
+          <CopyRoutineButton
+            routineId={routine.id}
+            label="Duplicar rutina"
+            variant="ghost"
+            fullWidth
+            className="justify-start"
+            onDone={() => setMenu(false)}
+          />
           <button
             type="button"
             onClick={onDelete}

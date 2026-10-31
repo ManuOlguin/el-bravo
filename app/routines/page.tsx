@@ -3,6 +3,7 @@ import { EmptyState, LinkButton, PageHeader } from "@/src/components/ui";
 import { formatDate } from "@/src/lib/time";
 import { requirePageUser } from "@/src/server/auth/dal";
 import { listRoutines } from "@/src/server/routines/service";
+import { routineShareUrl } from "@/src/server/routines/share-url";
 import { RoutineCard } from "@/src/features/workout/RoutineCard";
 
 export const metadata: Metadata = { title: "Rutinas" };
@@ -45,7 +46,12 @@ export default async function RoutinesPage() {
       ) : (
         <ul className="space-y-3">
           {routines.map((r) => (
-            <RoutineCard key={r.id} routine={r} lastUsedLabel={r.lastUsedAt ? formatDate(r.lastUsedAt, user.timezone) : null} />
+            <RoutineCard
+              key={r.id}
+              routine={r}
+              lastUsedLabel={r.lastUsedAt ? formatDate(r.lastUsedAt, user.timezone) : null}
+              shareUrl={r.visibility === "public" ? routineShareUrl(r.id) : undefined}
+            />
           ))}
         </ul>
       )}
