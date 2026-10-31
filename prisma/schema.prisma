@@ -361,7 +361,7 @@ model SeasonStanding {
 model Exercise {
   id              String              @id @default(cuid())
   slug            String              @unique @db.VarChar(80)
-  name            String              @unique @db.VarChar(100)
+  name            String              @db.VarChar(100)
   nameEn          String?             @db.VarChar(100)
   description     String?             @db.Text
   instructions    Json? // string[] de pasos (es-AR)
@@ -377,6 +377,7 @@ model Exercise {
   routines   RoutineExercise[]
   activities ActivityExercise[]
 
+  @@unique([createdByUserId, name])
   @@index([createdByUserId])
 }
 

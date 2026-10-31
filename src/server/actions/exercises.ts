@@ -43,8 +43,6 @@ export async function createExerciseAction(input: unknown): Promise<CreateExerci
         const error = `Ya existe un ejercicio con ese nombre: ${r.existing.name}`;
         return { ok: false, error, fieldErrors: { name: [error] }, existing: r.existing } as ActionResult<never>;
       }
-      case "name_taken":
-        return fail("Ya existe un ejercicio con ese nombre. Probá con otro.", { name: ["Ya existe un ejercicio con ese nombre"] });
       case "invalid_muscles":
         return fail("Hay músculos que no existen. Recargá la página y probá de nuevo.");
     }

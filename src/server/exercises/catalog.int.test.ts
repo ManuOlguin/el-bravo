@@ -98,10 +98,11 @@ describe("createExercise", () => {
     expect(await prisma.exercise.count()).toBe(4);
   });
 
-  it("el nombre de un ejercicio privado ajeno no se revela, pero no se puede repetir", async () => {
+  it("el nombre de un ejercicio privado ajeno se puede usar (único por dueño)", async () => {
     const f = await fixtures();
     const r = await createExercise(f.me.id, input({ name: "Ajeno" }, f.pecho.id));
-    expect(r).toEqual({ ok: false, reason: "name_taken" });
+    expect(r.ok).toBe(true);
+    expect(await prisma.exercise.count({ where: { name: "Ajeno" } })).toBe(2);
   });
 
   it("si el slug está tomado agrega sufijo", async () => {

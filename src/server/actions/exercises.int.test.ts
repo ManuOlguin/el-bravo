@@ -59,6 +59,21 @@ describe("exercise actions", () => {
     expect(r).toMatchObject({ ok: false, error: "Ya existe un ejercicio con ese nombre: Jalón al pecho", existing: { id: f.jalon.id, name: "Jalón al pecho" } });
   });
 
+  it("dos usuarios pueden tener un ejercicio propio con el mismo nombre", async () => {
+    const f = await fixtures();
+    const other = await prisma.user.create({ data: { email: "other@a.com", passwordHash: "x", name: "Otro" } });
+    const input = {
+      name: "Remo Hammer", measureType: "reps", equipment: "machine", tracksWeight: true,
+      muscles: [{ muscleId: f.pecho.id, percentage: 100 }],
+    };
+    session.userId = f.me.id;
+    const a = await createExerciseAction(input);
+    session.userId = other.id;
+    const b = await createExerciseAction(input);
+    expect(a.ok && b.ok).toBe(true);
+    expect(await prisma.exercise.count({ where: { name: "Remo Hammer" } })).toBe(2);
+  });
+
   it("porcentajes que suman 90 dan error de validación en español", async () => {
     const f = await fixtures();
     const r = await createExerciseAction({

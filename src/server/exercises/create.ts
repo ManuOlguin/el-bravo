@@ -10,11 +10,6 @@ export type CreateExerciseResult =
   | { ok: true; exercise: CatalogEntry }
   /** Ya hay uno visible (oficial o propio) con el mismo nombre normalizado: la UI ofrece usarlo. */
   | { ok: false; reason: "duplicate"; existing: { id: string; name: string } }
-  /**
-   * `Exercise.name` es único en toda la tabla (schema W0-C): el nombre lo usa un ejercicio privado de otro usuario.
-   * No se revela cuál; hace falta otro nombre.
-   */
-  | { ok: false; reason: "name_taken" }
   | { ok: false; reason: "invalid_muscles" };
 
 const isUniqueViolation = (e: unknown) => (e as { code?: unknown } | null)?.code === "P2002";
@@ -67,8 +62,6 @@ export async function createExercise(userId: string, input: CreateExerciseInput)
       if (!isUniqueViolation(e)) throw e;
       const raced = await findVisibleDuplicate(userId, name);
       if (raced) return { ok: false, reason: "duplicate", existing: raced };
-      // La colación de MySQL compara sin mayúsculas ni acentos, igual que `normalize()`.
-      if (await prisma.exercise.findFirst({ where: { name }, select: { id: true } })) return { ok: false, reason: "name_taken" };
     }
   }
   throw new Error("No se pudo generar un slug único para el ejercicio");
