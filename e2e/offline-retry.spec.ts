@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { login } from "./fixtures/helpers";
+import { login, passCelebration } from "./fixtures/helpers";
 
 async function fillRun(page: Page) {
   await page.goto("/workout/new");
@@ -29,8 +29,9 @@ test("sin conexión al guardar: muestra el error y al reintentar online queda 1 
 
   await context.setOffline(false);
   await dialog.getByRole("button", { name: "Reintentar" }).click();
+  await passCelebration(page);
   const result = page.getByRole("dialog", { name: "Resultado del entrenamiento" });
-  await expect(result.getByRole("heading", { name: "¡Bien ahí! 💪" })).toBeVisible({ timeout: 30_000 });
+  await expect(result.getByRole("heading", { name: "¡Bien ahí! 💪" })).toBeVisible();
 
   await expect(await workoutCount(page)).toHaveText("1");
 });

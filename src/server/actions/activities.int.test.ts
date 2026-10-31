@@ -194,3 +194,63 @@ describe("lecturas", () => {
     expect(excluding.data[bench.id].map((s) => s.weightKg)).toEqual([40]);
   });
 });
+
+describe("createActivityAction: festejo", () => {
+  const set = (reps: number, weightKg: number) => ({ kind: "normal" as const, reps, durationSeconds: null, weightKg, restSeconds: null, completed: true });
+
+  it("devuelve número de entrenamiento, récords contra el historial y semana solo si es la actual", async () => {
+    const { user, strength, bench } = await setup();
+    as(user);
+    const first = await createActivityAction(input(strength.id, { localDate: "2026-09-08", exercises: [{ exerciseId: bench.id, notes: null, sets: [set(10, 40)] }] }));
+    if (!first.ok) throw new Error(first.error);
+    // Primer entrenamiento con el ejercicio: no hay récord (no hay con qué comparar).
+    expect(first.data.celebration).toMatchObject({ workoutNumber: 1, records: [], week: null });
+
+    const second = await createActivityAction(
+      input(strength.id, { localDate: "2026-09-10", exercises: [{ exerciseId: bench.id, notes: null, sets: [set(10, 45), set(5, 50)] }] })
+    );
+    if (!second.ok) throw new Error(second.error);
+    expect(second.data.celebration).toMatchObject({
+      workoutNumber: 2,
+      records: [{ exerciseId: bench.id, exerciseName: "Press banca", weightKg: 50, reps: 5, previousKg: 40 }],
+      week: null, // septiembre no es la semana en curso
+    });
+  });
+
+  it("semana en curso: cuenta los entrenamientos y marca cuándo se cumple el objetivo", async () => {
+    const { user, running } = await setup();
+    await prisma.user.update({ where: { id: user.id }, data: { weeklyGoal: 2 } });
+    as(user);
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: TZ });
+    const a = await createActivityAction(input(running.id, { localDate: today, localTime: "00:01" }));
+    const b = await createActivityAction(input(running.id, { localDate: today, localTime: "00:02" }));
+    if (!a.ok || !b.ok) throw new Error("no se guardó");
+    expect(a.data.celebration?.week).toMatchObject({ workouts: 1, goal: 2, justMet: false });
+    expect(b.data.celebration?.week).toMatchObject({ workouts: 2, goal: 2, justMet: true });
+  });
+
+  it("un reintento (mismo clientRequestId) no festeja", async () => {
+    const { user, running } = await setup();
+    as(user);
+    const body = input(running.id);
+    await createActivityAction(body);
+    const again = await createActivityAction(body);
+    if (!again.ok) throw new Error(again.error);
+    expect(again.data.replayed).toBe(true);
+    expect(again.data.celebration).toBeNull();
+  });
+
+  it("subir de puesto: devuelve a quién pasó", async () => {
+    const { user, other, running, group, season } = await setup();
+    await prisma.groupMember.create({ data: { groupId: group.id, userId: other.id, role: "member" } });
+    await prisma.seasonMember.create({ data: { seasonId: season.id, userId: other.id } });
+    as(other);
+    await createActivityAction(input(running.id, { localDate: "2026-09-08", durationMinutes: 60 }));
+    as(user);
+    await createActivityAction(input(running.id, { localDate: "2026-09-08", durationMinutes: 30 }));
+    const r = await createActivityAction(input(running.id, { localDate: "2026-09-09", durationMinutes: 30 }));
+    if (!r.ok) throw new Error(r.error);
+    expect(r.data.effects.scoring[0]).toMatchObject({ rankBefore: 2, rankAfter: 1 });
+    expect(r.data.celebration?.passed).toEqual([{ seasonId: season.id, names: ["B"] }]);
+  });
+});

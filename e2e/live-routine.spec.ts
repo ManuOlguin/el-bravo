@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { confirmDialog, login } from "./fixtures/helpers";
+import { confirmDialog, login, passCelebration } from "./fixtures/helpers";
 
 const block = (page: Page, name: string) =>
   page.getByRole("region", { name: "Ejercicios" }).locator("section").filter({ has: page.getByRole("heading", { name, exact: true, level: 3 }) });
@@ -67,8 +67,9 @@ test("rutina con un ejercicio por tiempo: en vivo, retomar, terminar y actualiza
   const sheet = page.getByRole("dialog", { name: "¿Qué hiciste?" });
   await expect(sheet.getByRole("radio", { name: "Fuerza" })).toHaveAttribute("aria-checked", "true");
   await sheet.getByRole("button", { name: "Guardar entrenamiento" }).click();
+  await passCelebration(page);
   const result = page.getByRole("dialog", { name: "Resultado del entrenamiento" });
-  await expect(result.getByRole("heading", { name: "¡Bien ahí! 💪" })).toBeVisible({ timeout: 30_000 });
+  await expect(result.getByRole("heading", { name: "¡Bien ahí! 💪" })).toBeVisible();
   await expect(result.getByText("Series", { exact: true }).locator("..")).toContainText("3");
 
   // Actualizar la rutina con lo que se hizo.

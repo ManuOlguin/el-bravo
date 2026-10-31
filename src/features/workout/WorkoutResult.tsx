@@ -30,9 +30,13 @@ export function WorkoutSummaryStats({ summary }: { summary: WorkoutSummaryNumber
   );
 }
 
-/** Una tarjeta por temporada afectada: "+N pts en <Temporada> (<Grupo>)", total y puesto. */
+/**
+ * Una tarjeta por temporada afectada: "+N pts en <Temporada> (<Grupo>)", total y puesto.
+ * N es cuánto cambió el total (al editar puede bajar), no los puntos asignados a la actividad: si el día
+ * tenía otra actividad, los puntos del día se reparten por orden de inicio.
+ */
 export function ScoringEffectCard({ effect, sharedDay }: { effect: ScoringEffect; sharedDay: boolean }) {
-  const pts = effect.activityPoints;
+  const pts = effect.totalAfter - effect.totalBefore;
   const reason = displayReason(effect.activityReason) ?? (sharedDay ? "Se sumó al tiempo de tu día" : null);
   const climbed = effect.rankBefore !== null && effect.rankAfter > 0 && effect.rankAfter < effect.rankBefore;
   return (
@@ -42,7 +46,7 @@ export function ScoringEffectCard({ effect, sharedDay }: { effect: ScoringEffect
           {pts > 0 ? (
             <span className="text-lg font-extrabold text-primary tabular-nums">+{pts} pts</span>
           ) : (
-            <span className="text-lg font-extrabold text-fg-subtle tabular-nums">0 pts</span>
+            <span className="text-lg font-extrabold text-fg-subtle tabular-nums">{pts < 0 ? `−${-pts}` : 0} pts</span>
           )}{" "}
           <span className="text-fg-muted">en</span> <span className="font-semibold">{effect.seasonName}</span>{" "}
           <span className="text-fg-subtle">({effect.groupName})</span>

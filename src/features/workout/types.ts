@@ -15,4 +15,20 @@ export type SubmitOutcome = {
   effects: { scoring: ScoringEffect[]; badges: BadgeChange[] };
   sharedDaySeasonIds: string[];
   replayed: boolean;
+  /** Solo al crear (no en ediciones ni reintentos): datos extra para la secuencia de festejo. */
+  celebration?: Celebration | null;
+};
+
+/** Récord personal de peso logrado en este entrenamiento. */
+export type NewRecord = { exerciseId: string; exerciseName: string; weightKg: number; reps: number | null; previousKg: number };
+
+/** Lo que la secuencia de festejo necesita además de los efectos de puntos e insignias. */
+export type Celebration = {
+  /** Cuántos entrenamientos lleva el usuario, contando este. */
+  workoutNumber: number;
+  /** Semana del entrenamiento, solo si es la semana en curso. */
+  week: { workouts: number; goal: number; justMet: boolean; perfectStreak: number } | null;
+  records: NewRecord[];
+  /** Por temporada en la que subió de puesto: nombres de quienes pasó. */
+  passed: { seasonId: string; names: string[] }[];
 };

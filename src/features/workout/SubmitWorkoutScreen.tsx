@@ -1,11 +1,13 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, LinkButton, Spinner, cn, toast } from "@/src/components/ui";
 import { uploadPendingPhotos } from "@/src/features/media";
 import { createActivityAction, updateActivityAction } from "@/src/server/actions/activities";
 import { updateRoutineFromWorkoutAction } from "@/src/server/actions/routines";
 import type { ActivityInput } from "@/src/schemas/workout";
+import { buildCelebrationSteps } from "./celebration";
+import { CelebrationSequence } from "./CelebrationSequence";
 import { CheckIcon } from "./icons";
 import type { SubmitOutcome } from "./types";
 import { WorkoutResult, type WorkoutSummaryNumbers } from "./WorkoutResult";
@@ -40,6 +42,8 @@ function Step({ state, children }: { state: StepState; children: React.ReactNode
  * "Guardando → Calculando puntos → Subiendo fotos"; si falla, "Reintentar" reenvía con el MISMO
  * clientRequestId (no duplica) o "Volver a editar" (el borrador se conserva). Si sale bien, sube las
  * fotos y muestra el resultado: puntos por temporada e insignias afectadas.
+ * Al crear (no al editar ni en un reintento que ya estaba guardado), antes del resumen pasa por la
+ * secuencia de festejo (`CelebrationSequence`): una pantalla por logro.
  */
 export function SubmitWorkoutScreen({
   open,
@@ -73,6 +77,7 @@ export function SubmitWorkoutScreen({
   const [failedPhotos, setFailedPhotos] = useState<File[]>([]);
   const [retryingPhotos, setRetryingPhotos] = useState(false);
   const [routineState, setRoutineState] = useState<"idle" | "saving" | "done">("idle");
+  const [celebrated, setCelebrated] = useState(false);
   const started = useRef<ActivityInput | null>(null);
 
   useEffect(() => {
@@ -150,6 +155,15 @@ export function SubmitWorkoutScreen({
     }
   };
 
+  const steps = useMemo(
+    () =>
+      outcome && kind === "create" && !outcome.replayed
+        ? buildCelebrationSteps(outcome.effects.scoring, outcome.effects.badges, outcome.celebration ?? null)
+        : [],
+    [outcome, kind]
+  );
+  const celebrating = phase === "done" && steps.length > 0 && !celebrated;
+
   const savingState: StepState = phase === "saving" ? "active" : phase === "error" ? "error" : "done";
   const pointsState: StepState = phase === "saving" ? "pending" : phase === "error" ? "pending" : "done";
   const photosState: StepState = phase === "photos" ? "active" : phase === "done" ? (failedPhotos.length ? "error" : "done") : "pending";
@@ -157,7 +171,7 @@ export function SubmitWorkoutScreen({
   return (
     <dialog
       ref={ref}
-      aria-label={phase === "done" ? "Resultado del entrenamiento" : "Guardando tu entrenamiento"}
+      aria-label={celebrating ? "Festejo del entrenamiento" : phase === "done" ? "Resultado del entrenamiento" : "Guardando tu entrenamiento"}
       // Mientras guarda no se puede cerrar con Esc; en error/resultado, Esc = volver/ir.
       onCancel={(e) => {
         e.preventDefault();
@@ -203,6 +217,13 @@ export function SubmitWorkoutScreen({
               </div>
             )}
           </div>
+        ) : celebrating ? (
+          <CelebrationSequence
+            steps={steps}
+            summary={summary}
+            sharedDaySeasonIds={outcome?.sharedDaySeasonIds ?? []}
+            onDone={() => setCelebrated(true)}
+          />
         ) : (
           outcome && (
             <div className="py-8">

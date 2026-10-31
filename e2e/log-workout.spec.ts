@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { PHOTO_PATH, confirmDialog, creds, dayPoints, login } from "./fixtures/helpers";
+import { PHOTO_PATH, confirmDialog, creds, dayPoints, login, passCelebration } from "./fixtures/helpers";
 
 /** Bloque de un ejercicio en el editor (Card con el nombre como h3). */
 const exerciseBlock = (page: Page, name: string) =>
@@ -41,8 +41,12 @@ test("registrar fuerza con 2 ejercicios y 2 fotos, ver, editar y borrar", async 
   await expect(page.getByRole("button", { name: "Quitar foto" })).toHaveCount(2);
 
   await page.getByRole("button", { name: "Guardar entrenamiento" }).click();
+  // Festejo: una pantalla por logro (completo → puntos → … → insignias nuevas) y después el resumen.
+  const titles = await passCelebration(page);
+  expect(titles[0]).toBe("¡Entrenamiento completo!");
+  expect(titles).toContain("Sumaste puntos");
   const result = page.getByRole("dialog", { name: "Resultado del entrenamiento" });
-  await expect(result.getByRole("heading", { name: "¡Bien ahí! 💪" })).toBeVisible({ timeout: 30_000 });
+  await expect(result.getByRole("heading", { name: "¡Bien ahí! 💪" })).toBeVisible();
   // Puntos: 45 min el primer día de la semana en la temporada activa del grupo.
   const points = result.getByRole("region", { name: "Puntos" });
   await expect(points).toContainText(`+${dayPoints(45)} pts`);
@@ -73,7 +77,10 @@ test("registrar fuerza con 2 ejercicios y 2 fotos, ver, editar y borrar", async 
   await page.getByRole("button", { name: "Guardar cambios" }).click();
   const edited = page.getByRole("dialog", { name: "Resultado del entrenamiento" });
   await expect(edited.getByRole("heading", { name: "Entrenamiento actualizado" })).toBeVisible({ timeout: 30_000 });
-  await expect(edited.getByRole("region", { name: "Puntos" })).toContainText(`+${dayPoints(90)} pts`);
+  // La tarjeta muestra cuánto cambió el total (45 → 90 min), y el total nuevo.
+  const editedPoints = edited.getByRole("region", { name: "Puntos" });
+  await expect(editedPoints).toContainText(`+${dayPoints(90) - dayPoints(45)} pts`);
+  await expect(editedPoints).toContainText(`→ ${dayPoints(90)}`);
   await expect(await mySeasonLine(page)).toHaveText(`${dayPoints(90)} pts · 1 día`);
 
   // Borrar: vuelve al inicio y la temporada queda en 0.

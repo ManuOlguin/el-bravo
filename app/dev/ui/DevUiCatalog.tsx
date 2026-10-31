@@ -30,6 +30,7 @@ import {
   useConfirm,
 } from "@/src/components/ui";
 import { BadgesSection } from "./sections/badges";
+import { CelebrationSection } from "./sections/celebration";
 import { MediaSection } from "./sections/media";
 import { ExercisesSection } from "./sections/exercises";
 import { SocialSection } from "./sections/social";
@@ -355,6 +356,9 @@ export function DevUiCatalog() {
       <DataSection />
       <FormSection />
       <BadgesSection />
+      <Section title="Festejo post-entreno">
+        <CelebrationSection />
+      </Section>
       <MediaSection />
       <ExercisesSection />
       <SocialSection Section={Section} />

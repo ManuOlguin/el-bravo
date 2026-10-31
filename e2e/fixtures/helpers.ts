@@ -64,14 +64,33 @@ export function dayPoints(minutes: number): number {
 /** Imagen JPEG chica para las fotos (fixture). */
 export const PHOTO_PATH = `${__dirname}/photo.jpg`;
 
-/** Registra un entrenamiento sin ejercicios desde /workout/new y espera la pantalla de resultado. */
+/**
+ * Recorre el festejo post-entrenamiento ("Continuar" hasta "Ver resumen") y devuelve los títulos de cada
+ * pantalla, en orden. Después queda el diálogo "Resultado del entrenamiento".
+ */
+export async function passCelebration(page: Page): Promise<string[]> {
+  const dialog = page.getByRole("dialog", { name: "Festejo del entrenamiento" });
+  await expect(dialog.getByRole("heading", { name: "¡Entrenamiento completo!" })).toBeVisible({ timeout: 30_000 });
+  const titles: string[] = [];
+  for (let i = 0; i < 15; i++) {
+    titles.push((await dialog.getByRole("heading", { level: 2 }).innerText()).trim());
+    const next = dialog.getByRole("button", { name: /^(Continuar|Ver resumen)$/ });
+    const label = (await next.innerText()).trim();
+    await next.click();
+    if (label === "Ver resumen") return titles;
+  }
+  throw new Error(`El festejo no terminó: ${titles.join(" → ")}`);
+}
+
+/** Registra un entrenamiento sin ejercicios desde /workout/new pasa el festejo y espera el resultado. */
 export async function logQuickWorkout(page: Page, opts: { category: string; minutes: number; date?: string }) {
   await page.goto("/workout/new");
   await page.getByRole("radio", { name: opts.category, exact: true }).click();
   if (opts.date) await page.getByLabel("Fecha").fill(opts.date);
   await page.getByLabel("Duración en minutos").fill(String(opts.minutes));
   await page.getByRole("button", { name: "Guardar entrenamiento" }).click();
+  await passCelebration(page);
   const result = page.getByRole("dialog", { name: "Resultado del entrenamiento" });
-  await expect(result.getByRole("heading", { name: "¡Bien ahí! 💪" })).toBeVisible({ timeout: 30_000 });
+  await expect(result.getByRole("heading", { name: "¡Bien ahí! 💪" })).toBeVisible();
   return result;
 }

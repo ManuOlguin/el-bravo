@@ -19,6 +19,8 @@ import {
   type CategoryOption,
   type PreviousSet,
 } from "@/src/features/workout/server/queries";
+import { getWorkoutCelebration } from "@/src/features/workout/server/celebration";
+import type { Celebration } from "@/src/features/workout/types";
 
 const idSchema = z.string().min(1).max(64);
 
@@ -43,7 +45,9 @@ const STALE_DATA = "Algún dato del entrenamiento ya no existe (tipo de activida
  */
 export async function createActivityAction(
   input: ActivityInput
-): Promise<ActionResult<{ activityId: string; effects: ActivityEffects; replayed: boolean; sharedDaySeasonIds: string[] }>> {
+): Promise<
+  ActionResult<{ activityId: string; effects: ActivityEffects; replayed: boolean; sharedDaySeasonIds: string[]; celebration: Celebration | null }>
+> {
   return runAction(async () => {
     const user = await requireUser();
     const parsed = parseInput(activityInputSchema, input);
@@ -55,8 +59,15 @@ export async function createActivityAction(
       const finalEffects = replayed ? { scoring: await currentScoringEffects(user.id, activityId), badges: [] } : effects;
       revalidateAfter(finalEffects, activityId);
       const shared = finalEffects.scoring.length ? await sharedDaySeasonIds(activityId) : [];
+      // El festejo es un extra: si falla, el entrenamiento ya está guardado y se muestra el resumen simple.
+      const celebration = replayed
+        ? null
+        : await getWorkoutCelebration(user.id, activityId, finalEffects.scoring).catch((e) => {
+            console.error("getWorkoutCelebration", e);
+            return null;
+          });
       return ok(
-        { activityId, effects: finalEffects, replayed, sharedDaySeasonIds: shared },
+        { activityId, effects: finalEffects, replayed, sharedDaySeasonIds: shared, celebration },
         replayed ? "Ya estaba guardado" : "Entrenamiento guardado"
       );
     } catch (e) {
