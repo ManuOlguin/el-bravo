@@ -1,22 +1,15 @@
 "use client";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, Sheet, toast, useConfirm } from "@/src/components/ui";
+import { Button, Card, NumberInput, Sheet, cn, toast, useConfirm } from "@/src/components/ui";
+import { formatDuration, localTimeOf } from "@/src/lib/time";
 import type { RoutineForEditor } from "@/src/schemas/routine";
 import type { ActivityInput } from "@/src/schemas/workout";
 import { CategoryPicker } from "./CategoryPicker";
 import { formatVolume } from "./format";
 import { formatClock } from "./rest-timer";
-import {
-  WorkoutDraftError,
-  defaultStart,
-  draftFromRoutine,
-  draftSummary,
-  inputSummary,
-  toActivityInput,
-  workoutReducer,
-  type WorkoutDraft,
-} from "./state";
+import { endMsFor, isResumable, liveStatus, needsEndConfirmation, type EndChoice, type LiveStatus } from "./live-session";
+import { WorkoutDraftError, defaultStart, draftFromRoutine, draftSummary, inputSummary, toActivityInput, workoutReducer, type WorkoutDraft } from "./state";
 import { SubmitWorkoutScreen } from "./SubmitWorkoutScreen";
 import type { CategoryOption } from "./types";
 import { draftKey, readDraft, useDraftPersistence } from "./useDraftPersistence";
@@ -66,10 +59,78 @@ function useScrollLock() {
   }, []);
 }
 
+const minutes = (ms: number) => Math.max(1, Math.round(ms / 60_000));
+
+/** "¿Cuándo terminaste?": aparece al terminar si el entrenamiento parece olvidado o es muy largo. */
+function EndTimePicker({ status, value, onChange, tz }: { status: LiveStatus; value: EndChoice; onChange(c: EndChoice): void; tz: string }) {
+  const now = status.startedAtMs + status.elapsedMs;
+  const showSuggested = status.lastSetAtMs !== null && status.suggestedEndMs < now;
+  const option = (selected: boolean, onClick: () => void, title: string, detail: string) => (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onClick}
+      className={cn(
+        "w-full rounded-xl border px-4 py-3 text-left transition-colors",
+        selected ? "border-primary bg-primary/10" : "border-border bg-surface-2 hover:bg-surface-3",
+      )}
+    >
+      <span className="block text-sm font-bold">{title}</span>
+      <span className="block text-xs text-fg-muted">{detail}</span>
+    </button>
+  );
+  return (
+    <section aria-label="¿Cuándo terminaste?" className="space-y-2 rounded-card border border-warning/40 bg-warning/10 p-3">
+      <p className="text-sm font-bold">¿Cuándo terminaste?</p>
+      <p className="text-xs text-fg-muted">
+        {status.stale
+          ? status.lastSetAtMs !== null
+            ? `Tu última serie fue hace ${formatDuration(minutes(status.idleMs))}. ¿Te olvidaste de terminarlo?`
+            : `Lo empezaste hace ${formatDuration(minutes(status.elapsedMs))} y no tildaste nada desde entonces.`
+          : `Es un entrenamiento largo (${formatDuration(minutes(status.elapsedMs))}). Confirmá que esté bien.`}
+      </p>
+      <div role="radiogroup" aria-label="Hora de fin" className="space-y-2">
+        {showSuggested &&
+          option(
+            value.kind === "suggested",
+            () => onChange({ kind: "suggested" }),
+            "Después de mi última serie",
+            `A las ${localTimeOf(new Date(status.suggestedEndMs), tz)} · ${formatDuration(minutes(status.suggestedEndMs - status.startedAtMs))}`,
+          )}
+        {option(
+          value.kind === "now",
+          () => onChange({ kind: "now" }),
+          "Recién",
+          `A las ${localTimeOf(new Date(now), tz)} · ${formatDuration(minutes(status.elapsedMs))}`,
+        )}
+        {option(
+          value.kind === "custom",
+          () => onChange({ kind: "custom", minutes: value.kind === "custom" ? value.minutes : 60 }),
+          "Otra duración",
+          "La cargo yo",
+        )}
+        {value.kind === "custom" && (
+          <NumberInput
+            aria-label="Duración en minutos"
+            value={value.minutes}
+            min={1}
+            max={minutes(status.elapsedMs)}
+            suffix="min"
+            onChange={(v) => onChange({ kind: "custom", minutes: v ?? 1 })}
+          />
+        )}
+      </div>
+    </section>
+  );
+}
+
 /**
  * Modo en vivo (`/routines/[id]/live`): pantalla completa sobre el shell, cronómetro, series para
  * tachar con descanso y "Terminar" → categoría (Fuerza por defecto) → `SubmitWorkoutScreen`.
- * El borrador vive en localStorage: si se cierra la pestaña, al volver ofrece retomarlo.
+ * El borrador vive en localStorage: si se recarga, se cierra la pestaña o el celular la mata en
+ * segundo plano, al volver ofrece retomarlo (el cronómetro sigue desde la hora real de inicio).
+ * Si parece olvidado (más de 1 h sin tildar) o dura más de 3 h, al terminar pregunta la hora de fin.
  */
 export function LiveWorkoutScreen({ routine, categories, tz }: { routine: RoutineForEditor; categories: CategoryOption[]; tz: string }) {
   const router = useRouter();
@@ -84,14 +145,17 @@ export function LiveWorkoutScreen({ routine, categories, tz }: { routine: Routin
   const [categoryId, setCategoryId] = useState<string | null>(defaultCategory?.id ?? null);
   const [submitting, setSubmitting] = useState<ActivityInput | null>(null);
   const [beforeFinish, setBeforeFinish] = useState<WorkoutDraft | null>(null);
+  /** Al terminar: estado del tiempo y la hora de fin elegida (solo si hace falta confirmarla). */
+  const [endStatus, setEndStatus] = useState<LiveStatus | null>(null);
+  const [endChoice, setEndChoice] = useState<EndChoice>({ kind: "now" });
 
   const key = draftKey("live", routine.id);
   // `stored` se lee después de montar; mientras tanto (undefined) no se guarda nada para no pisar el borrador viejo.
   const [stored, setStored] = useState<ReturnType<typeof readDraft> | undefined>(undefined);
-  // Solo se ofrece retomar si había series tildadas; si no, se arranca de cero sin preguntar.
-  const hasResumable =
-    !!stored && stored.draft.mode === "live" && stored.draft.startedAtMs !== null && draftSummary(stored.draft).setsDone > 0;
-  const decided = stored !== undefined && (!hasResumable || choice !== null);
+  // Se ofrece retomar si había series tildadas o si lo empezó hace menos de 1 h; si no, se arranca de cero.
+  // `now` y `stored` se cargan en el mismo render (efectos al montar); hasta entonces no se decide nada.
+  const hasResumable = !!stored && now !== null && isResumable(stored.draft, now, draftSummary(stored.draft).setsDone);
+  const decided = stored !== undefined && now !== null && (!hasResumable || choice !== null);
   const { clear } = useDraftPersistence(key, draft, decided && !saved);
   const resumable = !decided && hasResumable ? stored : null;
 
@@ -110,13 +174,21 @@ export function LiveWorkoutScreen({ routine, categories, tz }: { routine: Routin
   }, []);
 
   const summary = draftSummary(draft);
-  const elapsed =
-    decided && now !== null && draft.startedAtMs !== null ? Math.max(0, Math.floor((now - draft.startedAtMs) / 1000)) : null;
+  const elapsed = decided && now !== null && draft.startedAtMs !== null ? Math.max(0, Math.floor((now - draft.startedAtMs) / 1000)) : null;
 
   const resume = () => {
     if (!resumable) return;
     dispatch({ type: "replace", draft: resumable.draft });
     setChoice("resume");
+  };
+  /** Entrenamiento olvidado: retomarlo y pasar directo a guardarlo con la hora de fin sugerida. */
+  const resumeAndFinish = () => {
+    if (!resumable) return;
+    dispatch({ type: "replace", draft: resumable.draft });
+    setChoice("resume");
+    setEndStatus(liveStatus(resumable.draft, Date.now()));
+    setEndChoice({ kind: "suggested" });
+    setCategorySheet(true);
   };
   const discardSaved = () => {
     clear();
@@ -151,6 +223,13 @@ export function LiveWorkoutScreen({ routine, categories, tz }: { routine: Routin
       });
       if (!yes) return;
     }
+    const status = liveStatus(draft, Date.now());
+    if (needsEndConfirmation(status)) {
+      setEndStatus(status);
+      setEndChoice(status.stale && status.lastSetAtMs !== null ? { kind: "suggested" } : { kind: "now" });
+    } else {
+      setEndStatus(null);
+    }
     setCategorySheet(true);
   };
 
@@ -159,7 +238,9 @@ export function LiveWorkoutScreen({ routine, categories, tz }: { routine: Routin
       toast.error("Elegí qué hiciste");
       return;
     }
-    const finished = workoutReducer({ ...draft, activityCategoryId: categoryId }, { type: "finishLive", nowMs: Date.now(), tz });
+    const nowMs = Date.now();
+    const endMs = endStatus ? endMsFor(endChoice, endStatus, nowMs) : nowMs;
+    const finished = workoutReducer({ ...draft, activityCategoryId: categoryId }, { type: "finishLive", nowMs: endMs, tz });
     try {
       const input = toActivityInput(finished);
       setCategorySheet(false);
@@ -177,10 +258,7 @@ export function LiveWorkoutScreen({ routine, categories, tz }: { routine: Routin
     clear();
   }, [clear]);
 
-  const submitSummary = useMemo(
-    () => (submitting ? inputSummary(submitting) : { durationMinutes: 0, exercises: 0, sets: 0, volumeKg: 0 }),
-    [submitting]
-  );
+  const submitSummary = useMemo(() => (submitting ? inputSummary(submitting) : { durationMinutes: 0, exercises: 0, sets: 0, volumeKg: 0 }), [submitting]);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-bg">
@@ -207,21 +285,33 @@ export function LiveWorkoutScreen({ routine, categories, tz }: { routine: Routin
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div className="mx-auto max-w-screen-sm px-4 pb-40 pt-4">
           {resumable ? (
-            <Card className="space-y-3 text-center">
-              <p className="text-lg font-bold">Tenés un entrenamiento en curso</p>
-              <p className="text-sm text-fg-muted">
-                Empezado hace {Math.max(1, Math.round(((now ?? 0) - (resumable.draft.startedAtMs ?? 0)) / 60_000))} min ·{" "}
-                {draftSummary(resumable.draft).setsDone} series tildadas
-              </p>
-              <div className="flex flex-col gap-2">
-                <Button size="lg" fullWidth onClick={resume}>
-                  Retomar entrenamiento
-                </Button>
-                <Button variant="ghost" fullWidth onClick={discardSaved}>
-                  Descartar y empezar de nuevo
-                </Button>
-              </div>
-            </Card>
+            (() => {
+              const st = liveStatus(resumable.draft, now ?? resumable.savedAt);
+              const done = draftSummary(resumable.draft).setsDone;
+              const forgotten = st.stale && done > 0;
+              return (
+                <Card className="space-y-3 text-center">
+                  <p className="text-lg font-bold">{forgotten ? "¿Te olvidaste de terminarlo?" : "Tenés un entrenamiento en curso"}</p>
+                  <p className="text-sm text-fg-muted">
+                    Empezado hace {formatDuration(minutes(st.elapsedMs))} · {done} {done === 1 ? "serie tildada" : "series tildadas"}
+                    {forgotten && st.lastSetAtMs !== null && <> · la última, hace {formatDuration(minutes(st.idleMs))}</>}
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {forgotten && (
+                      <Button size="lg" fullWidth onClick={resumeAndFinish}>
+                        Guardarlo terminado a las {localTimeOf(new Date(st.suggestedEndMs), tz)}
+                      </Button>
+                    )}
+                    <Button size="lg" variant={forgotten ? "secondary" : "primary"} fullWidth onClick={resume}>
+                      {forgotten ? "Seguir entrenando" : "Retomar entrenamiento"}
+                    </Button>
+                    <Button variant="ghost" fullWidth onClick={discardSaved}>
+                      Descartar y empezar de nuevo
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })()
           ) : (
             <WorkoutEditor draft={draft} dispatch={dispatch} restTimerClassName="bottom-[calc(1rem+env(safe-area-inset-bottom))]" />
           )}
@@ -230,6 +320,7 @@ export function LiveWorkoutScreen({ routine, categories, tz }: { routine: Routin
 
       <Sheet open={categorySheet} onClose={() => setCategorySheet(false)} title="¿Qué hiciste?">
         <div className="space-y-4">
+          {endStatus && <EndTimePicker status={endStatus} value={endChoice} onChange={setEndChoice} tz={tz} />}
           <CategoryPicker categories={categories} value={categoryId} onChange={setCategoryId} />
           <Button size="lg" fullWidth onClick={onSave}>
             Guardar entrenamiento

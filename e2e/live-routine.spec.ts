@@ -85,3 +85,54 @@ test("rutina con un ejercicio por tiempo: en vivo, retomar, terminar y actualiza
   await expect(page.getByText(/^0\/\d+ series/)).toBeVisible();
   await expect(page.getByText("Tenés un entrenamiento en curso")).toHaveCount(0);
 });
+
+test("entrenamiento olvidado: avisa en toda la app y al volver propone guardarlo con la hora de la última serie", async ({ page }) => {
+  await login(page, "rita");
+
+  await page.goto("/routines/new");
+  await page.getByLabel("Nombre").fill("Olvidada E2E");
+  await addExercise(page, "press de banca", /^Press de Banca/);
+  const bench = block(page, "Press de Banca");
+  await bench.getByLabel("Kilos de la serie 1", { exact: true }).fill("40");
+  await bench.getByLabel("Repeticiones de la serie 1", { exact: true }).fill("10");
+  await page.getByRole("button", { name: "Crear rutina" }).click();
+  await expect(page).toHaveURL(/\/routines$/);
+  await page.getByRole("listitem").filter({ hasText: "Olvidada E2E" }).getByRole("link", { name: "Empezar" }).click();
+  await expect(page).toHaveURL(/\/routines\/[a-z0-9]+\/live$/);
+  const liveUrl = page.url();
+  await liveBlock(page, "Press de Banca").getByRole("button", { name: "Marcar serie 1 como hecha" }).click();
+  await expect(page.getByText(/^1\/3 series/)).toBeVisible();
+
+  // Sale a otra pantalla: el aviso de "entrenando" lo sigue a todos lados.
+  await page.getByRole("button", { name: "Salir (el entrenamiento queda guardado)" }).click();
+  await page.goto("/home");
+  await expect(page.getByRole("link", { name: /Entrenando · Olvidada E2E/ })).toBeVisible();
+
+  // Pasan 4 horas (empezó hace 4 h, la serie fue hace 3 h 40 min): el borrador en este dispositivo se corre.
+  await page.evaluate(() => {
+    const key = Object.keys(localStorage).find((k) => k.startsWith("workout-draft:live:"))!;
+    const stored = JSON.parse(localStorage.getItem(key)!);
+    const now = Date.now();
+    stored.draft.startedAtMs = now - 4 * 3600_000;
+    for (const e of stored.draft.exercises) for (const s of e.sets) if (s.completed) s.completedAt = now - 220 * 60_000;
+    localStorage.setItem(key, JSON.stringify(stored));
+  });
+  await page.reload();
+  await expect(page.getByRole("link", { name: /¿Terminaste «Olvidada E2E»\?/ })).toBeVisible();
+
+  await page.goto(liveUrl);
+  await expect(page.getByText("¿Te olvidaste de terminarlo?")).toBeVisible();
+  await page.getByRole("button", { name: /^Guardarlo terminado a las \d\d:\d\d$/ }).click();
+  const sheet = page.getByRole("dialog", { name: "¿Qué hiciste?" });
+  const end = sheet.getByRole("radiogroup", { name: "Hora de fin" });
+  // Sugerida: la última serie + 5 min → 25 min desde el inicio.
+  await expect(end.getByRole("radio", { name: /Después de mi última serie.*25 min/ })).toHaveAttribute("aria-checked", "true");
+  await sheet.getByRole("button", { name: "Guardar entrenamiento" }).click();
+  await passCelebration(page);
+  const result = page.getByRole("dialog", { name: "Resultado del entrenamiento" });
+  await expect(result.getByText("Duración", { exact: true }).locator("..")).toContainText("25 min");
+
+  // Guardado: el aviso desaparece.
+  await page.goto("/home");
+  await expect(page.getByRole("link", { name: /Olvidada E2E/ })).toHaveCount(0);
+});

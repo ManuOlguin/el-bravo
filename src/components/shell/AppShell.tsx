@@ -1,5 +1,6 @@
 "use client";
 import { usePathname } from "next/navigation";
+import { LiveWorkoutBanner } from "@/src/features/workout/LiveWorkoutBanner";
 import { BottomNav } from "./BottomNav";
 import { SHELL_HIDDEN_PATHS } from "./nav-items";
 import { TopBar, type ShellUser } from "./TopBar";
@@ -18,6 +19,7 @@ export function AppShell({ user, children }: { user: ShellUser | null; children:
     <>
       <TopBar user={user} />
       <main className="mx-auto w-full max-w-screen-sm px-4 pb-28 pt-4 sm:max-w-screen-md sm:pb-10">{children}</main>
+      <LiveWorkoutBanner />
       <BottomNav />
     </>
   );
