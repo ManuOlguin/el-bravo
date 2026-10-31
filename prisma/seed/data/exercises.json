@@ -1,0 +1,4444 @@
+[
+  {
+    "slug": "press-de-banca",
+    "name": "Press de Banca",
+    "nameEn": "Bench Press",
+    "equipment": "barbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "press banca",
+        "locale": "es"
+      },
+      {
+        "alias": "pecho plano",
+        "locale": "es"
+      },
+      {
+        "alias": "press plano",
+        "locale": "es"
+      },
+      {
+        "alias": "barbell bench press",
+        "locale": "en"
+      },
+      {
+        "alias": "flat bench press",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "pecho",
+        "percentage": 70
+      },
+      {
+        "slug": "triceps",
+        "percentage": 20
+      },
+      {
+        "slug": "hombros",
+        "percentage": 10
+      }
+    ],
+    "description": "Empuje horizontal con barra, acostado en un banco plano. Trabaja sobre todo el pecho, con ayuda de tríceps y hombros.",
+    "instructions": [
+      "Acostate en el banco con los ojos debajo de la barra y los pies firmes en el piso.",
+      "Agarrá la barra un poco más abierto que el ancho de hombros y juntá los omóplatos.",
+      "Sacá la barra del soporte y bajala controlada hasta rozar la parte baja del pecho.",
+      "Empujá hacia arriba hasta extender los brazos.",
+      "Evitá: rebotar la barra en el pecho o despegar la cola del banco."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Barbell_Bench_Press_-_Medium_Grip/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "press-inclinado",
+    "name": "Press Inclinado",
+    "nameEn": "Incline Bench Press",
+    "equipment": "barbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "press banca inclinado",
+        "locale": "es"
+      },
+      {
+        "alias": "pecho inclinado",
+        "locale": "es"
+      },
+      {
+        "alias": "incline barbell press",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "pecho",
+        "percentage": 60
+      },
+      {
+        "slug": "hombros",
+        "percentage": 20
+      },
+      {
+        "slug": "triceps",
+        "percentage": 20
+      }
+    ],
+    "description": "Press de banca en un banco inclinado. Pone más énfasis en la parte alta del pecho y en los hombros.",
+    "instructions": [
+      "Ajustá el banco a unos 30–45 grados y acostate con los pies firmes en el piso.",
+      "Agarrá la barra un poco más abierto que los hombros y juntá los omóplatos.",
+      "Bajá la barra controlada hasta la parte alta del pecho.",
+      "Empujá hacia arriba hasta extender los brazos.",
+      "Evitá: inclinar tanto el banco que el ejercicio pase a ser un press de hombros."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Barbell_Incline_Bench_Press_-_Medium_Grip/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "press-declinado",
+    "name": "Press Declinado",
+    "nameEn": "Decline Bench Press",
+    "equipment": "barbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "press banca declinado",
+        "locale": "es"
+      },
+      {
+        "alias": "pecho declinado",
+        "locale": "es"
+      },
+      {
+        "alias": "decline barbell press",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "pecho",
+        "percentage": 70
+      },
+      {
+        "slug": "triceps",
+        "percentage": 20
+      },
+      {
+        "slug": "hombros",
+        "percentage": 10
+      }
+    ],
+    "description": "Press con barra en un banco declinado, con la cabeza más baja que la cadera. Enfatiza la parte baja del pecho.",
+    "instructions": [
+      "Trabá los pies en los rodillos del banco declinado y acostate con cuidado.",
+      "Agarrá la barra un poco más abierto que los hombros; si hace falta, pedí ayuda para sacarla del soporte.",
+      "Bajá la barra controlada hasta la parte baja del pecho.",
+      "Empujá hacia arriba hasta extender los brazos.",
+      "Evitá: entrenarlo pesado sin compañero ni topes de seguridad."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Decline_Barbell_Bench_Press/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "aperturas-con-mancuernas",
+    "name": "Aperturas con Mancuernas",
+    "nameEn": "Dumbbell Fly",
+    "equipment": "dumbbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "aperturas",
+        "locale": "es"
+      },
+      {
+        "alias": "aperturas en banco",
+        "locale": "es"
+      },
+      {
+        "alias": "cristos",
+        "locale": "es"
+      },
+      {
+        "alias": "dumbbell flyes",
+        "locale": "en"
+      },
+      {
+        "alias": "chest fly",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "pecho",
+        "percentage": 80
+      },
+      {
+        "slug": "hombros",
+        "percentage": 20
+      }
+    ],
+    "description": "Aislamiento de pecho con mancuernas: los brazos se abren y se cierran en arco, acostado en un banco.",
+    "instructions": [
+      "Acostate en un banco plano con una mancuerna en cada mano, los brazos extendidos sobre el pecho y las palmas enfrentadas.",
+      "Flexioná apenas los codos y mantené ese ángulo durante todo el movimiento.",
+      "Abrí los brazos en arco hasta sentir el estiramiento del pecho.",
+      "Volvé a cerrar por el mismo arco, como si abrazaras un barril.",
+      "Evitá: bajar más de lo cómodo o usar tanto peso que termine siendo un press."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Dumbbell_Flyes/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "fondos-pecho",
+    "name": "Fondos Pecho",
+    "nameEn": "Chest Dips",
+    "equipment": "bodyweight",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "fondos en paralelas",
+        "locale": "es"
+      },
+      {
+        "alias": "paralelas",
+        "locale": "es"
+      },
+      {
+        "alias": "dips",
+        "locale": "en"
+      },
+      {
+        "alias": "parallel bar dips",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "pecho",
+        "percentage": 55
+      },
+      {
+        "slug": "triceps",
+        "percentage": 30
+      },
+      {
+        "slug": "hombros",
+        "percentage": 15
+      }
+    ],
+    "description": "Fondos en paralelas con el torso inclinado hacia adelante para que trabaje más el pecho. Se puede sumar lastre.",
+    "instructions": [
+      "Agarrate de las paralelas y subí hasta quedar con los brazos extendidos.",
+      "Inclinate un poco hacia adelante y abrí levemente los codos.",
+      "Bajá controlado hasta que los hombros queden más o menos a la altura de los codos.",
+      "Empujá hasta volver a extender los brazos.",
+      "Evitá: bajar de golpe o más de lo que te resulta cómodo en los hombros."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Dips_-_Chest_Version/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "lagartijas",
+    "name": "Lagartijas",
+    "nameEn": "Push-up",
+    "equipment": "bodyweight",
+    "measureType": "reps",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "flexiones",
+        "locale": "es"
+      },
+      {
+        "alias": "flexiones de brazos",
+        "locale": "es"
+      },
+      {
+        "alias": "push up",
+        "locale": "en"
+      },
+      {
+        "alias": "pushups",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "pecho",
+        "percentage": 55
+      },
+      {
+        "slug": "triceps",
+        "percentage": 25
+      },
+      {
+        "slug": "hombros",
+        "percentage": 20
+      }
+    ],
+    "description": "Empuje desde el piso con el peso del cuerpo. Trabaja pecho, tríceps y hombros, y exige mantener el abdomen firme.",
+    "instructions": [
+      "Apoyá las manos en el piso un poco más abiertas que los hombros y estirá las piernas hacia atrás.",
+      "Formá una línea recta desde la cabeza hasta los talones, con abdomen y glúteos apretados.",
+      "Bajá el pecho hasta casi tocar el piso, con los codos a unos 45 grados del cuerpo.",
+      "Empujá el piso hasta volver a extender los brazos.",
+      "Evitá: dejar caer la cadera o levantar la cola."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Pushups/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "lagartijas-inclinadas",
+    "name": "Lagartijas Inclinadas",
+    "nameEn": "Incline Push-up",
+    "equipment": "bodyweight",
+    "measureType": "reps",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "flexiones inclinadas",
+        "locale": "es"
+      },
+      {
+        "alias": "flexiones con manos elevadas",
+        "locale": "es"
+      },
+      {
+        "alias": "incline pushups",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "pecho",
+        "percentage": 55
+      },
+      {
+        "slug": "triceps",
+        "percentage": 25
+      },
+      {
+        "slug": "hombros",
+        "percentage": 20
+      }
+    ],
+    "description": "Lagartijas con las manos apoyadas en un banco o superficie elevada. Son más fáciles que las comunes y sirven para progresar.",
+    "instructions": [
+      "Apoyá las manos en un banco o cajón firme, un poco más abiertas que los hombros.",
+      "Estirá las piernas hacia atrás y alineá cabeza, cadera y talones.",
+      "Bajá el pecho hacia el borde del banco doblando los codos.",
+      "Empujá hasta extender los brazos.",
+      "Evitá: apoyarte en algo que se pueda mover o resbalar."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Incline_Push-Up/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "dominadas",
+    "name": "Dominadas",
+    "nameEn": "Pull-up",
+    "equipment": "bodyweight",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "barra",
+        "locale": "es"
+      },
+      {
+        "alias": "barra fija",
+        "locale": "es"
+      },
+      {
+        "alias": "pull up",
+        "locale": "en"
+      },
+      {
+        "alias": "pullups",
+        "locale": "en"
+      },
+      {
+        "alias": "chin up",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "espalda",
+        "percentage": 55
+      },
+      {
+        "slug": "biceps",
+        "percentage": 25
+      },
+      {
+        "slug": "antebrazo",
+        "percentage": 20
+      }
+    ],
+    "description": "Tirón vertical colgado de una barra: subís el cuerpo con la fuerza de la espalda y los brazos. Se puede sumar lastre.",
+    "instructions": [
+      "Colgate de la barra con las palmas hacia adelante y las manos un poco más abiertas que los hombros.",
+      "Bajá los hombros, alejándolos de las orejas, antes de empezar a tirar.",
+      "Tirá con la espalda y los brazos hasta pasar el mentón por encima de la barra.",
+      "Bajá controlado hasta extender los brazos por completo.",
+      "Evitá: balancearte o patalear para subir."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Pullups/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "jalon-al-pecho",
+    "name": "Jalón al Pecho",
+    "nameEn": "Lat Pulldown",
+    "equipment": "machine",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "polea al pecho",
+        "locale": "es"
+      },
+      {
+        "alias": "jalon polea alta",
+        "locale": "es"
+      },
+      {
+        "alias": "dorsales en polea",
+        "locale": "es"
+      },
+      {
+        "alias": "pulldown",
+        "locale": "en"
+      },
+      {
+        "alias": "wide grip lat pulldown",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "espalda",
+        "percentage": 60
+      },
+      {
+        "slug": "biceps",
+        "percentage": 25
+      },
+      {
+        "slug": "antebrazo",
+        "percentage": 15
+      }
+    ],
+    "description": "Tirón vertical en la máquina de polea alta. Es una buena alternativa a las dominadas y sirve para progresar hacia ellas.",
+    "instructions": [
+      "Sentate en la máquina y trabá las piernas debajo de los rodillos.",
+      "Agarrá la barra un poco más abierto que los hombros, con las palmas hacia adelante.",
+      "Sacá un poco el pecho y tirá la barra hasta la parte alta del pecho.",
+      "Subí la barra controlada hasta estirar los brazos.",
+      "Evitá: llevar la barra detrás de la nuca o echarte muy atrás para mover más peso."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Wide-Grip_Lat_Pulldown/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "remo-con-barra",
+    "name": "Remo con Barra",
+    "nameEn": "Barbell Row",
+    "equipment": "barbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "remo inclinado",
+        "locale": "es"
+      },
+      {
+        "alias": "remo con barra libre",
+        "locale": "es"
+      },
+      {
+        "alias": "bent over row",
+        "locale": "en"
+      },
+      {
+        "alias": "bent over barbell row",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "espalda",
+        "percentage": 55
+      },
+      {
+        "slug": "trapecio",
+        "percentage": 20
+      },
+      {
+        "slug": "biceps",
+        "percentage": 15
+      },
+      {
+        "slug": "lumbar",
+        "percentage": 10
+      }
+    ],
+    "description": "Tirón horizontal con barra y el torso inclinado hacia adelante. Trabaja la espalda media y alta.",
+    "instructions": [
+      "Parate con los pies al ancho de la cadera y agarrá la barra un poco más abierto que los hombros.",
+      "Flexioná un poco las rodillas e inclinate hacia adelante con la espalda recta.",
+      "Tirá la barra hacia el abdomen llevando los codos hacia atrás.",
+      "Bajala controlada hasta estirar los brazos, sin cambiar la inclinación del torso.",
+      "Evitá: redondear la espalda o enderezarte en cada repetición para ayudarte."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Bent_Over_Barbell_Row/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "remo-con-mancuerna",
+    "name": "Remo con Mancuerna",
+    "nameEn": "Dumbbell Row",
+    "equipment": "dumbbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "remo a una mano",
+        "locale": "es"
+      },
+      {
+        "alias": "serrucho",
+        "locale": "es"
+      },
+      {
+        "alias": "one arm dumbbell row",
+        "locale": "en"
+      },
+      {
+        "alias": "single arm row",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "espalda",
+        "percentage": 55
+      },
+      {
+        "slug": "trapecio",
+        "percentage": 20
+      },
+      {
+        "slug": "biceps",
+        "percentage": 15
+      },
+      {
+        "slug": "lumbar",
+        "percentage": 10
+      }
+    ],
+    "description": "Remo a un brazo con mancuerna, apoyando la otra mano y una rodilla en un banco.",
+    "instructions": [
+      "Apoyá una rodilla y la mano del mismo lado en un banco plano, con la espalda recta.",
+      "Agarrá la mancuerna con la otra mano y dejá el brazo colgando.",
+      "Tirá la mancuerna hacia la cadera llevando el codo hacia atrás y cerca del cuerpo.",
+      "Bajala controlada hasta estirar el brazo.",
+      "Evitá: girar el torso para subir la mancuerna."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "One-Arm_Dumbbell_Row/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "remo-sentado",
+    "name": "Remo Sentado",
+    "nameEn": "Seated Cable Row",
+    "equipment": "cable",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "remo en polea baja",
+        "locale": "es"
+      },
+      {
+        "alias": "remo polea",
+        "locale": "es"
+      },
+      {
+        "alias": "seated row",
+        "locale": "en"
+      },
+      {
+        "alias": "cable row",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "espalda",
+        "percentage": 60
+      },
+      {
+        "slug": "biceps",
+        "percentage": 20
+      },
+      {
+        "slug": "trapecio",
+        "percentage": 20
+      }
+    ],
+    "description": "Tirón horizontal sentado en la polea baja, con agarre en V o con barra.",
+    "instructions": [
+      "Sentate con los pies apoyados en la plataforma y las rodillas un poco flexionadas.",
+      "Agarrá el manillar con los brazos estirados y el torso derecho.",
+      "Tirá el manillar hacia el abdomen juntando los omóplatos.",
+      "Volvé controlado hasta estirar los brazos, sin perder la postura.",
+      "Evitá: balancear el torso hacia adelante y hacia atrás para mover el peso."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Seated_Cable_Rows/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "pull-over",
+    "name": "Pull Over",
+    "nameEn": "Dumbbell Pullover",
+    "equipment": "dumbbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "pullover",
+        "locale": "es"
+      },
+      {
+        "alias": "pull over con mancuerna",
+        "locale": "es"
+      },
+      {
+        "alias": "straight arm pullover",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "espalda",
+        "percentage": 60
+      },
+      {
+        "slug": "pecho",
+        "percentage": 20
+      },
+      {
+        "slug": "triceps",
+        "percentage": 20
+      }
+    ],
+    "description": "Movimiento en arco con una mancuerna por detrás de la cabeza, acostado en un banco. Trabaja dorsales y pecho.",
+    "instructions": [
+      "Acostate en un banco plano y sostené una mancuerna con las dos manos sobre el pecho.",
+      "Flexioná apenas los codos y mantené ese ángulo.",
+      "Llevá la mancuerna en arco hacia atrás de la cabeza hasta sentir el estiramiento.",
+      "Volvé por el mismo arco hasta quedar sobre el pecho.",
+      "Evitá: bajar más de lo que te resulta cómodo en los hombros."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Straight-Arm_Dumbbell_Pullover/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "peso-muerto",
+    "name": "Peso Muerto",
+    "nameEn": "Deadlift",
+    "equipment": "barbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "peso muerto convencional",
+        "locale": "es"
+      },
+      {
+        "alias": "barbell deadlift",
+        "locale": "en"
+      },
+      {
+        "alias": "conventional deadlift",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "espalda",
+        "percentage": 25
+      },
+      {
+        "slug": "lumbar",
+        "percentage": 20
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 20
+      },
+      {
+        "slug": "isquiotibiales",
+        "percentage": 20
+      },
+      {
+        "slug": "trapecio",
+        "percentage": 15
+      }
+    ],
+    "description": "Levantar una barra desde el piso hasta quedar parado. Trabaja la cadena posterior: glúteos, isquiotibiales, espalda y trapecio.",
+    "instructions": [
+      "Parate con la barra sobre la mitad del pie y los pies al ancho de la cadera.",
+      "Bajá la cadera y agarrá la barra justo por fuera de las piernas, con la espalda recta y el pecho arriba.",
+      "Empujá el piso con los pies y subí llevando la barra pegada a las piernas.",
+      "Terminá parado con la cadera extendida y bajá la barra por el mismo camino.",
+      "Evitá: redondear la espalda baja o alejar la barra del cuerpo."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Barbell_Deadlift/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "press-militar",
+    "name": "Press Militar",
+    "nameEn": "Overhead Press",
+    "equipment": "barbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "press de hombros",
+        "locale": "es"
+      },
+      {
+        "alias": "press por encima de la cabeza",
+        "locale": "es"
+      },
+      {
+        "alias": "military press",
+        "locale": "en"
+      },
+      {
+        "alias": "shoulder press",
+        "locale": "en"
+      },
+      {
+        "alias": "ohp",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "hombros",
+        "percentage": 65
+      },
+      {
+        "slug": "triceps",
+        "percentage": 25
+      },
+      {
+        "slug": "trapecio",
+        "percentage": 10
+      }
+    ],
+    "description": "Empuje vertical con barra desde los hombros hasta arriba de la cabeza. Trabaja hombros y tríceps.",
+    "instructions": [
+      "Parate con la barra apoyada adelante de los hombros y las manos un poco más abiertas que los hombros.",
+      "Apretá glúteos y abdomen para mantener el cuerpo firme.",
+      "Empujá la barra hacia arriba, corriendo apenas la cabeza hacia atrás para que pase.",
+      "Terminá con los brazos extendidos sobre la cabeza y bajá controlado.",
+      "Evitá: arquear mucho la espalda baja para empujar."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Standing_Military_Press/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "elevaciones-laterales",
+    "name": "Elevaciones Laterales",
+    "nameEn": "Lateral Raise",
+    "equipment": "dumbbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "vuelos laterales",
+        "locale": "es"
+      },
+      {
+        "alias": "laterales",
+        "locale": "es"
+      },
+      {
+        "alias": "side lateral raise",
+        "locale": "en"
+      },
+      {
+        "alias": "dumbbell lateral raise",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "hombros",
+        "percentage": 85
+      },
+      {
+        "slug": "trapecio",
+        "percentage": 15
+      }
+    ],
+    "description": "Aislamiento de la parte lateral del hombro con mancuernas.",
+    "instructions": [
+      "Parate con una mancuerna en cada mano a los costados del cuerpo.",
+      "Flexioná apenas los codos e inclinate un poquito hacia adelante.",
+      "Subí los brazos hacia los costados hasta la altura de los hombros.",
+      "Bajá controlado, sin dejar caer las mancuernas.",
+      "Evitá: balancear el cuerpo o subir los hombros hacia las orejas."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Side_Lateral_Raise/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "elevaciones-frontales",
+    "name": "Elevaciones Frontales",
+    "nameEn": "Front Raise",
+    "equipment": "dumbbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "vuelos frontales",
+        "locale": "es"
+      },
+      {
+        "alias": "frontales",
+        "locale": "es"
+      },
+      {
+        "alias": "front dumbbell raise",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "hombros",
+        "percentage": 85
+      },
+      {
+        "slug": "trapecio",
+        "percentage": 15
+      }
+    ],
+    "description": "Elevación de mancuernas hacia adelante para trabajar la parte frontal del hombro.",
+    "instructions": [
+      "Parate con una mancuerna en cada mano adelante de los muslos.",
+      "Con los codos apenas flexionados, subí los brazos hacia adelante hasta la altura de los hombros.",
+      "Bajá controlado hasta la posición inicial.",
+      "Evitá: balancear el cuerpo para subir el peso."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Front_Dumbbell_Raise/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "pajaros",
+    "name": "Pájaros",
+    "nameEn": "Rear Delt Fly",
+    "equipment": "dumbbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "vuelos posteriores",
+        "locale": "es"
+      },
+      {
+        "alias": "aperturas invertidas",
+        "locale": "es"
+      },
+      {
+        "alias": "reverse fly",
+        "locale": "en"
+      },
+      {
+        "alias": "rear delt raise",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "hombros",
+        "percentage": 70
+      },
+      {
+        "slug": "trapecio",
+        "percentage": 30
+      }
+    ],
+    "description": "Aperturas con el torso inclinado para trabajar la parte posterior del hombro y la espalda alta.",
+    "instructions": [
+      "Inclinate hacia adelante con la espalda recta, parado o sentado en el borde de un banco, con una mancuerna en cada mano.",
+      "Dejá los brazos colgando con los codos apenas flexionados.",
+      "Abrí los brazos hacia los costados hasta la altura de los hombros, juntando los omóplatos.",
+      "Bajá controlado.",
+      "Evitá: usar tanto peso que termines tirando con el trapecio."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Seated_Bent-Over_Rear_Delt_Raise/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "arnold-press",
+    "name": "Arnold Press",
+    "nameEn": "Arnold Press",
+    "equipment": "dumbbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "press arnold",
+        "locale": "es"
+      },
+      {
+        "alias": "press de hombros con giro",
+        "locale": "es"
+      },
+      {
+        "alias": "arnold dumbbell press",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "hombros",
+        "percentage": 60
+      },
+      {
+        "slug": "triceps",
+        "percentage": 25
+      },
+      {
+        "slug": "trapecio",
+        "percentage": 15
+      }
+    ],
+    "description": "Press de hombros con mancuernas que suma un giro de muñecas durante el recorrido.",
+    "instructions": [
+      "Sentate en un banco con respaldo y sostené las mancuernas a la altura del pecho, con las palmas hacia vos.",
+      "Empujá hacia arriba mientras girás las muñecas, hasta terminar con las palmas hacia adelante.",
+      "Extendé los brazos sobre la cabeza.",
+      "Bajá deshaciendo el giro hasta la posición inicial.",
+      "Evitá: arquear la espalda baja para empujar."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Arnold_Dumbbell_Press/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "face-pull",
+    "name": "Face Pull",
+    "nameEn": "Face Pull",
+    "equipment": "cable",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "jalon a la cara",
+        "locale": "es"
+      },
+      {
+        "alias": "tiron a la cara",
+        "locale": "es"
+      },
+      {
+        "alias": "face pulls",
+        "locale": "en"
+      },
+      {
+        "alias": "rope face pull",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "hombros",
+        "percentage": 40
+      },
+      {
+        "slug": "trapecio",
+        "percentage": 35
+      },
+      {
+        "slug": "espalda",
+        "percentage": 25
+      }
+    ],
+    "description": "Tirón con soga en la polea alta hacia la cara. Trabaja la parte posterior del hombro y la espalda alta.",
+    "instructions": [
+      "Poné la polea a la altura de la cara o un poco más arriba y agarrá la soga con las dos manos.",
+      "Alejate un paso hasta tener los brazos estirados y la soga en tensión.",
+      "Tirá la soga hacia la cara, separando las manos y llevando los codos hacia afuera y atrás.",
+      "Volvé controlado hasta estirar los brazos.",
+      "Evitá: echarte hacia atrás con el cuerpo para mover más peso."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Face_Pull/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "curl-de-biceps",
+    "name": "Curl de Bíceps",
+    "nameEn": "Biceps Curl",
+    "equipment": "dumbbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "curl con mancuernas",
+        "locale": "es"
+      },
+      {
+        "alias": "curl con barra",
+        "locale": "es"
+      },
+      {
+        "alias": "biceps",
+        "locale": "es"
+      },
+      {
+        "alias": "bicep curl",
+        "locale": "en"
+      },
+      {
+        "alias": "dumbbell curl",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "biceps",
+        "percentage": 85
+      },
+      {
+        "slug": "antebrazo",
+        "percentage": 15
+      }
+    ],
+    "description": "Flexión de codos con mancuernas o barra para trabajar los bíceps.",
+    "instructions": [
+      "Parate con una mancuerna en cada mano, los brazos estirados y las palmas hacia adelante.",
+      "Pegá los codos a los costados del cuerpo.",
+      "Flexioná los codos y subí las mancuernas hacia los hombros.",
+      "Bajá controlado hasta estirar los brazos.",
+      "Evitá: balancear el torso o adelantar los codos para subir el peso."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Dumbbell_Bicep_Curl/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "curl-martillo",
+    "name": "Curl Martillo",
+    "nameEn": "Hammer Curl",
+    "equipment": "dumbbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "martillo",
+        "locale": "es"
+      },
+      {
+        "alias": "curl neutro",
+        "locale": "es"
+      },
+      {
+        "alias": "hammer curls",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "biceps",
+        "percentage": 55
+      },
+      {
+        "slug": "antebrazo",
+        "percentage": 45
+      }
+    ],
+    "description": "Curl con mancuernas con agarre neutro (palmas enfrentadas). Trabaja bíceps y antebrazo.",
+    "instructions": [
+      "Parate con una mancuerna en cada mano y las palmas mirando hacia el cuerpo.",
+      "Con los codos pegados al cuerpo, subí las mancuernas hacia los hombros sin girar las muñecas.",
+      "Bajá controlado hasta estirar los brazos.",
+      "Evitá: balancear el cuerpo para subir el peso."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Hammer_Curls/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "curl-inverso",
+    "name": "Curl Inverso",
+    "nameEn": "Reverse Curl",
+    "equipment": "barbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "curl prono",
+        "locale": "es"
+      },
+      {
+        "alias": "curl agarre invertido",
+        "locale": "es"
+      },
+      {
+        "alias": "reverse barbell curl",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "antebrazo",
+        "percentage": 70
+      },
+      {
+        "slug": "biceps",
+        "percentage": 30
+      }
+    ],
+    "description": "Curl con la barra agarrada con las palmas hacia abajo. Pone el foco en el antebrazo.",
+    "instructions": [
+      "Parate y agarrá la barra con las palmas hacia abajo, al ancho de los hombros.",
+      "Pegá los codos al cuerpo y mantené las muñecas firmes.",
+      "Flexioná los codos y subí la barra hacia los hombros.",
+      "Bajá controlado.",
+      "Evitá: doblar las muñecas o usar un peso que no puedas controlar."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Reverse_Barbell_Curl/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "curl-concentrado",
+    "name": "Curl Concentrado",
+    "nameEn": "Concentration Curl",
+    "equipment": "dumbbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "concentrado",
+        "locale": "es"
+      },
+      {
+        "alias": "curl concentrado sentado",
+        "locale": "es"
+      },
+      {
+        "alias": "concentration curls",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "biceps",
+        "percentage": 85
+      },
+      {
+        "slug": "antebrazo",
+        "percentage": 15
+      }
+    ],
+    "description": "Curl a un brazo, sentado, con el brazo apoyado en la cara interna del muslo.",
+    "instructions": [
+      "Sentate en el borde de un banco con las piernas separadas y una mancuerna en una mano.",
+      "Apoyá la parte de atrás del brazo en la cara interna del muslo.",
+      "Flexioná el codo y subí la mancuerna hacia el hombro.",
+      "Bajá controlado hasta estirar el brazo.",
+      "Evitá: mover el hombro o el torso para ayudarte."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Concentration_Curls/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "curl-inclinado",
+    "name": "Curl Inclinado",
+    "nameEn": "Incline Dumbbell Curl",
+    "equipment": "dumbbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "curl en banco inclinado",
+        "locale": "es"
+      },
+      {
+        "alias": "curl inclinado con mancuernas",
+        "locale": "es"
+      },
+      {
+        "alias": "incline curl",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "biceps",
+        "percentage": 85
+      },
+      {
+        "slug": "antebrazo",
+        "percentage": 15
+      }
+    ],
+    "description": "Curl con mancuernas recostado en un banco inclinado, que estira más el bíceps al inicio del movimiento.",
+    "instructions": [
+      "Ajustá el banco a unos 45 grados y recostate con una mancuerna en cada mano.",
+      "Dejá los brazos colgando, estirados, con las palmas hacia adelante.",
+      "Flexioná los codos y subí las mancuernas sin adelantar los brazos.",
+      "Bajá controlado hasta estirar los brazos.",
+      "Evitá: despegar la espalda del banco."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Incline_Dumbbell_Curl/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "curl-predicador",
+    "name": "Curl Predicador",
+    "nameEn": "Preacher Curl",
+    "equipment": "barbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "curl scott",
+        "locale": "es"
+      },
+      {
+        "alias": "banco scott",
+        "locale": "es"
+      },
+      {
+        "alias": "preacher curls",
+        "locale": "en"
+      },
+      {
+        "alias": "scott curl",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "biceps",
+        "percentage": 80
+      },
+      {
+        "slug": "antebrazo",
+        "percentage": 20
+      }
+    ],
+    "description": "Curl con los brazos apoyados en el banco Scott, que evita el balanceo.",
+    "instructions": [
+      "Sentate en el banco Scott con la parte de atrás de los brazos apoyada en el almohadón.",
+      "Agarrá la barra (o una mancuerna) con las palmas hacia arriba.",
+      "Flexioná los codos y subí la barra hacia los hombros.",
+      "Bajá controlado hasta casi estirar los brazos.",
+      "Evitá: dejar caer el peso al final del recorrido."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Preacher_Curl/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "farmer-carry",
+    "name": "Farmer Carry",
+    "nameEn": "Farmer's Walk",
+    "equipment": "dumbbell",
+    "measureType": "duration",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "caminata del granjero",
+        "locale": "es"
+      },
+      {
+        "alias": "paseo del granjero",
+        "locale": "es"
+      },
+      {
+        "alias": "farmers walk",
+        "locale": "en"
+      },
+      {
+        "alias": "farmer walk",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "antebrazo",
+        "percentage": 35
+      },
+      {
+        "slug": "trapecio",
+        "percentage": 20
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 15
+      },
+      {
+        "slug": "oblicuos",
+        "percentage": 10
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 10
+      },
+      {
+        "slug": "hombros",
+        "percentage": 10
+      }
+    ],
+    "description": "Caminar sosteniendo un peso pesado en cada mano. Trabaja el agarre, el trapecio y el abdomen.",
+    "instructions": [
+      "Agarrá una mancuerna o pesa rusa pesada en cada mano y parate derecho.",
+      "Bajá los hombros y apretá el abdomen.",
+      "Caminá con pasos cortos y firmes, mirando hacia adelante.",
+      "Al terminar, apoyá los pesos en el piso flexionando las rodillas.",
+      "Evitá: inclinarte hacia un costado o encorvar la espalda."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Farmers_Walk/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "press-frances",
+    "name": "Press Francés",
+    "nameEn": "Lying Triceps Extension",
+    "equipment": "barbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "frances",
+        "locale": "es"
+      },
+      {
+        "alias": "extension de triceps acostado",
+        "locale": "es"
+      },
+      {
+        "alias": "french press",
+        "locale": "en"
+      },
+      {
+        "alias": "lying triceps press",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "triceps",
+        "percentage": 90
+      },
+      {
+        "slug": "hombros",
+        "percentage": 10
+      }
+    ],
+    "description": "Extensión de codos acostado con barra (recta o W), llevando la barra por detrás de la cabeza. Aísla los tríceps.",
+    "instructions": [
+      "Acostate en un banco plano con la barra sobre el pecho y los brazos estirados.",
+      "Llevá los brazos apenas hacia atrás y mantenelos quietos.",
+      "Flexioná los codos para bajar la barra por detrás de la cabeza.",
+      "Extendé los codos para volver a subir la barra.",
+      "Evitá: abrir los codos hacia los costados."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Lying_Triceps_Press/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "extension-de-triceps-en-polea",
+    "name": "Extensión de Tríceps en Polea",
+    "nameEn": "Triceps Pushdown",
+    "equipment": "cable",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "triceps polea",
+        "locale": "es"
+      },
+      {
+        "alias": "triceps en polea alta",
+        "locale": "es"
+      },
+      {
+        "alias": "jalon de triceps",
+        "locale": "es"
+      },
+      {
+        "alias": "tricep pushdown",
+        "locale": "en"
+      },
+      {
+        "alias": "cable pushdown",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "triceps",
+        "percentage": 90
+      },
+      {
+        "slug": "hombros",
+        "percentage": 10
+      }
+    ],
+    "description": "Extensión de codos de pie en la polea alta, con barra o soga. Aísla los tríceps.",
+    "instructions": [
+      "Parate frente a la polea alta y agarrá la barra o la soga con los codos pegados al cuerpo.",
+      "Inclinate apenas hacia adelante y mantené los brazos quietos.",
+      "Empujá hacia abajo hasta extender por completo los codos.",
+      "Subí controlado hasta que los antebrazos queden más o menos paralelos al piso.",
+      "Evitá: despegar los codos del cuerpo o tirar con los hombros."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Triceps_Pushdown/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "rompecraneos",
+    "name": "Rompecráneos",
+    "nameEn": "Skull Crusher",
+    "equipment": "barbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "rompecraneos con barra w",
+        "locale": "es"
+      },
+      {
+        "alias": "extension de triceps en banco",
+        "locale": "es"
+      },
+      {
+        "alias": "skullcrusher",
+        "locale": "en"
+      },
+      {
+        "alias": "ez bar skull crusher",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "triceps",
+        "percentage": 90
+      },
+      {
+        "slug": "hombros",
+        "percentage": 10
+      }
+    ],
+    "description": "Extensión de tríceps acostado con barra W, bajando la barra hacia la frente.",
+    "instructions": [
+      "Acostate en un banco plano con la barra W sobre el pecho, los brazos estirados y las manos cerca.",
+      "Mantené los brazos quietos y flexioná los codos para bajar la barra hacia la frente.",
+      "Frená un poco antes de tocar la frente.",
+      "Extendé los codos para volver a subir.",
+      "Evitá: usar un peso que no puedas controlar cerca de la cara."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "EZ-Bar_Skullcrusher/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "fondos-triceps",
+    "name": "Fondos Tríceps",
+    "nameEn": "Bench Dips",
+    "equipment": "bodyweight",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "fondos en banco",
+        "locale": "es"
+      },
+      {
+        "alias": "fondos de triceps",
+        "locale": "es"
+      },
+      {
+        "alias": "triceps dips",
+        "locale": "en"
+      },
+      {
+        "alias": "bench dip",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "triceps",
+        "percentage": 70
+      },
+      {
+        "slug": "pecho",
+        "percentage": 20
+      },
+      {
+        "slug": "hombros",
+        "percentage": 10
+      }
+    ],
+    "description": "Fondos con las manos apoyadas en un banco detrás del cuerpo. Trabajan los tríceps.",
+    "instructions": [
+      "Sentate en el borde de un banco y apoyá las manos al lado de la cadera.",
+      "Adelantá la cola fuera del banco con las piernas estiradas o las rodillas flexionadas.",
+      "Bajá el cuerpo doblando los codos hacia atrás, hasta unos 90 grados.",
+      "Empujá con las manos hasta extender los brazos.",
+      "Evitá: bajar más de lo que te resulta cómodo en los hombros."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Bench_Dips/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "extension-por-encima-de-la-cabeza",
+    "name": "Extensión por Encima de la Cabeza",
+    "nameEn": "Overhead Triceps Extension",
+    "equipment": "dumbbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "triceps por encima de la cabeza",
+        "locale": "es"
+      },
+      {
+        "alias": "copa",
+        "locale": "es"
+      },
+      {
+        "alias": "extension de triceps con mancuerna",
+        "locale": "es"
+      },
+      {
+        "alias": "overhead extension",
+        "locale": "en"
+      },
+      {
+        "alias": "dumbbell triceps extension",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "triceps",
+        "percentage": 90
+      },
+      {
+        "slug": "hombros",
+        "percentage": 10
+      }
+    ],
+    "description": "Extensión de codos con una mancuerna sostenida por encima de la cabeza. Estira y trabaja los tríceps.",
+    "instructions": [
+      "Parate o sentate derecho y sostené una mancuerna con las dos manos por encima de la cabeza.",
+      "Mantené los codos apuntando hacia adelante y cerca de la cabeza.",
+      "Bajá la mancuerna por detrás de la cabeza flexionando los codos.",
+      "Extendé los codos para volver a subir.",
+      "Evitá: arquear la espalda baja o abrir los codos."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Standing_Dumbbell_Triceps_Extension/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "sentadillas",
+    "name": "Sentadillas",
+    "nameEn": "Squat",
+    "equipment": "barbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "sentadilla",
+        "locale": "es"
+      },
+      {
+        "alias": "sentadilla con barra",
+        "locale": "es"
+      },
+      {
+        "alias": "back squat",
+        "locale": "en"
+      },
+      {
+        "alias": "barbell squat",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "cuadriceps",
+        "percentage": 45
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 25
+      },
+      {
+        "slug": "isquiotibiales",
+        "percentage": 15
+      },
+      {
+        "slug": "aductores",
+        "percentage": 10
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 5
+      }
+    ],
+    "description": "Flexión de rodillas y cadera con la barra apoyada en la espalda alta. Trabaja cuádriceps, glúteos e isquiotibiales.",
+    "instructions": [
+      "Apoyá la barra sobre la espalda alta y parate con los pies al ancho de los hombros, apenas abiertos.",
+      "Tomá aire y apretá el abdomen.",
+      "Bajá llevando la cadera hacia atrás y abajo, con las rodillas en la dirección de los pies.",
+      "Bajá hasta donde puedas mantener la espalda recta y subí empujando el piso.",
+      "Evitá: que las rodillas se vayan hacia adentro o que se levanten los talones."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Barbell_Squat/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "sentadilla-frontal",
+    "name": "Sentadilla Frontal",
+    "nameEn": "Front Squat",
+    "equipment": "barbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "frontal",
+        "locale": "es"
+      },
+      {
+        "alias": "sentadilla con barra adelante",
+        "locale": "es"
+      },
+      {
+        "alias": "front squats",
+        "locale": "en"
+      },
+      {
+        "alias": "barbell front squat",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "cuadriceps",
+        "percentage": 50
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 20
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 15
+      },
+      {
+        "slug": "aductores",
+        "percentage": 10
+      },
+      {
+        "slug": "isquiotibiales",
+        "percentage": 5
+      }
+    ],
+    "description": "Sentadilla con la barra apoyada adelante de los hombros. Exige un torso más vertical y trabaja más los cuádriceps.",
+    "instructions": [
+      "Apoyá la barra adelante de los hombros, con los codos altos apuntando hacia adelante.",
+      "Parate con los pies al ancho de los hombros y apretá el abdomen.",
+      "Bajá con el torso lo más derecho posible, con las rodillas en la dirección de los pies.",
+      "Subí empujando el piso, manteniendo los codos altos.",
+      "Evitá: bajar los codos, porque la barra se te va hacia adelante."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Front_Barbell_Squat/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "prensa",
+    "name": "Prensa",
+    "nameEn": "Leg Press",
+    "equipment": "machine",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "prensa de piernas",
+        "locale": "es"
+      },
+      {
+        "alias": "prensa 45",
+        "locale": "es"
+      },
+      {
+        "alias": "leg press machine",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "cuadriceps",
+        "percentage": 55
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 20
+      },
+      {
+        "slug": "isquiotibiales",
+        "percentage": 15
+      },
+      {
+        "slug": "aductores",
+        "percentage": 10
+      }
+    ],
+    "description": "Empuje de piernas en máquina, sentado con la espalda apoyada. Trabaja cuádriceps y glúteos.",
+    "instructions": [
+      "Sentate en la prensa con la espalda bien apoyada y los pies en la plataforma, al ancho de la cadera.",
+      "Destrabá la plataforma y bajala flexionando las rodillas en la dirección de los pies.",
+      "Bajá hasta donde puedas sin que la cola se despegue del asiento.",
+      "Empujá hasta casi estirar las piernas.",
+      "Evitá: bloquear las rodillas de golpe al final del empuje."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Leg_Press/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "zancadas",
+    "name": "Zancadas",
+    "nameEn": "Lunges",
+    "equipment": "dumbbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "estocadas",
+        "locale": "es"
+      },
+      {
+        "alias": "desplantes",
+        "locale": "es"
+      },
+      {
+        "alias": "lunge",
+        "locale": "en"
+      },
+      {
+        "alias": "walking lunges",
+        "locale": "en"
+      },
+      {
+        "alias": "dumbbell lunges",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "cuadriceps",
+        "percentage": 35
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 30
+      },
+      {
+        "slug": "isquiotibiales",
+        "percentage": 20
+      },
+      {
+        "slug": "aductores",
+        "percentage": 10
+      },
+      {
+        "slug": "gemelos",
+        "percentage": 5
+      }
+    ],
+    "description": "Paso largo hacia adelante con flexión de las dos rodillas. Trabaja piernas y glúteos, y desafía el equilibrio.",
+    "instructions": [
+      "Parate derecho con una mancuerna en cada mano (o sin peso).",
+      "Dá un paso largo hacia adelante.",
+      "Bajá hasta que la rodilla de atrás quede cerca del piso y la de adelante, sobre el pie.",
+      "Empujá con la pierna de adelante para volver, o avanzá con la otra pierna.",
+      "Evitá: que la rodilla de adelante se vaya hacia adentro."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Dumbbell_Lunges/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "bulgarian-split-squat",
+    "name": "Bulgarian Split Squat",
+    "nameEn": "Bulgarian Split Squat",
+    "equipment": "dumbbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "sentadilla bulgara",
+        "locale": "es"
+      },
+      {
+        "alias": "bulgaras",
+        "locale": "es"
+      },
+      {
+        "alias": "split squat",
+        "locale": "en"
+      },
+      {
+        "alias": "rear foot elevated split squat",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "cuadriceps",
+        "percentage": 35
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 30
+      },
+      {
+        "slug": "isquiotibiales",
+        "percentage": 20
+      },
+      {
+        "slug": "aductores",
+        "percentage": 10
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 5
+      }
+    ],
+    "description": "Sentadilla a una pierna con el pie de atrás apoyado en un banco. Trabaja cuádriceps y glúteos.",
+    "instructions": [
+      "Parate de espaldas a un banco y apoyá el empeine de un pie sobre él.",
+      "Adelantá el otro pie hasta que, al bajar, la rodilla quede sobre el pie.",
+      "Bajá flexionando la pierna de adelante, con el torso firme.",
+      "Subí empujando con la pierna de adelante.",
+      "Evitá: que la rodilla de adelante se vaya hacia adentro."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Split_Squat_with_Dumbbells/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "peso-muerto-rumano",
+    "name": "Peso Muerto Rumano",
+    "nameEn": "Romanian Deadlift",
+    "equipment": "barbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "rumano",
+        "locale": "es"
+      },
+      {
+        "alias": "peso muerto piernas semirrigidas",
+        "locale": "es"
+      },
+      {
+        "alias": "rdl",
+        "locale": "en"
+      },
+      {
+        "alias": "stiff leg deadlift",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "isquiotibiales",
+        "percentage": 40
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 30
+      },
+      {
+        "slug": "lumbar",
+        "percentage": 15
+      },
+      {
+        "slug": "espalda",
+        "percentage": 10
+      },
+      {
+        "slug": "antebrazo",
+        "percentage": 5
+      }
+    ],
+    "description": "Bisagra de cadera con barra y rodillas apenas flexionadas. Trabaja isquiotibiales y glúteos.",
+    "instructions": [
+      "Parate con la barra en las manos, adelante de los muslos, y las rodillas apenas flexionadas.",
+      "Llevá la cadera hacia atrás y bajá la barra pegada a las piernas, con la espalda recta.",
+      "Bajá hasta sentir el estiramiento de los isquiotibiales.",
+      "Subí empujando la cadera hacia adelante.",
+      "Evitá: redondear la espalda para bajar más."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Romanian_Deadlift/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "hip-thrust",
+    "name": "Hip Thrust",
+    "nameEn": "Hip Thrust",
+    "equipment": "barbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "empuje de cadera",
+        "locale": "es"
+      },
+      {
+        "alias": "puente de gluteos con barra",
+        "locale": "es"
+      },
+      {
+        "alias": "barbell hip thrust",
+        "locale": "en"
+      },
+      {
+        "alias": "glute bridge",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "gluteos",
+        "percentage": 65
+      },
+      {
+        "slug": "isquiotibiales",
+        "percentage": 20
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 10
+      },
+      {
+        "slug": "cuadriceps",
+        "percentage": 5
+      }
+    ],
+    "description": "Extensión de cadera con la espalda apoyada en un banco y una barra sobre la cadera. Trabaja los glúteos.",
+    "instructions": [
+      "Sentate en el piso con la espalda alta apoyada en el borde de un banco y la barra sobre la cadera (con protector).",
+      "Apoyá los pies firmes en el piso, al ancho de la cadera, con las rodillas flexionadas.",
+      "Empujá la cadera hacia arriba hasta alinear rodillas, cadera y hombros.",
+      "Apretá los glúteos arriba y bajá controlado.",
+      "Evitá: arquear la espalda baja en lugar de extender la cadera."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Barbell_Hip_Thrust/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "curl-femoral",
+    "name": "Curl Femoral",
+    "nameEn": "Leg Curl",
+    "equipment": "machine",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "femorales",
+        "locale": "es"
+      },
+      {
+        "alias": "isquios en maquina",
+        "locale": "es"
+      },
+      {
+        "alias": "lying leg curl",
+        "locale": "en"
+      },
+      {
+        "alias": "hamstring curl",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "isquiotibiales",
+        "percentage": 85
+      },
+      {
+        "slug": "gemelos",
+        "percentage": 15
+      }
+    ],
+    "description": "Flexión de rodillas en máquina, acostado o sentado. Aísla los isquiotibiales.",
+    "instructions": [
+      "Acomodate en la máquina con el rodillo apoyado justo arriba de los talones.",
+      "Agarrate de las manijas y mantené la cadera apoyada.",
+      "Flexioná las rodillas llevando los talones hacia la cola.",
+      "Volvé controlado hasta casi estirar las piernas.",
+      "Evitá: levantar la cadera para ayudarte."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Lying_Leg_Curls/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "extension-de-cuadriceps",
+    "name": "Extensión de Cuádriceps",
+    "nameEn": "Leg Extension",
+    "equipment": "machine",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "sillon de cuadriceps",
+        "locale": "es"
+      },
+      {
+        "alias": "sillon",
+        "locale": "es"
+      },
+      {
+        "alias": "leg extensions",
+        "locale": "en"
+      },
+      {
+        "alias": "quad extension",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "cuadriceps",
+        "percentage": 90
+      },
+      {
+        "slug": "aductores",
+        "percentage": 10
+      }
+    ],
+    "description": "Extensión de rodillas sentado en la máquina. Aísla los cuádriceps.",
+    "instructions": [
+      "Sentate en la máquina con la espalda apoyada y el rodillo sobre los tobillos.",
+      "Alineá las rodillas con el eje de la máquina.",
+      "Extendé las rodillas hasta estirar las piernas.",
+      "Bajá controlado.",
+      "Evitá: patear el peso o dejarlo caer de golpe."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Leg_Extensions/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "elevacion-de-gemelos",
+    "name": "Elevación de Gemelos",
+    "nameEn": "Calf Raise",
+    "equipment": "machine",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "pantorrillas",
+        "locale": "es"
+      },
+      {
+        "alias": "gemelos parado",
+        "locale": "es"
+      },
+      {
+        "alias": "standing calf raise",
+        "locale": "en"
+      },
+      {
+        "alias": "calf raises",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "gemelos",
+        "percentage": 90
+      },
+      {
+        "slug": "isquiotibiales",
+        "percentage": 10
+      }
+    ],
+    "description": "Subir en puntas de pie con peso, en máquina o con mancuernas. Trabaja los gemelos.",
+    "instructions": [
+      "Apoyá la parte delantera de los pies en el borde de un escalón o de la plataforma.",
+      "Bajá los talones hasta sentir el estiramiento.",
+      "Subí en puntas de pie lo más alto que puedas.",
+      "Bajá controlado.",
+      "Evitá: rebotar abajo o hacer el movimiento a medias."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Standing_Calf_Raises/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "step-ups",
+    "name": "Step Ups",
+    "nameEn": "Step-up",
+    "equipment": "dumbbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "subidas al cajon",
+        "locale": "es"
+      },
+      {
+        "alias": "subida al banco",
+        "locale": "es"
+      },
+      {
+        "alias": "step up",
+        "locale": "en"
+      },
+      {
+        "alias": "dumbbell step ups",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "cuadriceps",
+        "percentage": 35
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 30
+      },
+      {
+        "slug": "isquiotibiales",
+        "percentage": 15
+      },
+      {
+        "slug": "gemelos",
+        "percentage": 10
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 10
+      }
+    ],
+    "description": "Subir a un cajón o banco con una pierna. Trabaja cuádriceps y glúteos.",
+    "instructions": [
+      "Parate frente a un cajón o banco firme, con una mancuerna en cada mano o sin peso.",
+      "Apoyá un pie entero arriba del cajón.",
+      "Empujá con esa pierna hasta quedar parado arriba.",
+      "Bajá controlado con la otra pierna y repetí.",
+      "Evitá: impulsarte con la pierna de abajo."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Dumbbell_Step_Ups/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "buenos-dias",
+    "name": "Buenos Días",
+    "nameEn": "Good Morning",
+    "equipment": "barbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "buenos dias con barra",
+        "locale": "es"
+      },
+      {
+        "alias": "flexion de cadera con barra",
+        "locale": "es"
+      },
+      {
+        "alias": "good mornings",
+        "locale": "en"
+      },
+      {
+        "alias": "barbell good morning",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "isquiotibiales",
+        "percentage": 35
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 30
+      },
+      {
+        "slug": "lumbar",
+        "percentage": 20
+      },
+      {
+        "slug": "espalda",
+        "percentage": 15
+      }
+    ],
+    "description": "Inclinación del torso hacia adelante con la barra en la espalda. Trabaja isquiotibiales, glúteos y espalda baja.",
+    "instructions": [
+      "Apoyá una barra liviana sobre la espalda alta y parate con las rodillas apenas flexionadas.",
+      "Llevá la cadera hacia atrás e inclinate hacia adelante con la espalda recta.",
+      "Bajá hasta sentir el estiramiento de los isquiotibiales.",
+      "Volvé a subir empujando la cadera hacia adelante.",
+      "Evitá: redondear la espalda o usar mucho peso."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Good_Morning/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "abdominales",
+    "name": "Abdominales",
+    "nameEn": "Sit-up",
+    "equipment": "bodyweight",
+    "measureType": "reps",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "abdominales completos",
+        "locale": "es"
+      },
+      {
+        "alias": "abdominales en el piso",
+        "locale": "es"
+      },
+      {
+        "alias": "sit ups",
+        "locale": "en"
+      },
+      {
+        "alias": "situp",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "abdominales",
+        "percentage": 80
+      },
+      {
+        "slug": "oblicuos",
+        "percentage": 20
+      }
+    ],
+    "description": "Flexión completa del tronco desde el piso hasta quedar sentado.",
+    "instructions": [
+      "Acostate boca arriba con las rodillas flexionadas y los pies apoyados (o trabados).",
+      "Cruzá los brazos sobre el pecho o apoyá las manos al costado de la cabeza.",
+      "Subí el torso hasta quedar sentado.",
+      "Bajá controlado hasta apoyar la espalda.",
+      "Evitá: tirar de la cabeza con las manos."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Sit-Up/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "crunch",
+    "name": "Crunch",
+    "nameEn": "Crunch",
+    "equipment": "bodyweight",
+    "measureType": "reps",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "encogimientos abdominales",
+        "locale": "es"
+      },
+      {
+        "alias": "abdominales cortos",
+        "locale": "es"
+      },
+      {
+        "alias": "crunches",
+        "locale": "en"
+      },
+      {
+        "alias": "ab crunch",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "abdominales",
+        "percentage": 80
+      },
+      {
+        "slug": "oblicuos",
+        "percentage": 20
+      }
+    ],
+    "description": "Flexión corta del tronco: despegás solo los hombros del piso.",
+    "instructions": [
+      "Acostate boca arriba con las rodillas flexionadas y los pies apoyados.",
+      "Apoyá las manos al costado de la cabeza o cruzalas sobre el pecho.",
+      "Despegá los hombros del piso contrayendo el abdomen.",
+      "Bajá controlado.",
+      "Evitá: tirar del cuello con las manos."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Crunches/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "elevacion-de-piernas",
+    "name": "Elevación de Piernas",
+    "nameEn": "Leg Raise",
+    "equipment": "bodyweight",
+    "measureType": "reps",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "elevaciones de piernas",
+        "locale": "es"
+      },
+      {
+        "alias": "abdominales inferiores",
+        "locale": "es"
+      },
+      {
+        "alias": "lying leg raise",
+        "locale": "en"
+      },
+      {
+        "alias": "leg raises",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "abdominales",
+        "percentage": 65
+      },
+      {
+        "slug": "oblicuos",
+        "percentage": 20
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 15
+      }
+    ],
+    "description": "Elevar las piernas estiradas acostado boca arriba. Trabaja el abdomen.",
+    "instructions": [
+      "Acostate boca arriba con las piernas estiradas y las manos debajo de la cola o al costado del cuerpo.",
+      "Mantené la espalda baja apoyada en el piso.",
+      "Subí las piernas hasta que queden verticales.",
+      "Bajalas controladas sin tocar el piso.",
+      "Evitá: arquear la espalda baja al bajar las piernas."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Flat_Bench_Lying_Leg_Raise/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "russian-twists",
+    "name": "Russian Twists",
+    "nameEn": "Russian Twist",
+    "equipment": "bodyweight",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "giros rusos",
+        "locale": "es"
+      },
+      {
+        "alias": "giros de torso",
+        "locale": "es"
+      },
+      {
+        "alias": "russian twist",
+        "locale": "en"
+      },
+      {
+        "alias": "seated twist",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "oblicuos",
+        "percentage": 55
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 35
+      },
+      {
+        "slug": "antebrazo",
+        "percentage": 10
+      }
+    ],
+    "description": "Rotaciones del torso sentado, con o sin peso. Trabaja oblicuos y abdomen.",
+    "instructions": [
+      "Sentate en el piso con las rodillas flexionadas y el torso apenas inclinado hacia atrás.",
+      "Sostené las manos juntas o un peso adelante del pecho.",
+      "Girá el torso hacia un lado y después hacia el otro.",
+      "Mantené la espalda recta durante todo el movimiento.",
+      "Evitá: mover solo los brazos sin girar el torso."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Russian_Twist/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "ab-wheel",
+    "name": "Ab Wheel",
+    "nameEn": "Ab Wheel Rollout",
+    "equipment": "other",
+    "measureType": "reps",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "rueda abdominal",
+        "locale": "es"
+      },
+      {
+        "alias": "rueda",
+        "locale": "es"
+      },
+      {
+        "alias": "ab roller",
+        "locale": "en"
+      },
+      {
+        "alias": "ab rollout",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "abdominales",
+        "percentage": 50
+      },
+      {
+        "slug": "oblicuos",
+        "percentage": 20
+      },
+      {
+        "slug": "lumbar",
+        "percentage": 15
+      },
+      {
+        "slug": "hombros",
+        "percentage": 15
+      }
+    ],
+    "description": "Rodar hacia adelante con la rueda abdominal y volver. Exige mucho al abdomen.",
+    "instructions": [
+      "Arrodillate y agarrá la rueda con las dos manos, debajo de los hombros.",
+      "Apretá el abdomen y los glúteos.",
+      "Rodá hacia adelante estirando el cuerpo hasta donde puedas mantener la espalda recta.",
+      "Volvé tirando con el abdomen hasta la posición inicial.",
+      "Evitá: dejar caer la cadera y arquear la espalda baja."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Ab_Roller/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "dead-bug",
+    "name": "Dead Bug",
+    "nameEn": "Dead Bug",
+    "equipment": "bodyweight",
+    "measureType": "reps",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "bicho muerto",
+        "locale": "es"
+      },
+      {
+        "alias": "insecto muerto",
+        "locale": "es"
+      },
+      {
+        "alias": "deadbug",
+        "locale": "en"
+      },
+      {
+        "alias": "dead bugs",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "abdominales",
+        "percentage": 55
+      },
+      {
+        "slug": "oblicuos",
+        "percentage": 25
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 20
+      }
+    ],
+    "description": "Ejercicio de estabilidad del tronco acostado boca arriba, moviendo brazo y pierna opuestos.",
+    "instructions": [
+      "Acostate boca arriba con los brazos estirados hacia el techo y las rodillas flexionadas a 90 grados.",
+      "Apoyá bien la espalda baja contra el piso.",
+      "Estirá un brazo hacia atrás y la pierna opuesta hacia adelante, sin tocar el piso.",
+      "Volvé y repetí del otro lado.",
+      "Evitá: despegar la espalda baja del piso."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Dead_Bug/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "mountain-climbers",
+    "name": "Mountain Climbers",
+    "nameEn": "Mountain Climbers",
+    "equipment": "bodyweight",
+    "measureType": "duration",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "escaladores",
+        "locale": "es"
+      },
+      {
+        "alias": "trepadores",
+        "locale": "es"
+      },
+      {
+        "alias": "mountain climber",
+        "locale": "en"
+      },
+      {
+        "alias": "climbers",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "abdominales",
+        "percentage": 35
+      },
+      {
+        "slug": "oblicuos",
+        "percentage": 20
+      },
+      {
+        "slug": "hombros",
+        "percentage": 15
+      },
+      {
+        "slug": "cuadriceps",
+        "percentage": 15
+      },
+      {
+        "slug": "pecho",
+        "percentage": 15
+      }
+    ],
+    "description": "Llevar las rodillas al pecho en forma alternada desde la posición de plancha, a buen ritmo.",
+    "instructions": [
+      "Ponete en posición de plancha con los brazos estirados y las manos debajo de los hombros.",
+      "Llevá una rodilla hacia el pecho.",
+      "Volvé y cambiá de pierna enseguida, en forma alternada.",
+      "Mantené el ritmo durante el tiempo elegido.",
+      "Evitá: levantar mucho la cadera."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Mountain_Climbers/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "plancha",
+    "name": "Plancha",
+    "nameEn": "Plank",
+    "equipment": "bodyweight",
+    "measureType": "duration",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "plancha abdominal",
+        "locale": "es"
+      },
+      {
+        "alias": "plancha frontal",
+        "locale": "es"
+      },
+      {
+        "alias": "front plank",
+        "locale": "en"
+      },
+      {
+        "alias": "forearm plank",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "abdominales",
+        "percentage": 45
+      },
+      {
+        "slug": "oblicuos",
+        "percentage": 20
+      },
+      {
+        "slug": "hombros",
+        "percentage": 15
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 10
+      },
+      {
+        "slug": "lumbar",
+        "percentage": 10
+      }
+    ],
+    "description": "Sostener el cuerpo recto apoyado en antebrazos y puntas de pie. Trabaja el abdomen y la estabilidad.",
+    "instructions": [
+      "Apoyá los antebrazos en el piso con los codos debajo de los hombros.",
+      "Estirá las piernas hacia atrás y apoyá las puntas de los pies.",
+      "Formá una línea recta desde la cabeza hasta los talones, con abdomen y glúteos apretados.",
+      "Sostené la posición respirando normalmente.",
+      "Evitá: dejar caer la cadera o levantar la cola."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Plank/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "plancha-lateral",
+    "name": "Plancha Lateral",
+    "nameEn": "Side Plank",
+    "equipment": "bodyweight",
+    "measureType": "duration",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "plancha de costado",
+        "locale": "es"
+      },
+      {
+        "alias": "puente lateral",
+        "locale": "es"
+      },
+      {
+        "alias": "side bridge",
+        "locale": "en"
+      },
+      {
+        "alias": "side planks",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "oblicuos",
+        "percentage": 45
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 25
+      },
+      {
+        "slug": "hombros",
+        "percentage": 15
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 10
+      },
+      {
+        "slug": "lumbar",
+        "percentage": 5
+      }
+    ],
+    "description": "Plancha de costado apoyado en un antebrazo. Trabaja oblicuos y abdomen.",
+    "instructions": [
+      "Acostate de costado y apoyá el antebrazo con el codo debajo del hombro.",
+      "Estirá las piernas y apoyá un pie sobre el otro.",
+      "Levantá la cadera hasta formar una línea recta desde la cabeza hasta los pies.",
+      "Sostené la posición y después cambiá de lado.",
+      "Evitá: dejar caer la cadera hacia el piso."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Side_Bridge/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "hollow-hold",
+    "name": "Hollow Hold",
+    "nameEn": "Hollow Body Hold",
+    "equipment": "bodyweight",
+    "measureType": "duration",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "posicion hueca",
+        "locale": "es"
+      },
+      {
+        "alias": "canoa",
+        "locale": "es"
+      },
+      {
+        "alias": "hollow body",
+        "locale": "en"
+      },
+      {
+        "alias": "hollow position",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "abdominales",
+        "percentage": 55
+      },
+      {
+        "slug": "oblicuos",
+        "percentage": 20
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 15
+      },
+      {
+        "slug": "lumbar",
+        "percentage": 10
+      }
+    ],
+    "description": "Sostener el cuerpo en forma de canoa, boca arriba, con brazos y piernas despegados del piso.",
+    "instructions": [
+      "Acostate boca arriba con los brazos estirados por encima de la cabeza.",
+      "Apoyá bien la espalda baja contra el piso.",
+      "Despegá hombros y piernas del piso, con las piernas estiradas y juntas.",
+      "Sostené la posición respirando normalmente.",
+      "Evitá: despegar la espalda baja del piso (si pasa, flexioná un poco las rodillas)."
+    ],
+    "media": {
+      "source": "svg",
+      "path": null,
+      "license": null
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "wall-sit",
+    "name": "Wall Sit",
+    "nameEn": "Wall Sit",
+    "equipment": "bodyweight",
+    "measureType": "duration",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "sentadilla isometrica",
+        "locale": "es"
+      },
+      {
+        "alias": "silla en la pared",
+        "locale": "es"
+      },
+      {
+        "alias": "wall squat",
+        "locale": "en"
+      },
+      {
+        "alias": "wall sits",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "cuadriceps",
+        "percentage": 55
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 20
+      },
+      {
+        "slug": "isquiotibiales",
+        "percentage": 10
+      },
+      {
+        "slug": "gemelos",
+        "percentage": 10
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 5
+      }
+    ],
+    "description": "Sostener una sentadilla con la espalda apoyada en la pared. Trabaja los cuádriceps.",
+    "instructions": [
+      "Apoyá la espalda contra una pared y separá los pies unos pasos hacia adelante.",
+      "Bajá deslizando la espalda hasta que las rodillas queden a unos 90 grados.",
+      "Mantené las rodillas sobre los pies y la espalda apoyada.",
+      "Sostené la posición el tiempo elegido.",
+      "Evitá: apoyar las manos en las piernas para ayudarte."
+    ],
+    "media": {
+      "source": "svg",
+      "path": null,
+      "license": null
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "superman-hold",
+    "name": "Superman Hold",
+    "nameEn": "Superman Hold",
+    "equipment": "bodyweight",
+    "measureType": "duration",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "superman",
+        "locale": "es"
+      },
+      {
+        "alias": "extension lumbar en el piso",
+        "locale": "es"
+      },
+      {
+        "alias": "superman exercise",
+        "locale": "en"
+      },
+      {
+        "alias": "prone hold",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "lumbar",
+        "percentage": 45
+      },
+      {
+        "slug": "espalda",
+        "percentage": 25
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 20
+      },
+      {
+        "slug": "trapecio",
+        "percentage": 10
+      }
+    ],
+    "description": "Boca abajo, despegar brazos y piernas del piso y sostener. Trabaja espalda baja y glúteos.",
+    "instructions": [
+      "Acostate boca abajo con los brazos estirados hacia adelante.",
+      "Apretá los glúteos.",
+      "Despegá al mismo tiempo brazos, pecho y piernas del piso.",
+      "Sostené la posición mirando hacia el piso.",
+      "Evitá: tirar el cuello hacia atrás."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Superman/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "correr",
+    "name": "Correr",
+    "nameEn": "Running",
+    "equipment": "cardio",
+    "measureType": "duration",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "running",
+        "locale": "es"
+      },
+      {
+        "alias": "trote",
+        "locale": "es"
+      },
+      {
+        "alias": "carrera",
+        "locale": "es"
+      },
+      {
+        "alias": "run",
+        "locale": "en"
+      },
+      {
+        "alias": "jogging",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "cuadriceps",
+        "percentage": 30
+      },
+      {
+        "slug": "gemelos",
+        "percentage": 25
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 20
+      },
+      {
+        "slug": "isquiotibiales",
+        "percentage": 15
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 10
+      }
+    ],
+    "description": "Correr al aire libre o en pista. Registralo por tiempo.",
+    "instructions": [
+      "Arrancá con unos minutos de trote suave o caminata para entrar en calor.",
+      "Corré con el torso derecho, los hombros relajados y pasos cortos.",
+      "Mantené un ritmo que puedas sostener durante el tiempo que elegiste.",
+      "Terminá con unos minutos a ritmo suave.",
+      "Evitá: arrancar demasiado rápido y quedarte sin aire a los pocos minutos."
+    ],
+    "media": {
+      "source": "svg",
+      "path": null,
+      "license": null
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "trote-en-cinta",
+    "name": "Trote en Cinta",
+    "nameEn": "Treadmill Jog",
+    "equipment": "cardio",
+    "measureType": "duration",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "cinta",
+        "locale": "es"
+      },
+      {
+        "alias": "correr en cinta",
+        "locale": "es"
+      },
+      {
+        "alias": "caminadora",
+        "locale": "es"
+      },
+      {
+        "alias": "treadmill",
+        "locale": "en"
+      },
+      {
+        "alias": "treadmill running",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "cuadriceps",
+        "percentage": 30
+      },
+      {
+        "slug": "gemelos",
+        "percentage": 25
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 20
+      },
+      {
+        "slug": "isquiotibiales",
+        "percentage": 15
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 10
+      }
+    ],
+    "description": "Trotar o correr en la cinta. Registralo por tiempo.",
+    "instructions": [
+      "Subite a la cinta, colocate el clip de seguridad si tiene y arrancá caminando.",
+      "Subí la velocidad de a poco hasta un trote cómodo.",
+      "Corré en el centro de la cinta, sin agarrarte de las barras.",
+      "Bajá la velocidad para terminar caminando.",
+      "Evitá: bajarte de la cinta con la banda todavía en movimiento."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Jogging_Treadmill/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "bicicleta-fija",
+    "name": "Bicicleta Fija",
+    "nameEn": "Stationary Bike",
+    "equipment": "cardio",
+    "measureType": "duration",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "bici fija",
+        "locale": "es"
+      },
+      {
+        "alias": "spinning",
+        "locale": "es"
+      },
+      {
+        "alias": "exercise bike",
+        "locale": "en"
+      },
+      {
+        "alias": "stationary cycling",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "cuadriceps",
+        "percentage": 35
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 25
+      },
+      {
+        "slug": "isquiotibiales",
+        "percentage": 15
+      },
+      {
+        "slug": "gemelos",
+        "percentage": 15
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 10
+      }
+    ],
+    "description": "Pedalear en bicicleta fija o de spinning. Registralo por tiempo.",
+    "instructions": [
+      "Ajustá el asiento para que la rodilla quede apenas flexionada con el pedal abajo.",
+      "Arrancá pedaleando suave unos minutos.",
+      "Subí la resistencia o el ritmo según el entrenamiento.",
+      "Terminá con unos minutos de pedaleo suave.",
+      "Evitá: un asiento demasiado bajo, que te hace pedalear con las rodillas muy flexionadas."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Bicycling_Stationary/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "eliptico",
+    "name": "Elíptico",
+    "nameEn": "Elliptical",
+    "equipment": "cardio",
+    "measureType": "duration",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "eliptica",
+        "locale": "es"
+      },
+      {
+        "alias": "maquina eliptica",
+        "locale": "es"
+      },
+      {
+        "alias": "elliptical trainer",
+        "locale": "en"
+      },
+      {
+        "alias": "cross trainer",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "cuadriceps",
+        "percentage": 25
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 20
+      },
+      {
+        "slug": "isquiotibiales",
+        "percentage": 15
+      },
+      {
+        "slug": "gemelos",
+        "percentage": 10
+      },
+      {
+        "slug": "hombros",
+        "percentage": 15
+      },
+      {
+        "slug": "espalda",
+        "percentage": 15
+      }
+    ],
+    "description": "Cardio en la máquina elíptica, con movimiento de piernas y brazos. Registralo por tiempo.",
+    "instructions": [
+      "Subite a los pedales y agarrá las manijas móviles.",
+      "Arrancá a ritmo suave, empujando y tirando con los brazos.",
+      "Subí la resistencia o el ritmo según el entrenamiento.",
+      "Mantené el torso derecho durante todo el ejercicio.",
+      "Evitá: apoyar todo el peso en las manijas."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Elliptical_Trainer/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "soga",
+    "name": "Soga",
+    "nameEn": "Jump Rope",
+    "equipment": "cardio",
+    "measureType": "duration",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "saltar la soga",
+        "locale": "es"
+      },
+      {
+        "alias": "saltos con soga",
+        "locale": "es"
+      },
+      {
+        "alias": "rope jumping",
+        "locale": "en"
+      },
+      {
+        "alias": "skipping",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "gemelos",
+        "percentage": 35
+      },
+      {
+        "slug": "cuadriceps",
+        "percentage": 20
+      },
+      {
+        "slug": "hombros",
+        "percentage": 15
+      },
+      {
+        "slug": "antebrazo",
+        "percentage": 10
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 10
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 10
+      }
+    ],
+    "description": "Saltar la soga. Registralo por tiempo.",
+    "instructions": [
+      "Agarrá la soga con un extremo en cada mano y dejala detrás de los pies.",
+      "Girala con las muñecas, con los codos cerca del cuerpo.",
+      "Saltá apenas lo justo para que pase la soga, cayendo en la parte delantera del pie.",
+      "Mantené un ritmo constante y descansá cuando lo necesites.",
+      "Evitá: saltar demasiado alto o girar la soga con los brazos enteros."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Rope_Jumping/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "remo-ergometrico",
+    "name": "Remo Ergométrico",
+    "nameEn": "Rowing Machine",
+    "equipment": "cardio",
+    "measureType": "duration",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "remo indoor",
+        "locale": "es"
+      },
+      {
+        "alias": "remoergometro",
+        "locale": "es"
+      },
+      {
+        "alias": "indoor rowing",
+        "locale": "en"
+      },
+      {
+        "alias": "rower",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "espalda",
+        "percentage": 30
+      },
+      {
+        "slug": "cuadriceps",
+        "percentage": 20
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 15
+      },
+      {
+        "slug": "biceps",
+        "percentage": 15
+      },
+      {
+        "slug": "trapecio",
+        "percentage": 10
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 10
+      }
+    ],
+    "description": "Remar en la máquina de remo. Trabaja piernas, espalda y brazos. Registralo por tiempo.",
+    "instructions": [
+      "Sentate en el remo, trabá los pies en los apoyos y agarrá la manija con los brazos estirados.",
+      "Empujá primero con las piernas.",
+      "Cuando las piernas están casi estiradas, inclinate apenas hacia atrás y tirá la manija hacia el abdomen.",
+      "Volvé en el orden inverso: brazos, torso y por último piernas.",
+      "Evitá: tirar con los brazos antes de empujar con las piernas."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Rowing_Stationary/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "air-bike",
+    "name": "Air Bike",
+    "nameEn": "Air Bike",
+    "equipment": "cardio",
+    "measureType": "duration",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "bicicleta de aire",
+        "locale": "es"
+      },
+      {
+        "alias": "bici con ventilador",
+        "locale": "es"
+      },
+      {
+        "alias": "assault bike",
+        "locale": "en"
+      },
+      {
+        "alias": "fan bike",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "cuadriceps",
+        "percentage": 20
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 15
+      },
+      {
+        "slug": "hombros",
+        "percentage": 20
+      },
+      {
+        "slug": "pecho",
+        "percentage": 10
+      },
+      {
+        "slug": "espalda",
+        "percentage": 15
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 10
+      },
+      {
+        "slug": "gemelos",
+        "percentage": 10
+      }
+    ],
+    "description": "Bicicleta con ventilador y manijas móviles: cuanto más fuerte pedaleás, más resistencia. Registralo por tiempo.",
+    "instructions": [
+      "Ajustá el asiento y agarrá las manijas.",
+      "Arrancá pedaleando y empujando y tirando de las manijas a ritmo suave.",
+      "Subí la intensidad según el entrenamiento (por ejemplo, intervalos).",
+      "Terminá con un par de minutos suaves.",
+      "Evitá: arrancar a fondo sin entrar en calor."
+    ],
+    "media": {
+      "source": "svg",
+      "path": null,
+      "license": null
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "caminata-inclinada",
+    "name": "Caminata Inclinada",
+    "nameEn": "Incline Treadmill Walk",
+    "equipment": "cardio",
+    "measureType": "duration",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "caminar en cinta inclinada",
+        "locale": "es"
+      },
+      {
+        "alias": "caminata en pendiente",
+        "locale": "es"
+      },
+      {
+        "alias": "incline walk",
+        "locale": "en"
+      },
+      {
+        "alias": "treadmill walking",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "gluteos",
+        "percentage": 30
+      },
+      {
+        "slug": "cuadriceps",
+        "percentage": 25
+      },
+      {
+        "slug": "gemelos",
+        "percentage": 20
+      },
+      {
+        "slug": "isquiotibiales",
+        "percentage": 15
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 10
+      }
+    ],
+    "description": "Caminar en la cinta con inclinación. Registralo por tiempo.",
+    "instructions": [
+      "Subite a la cinta y arrancá caminando sin inclinación.",
+      "Subí la inclinación de a poco hasta el nivel elegido.",
+      "Caminá con el torso derecho y pasos firmes.",
+      "Bajá la inclinación antes de terminar.",
+      "Evitá: agarrarte de las barras o del tablero para caminar."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Walking_Treadmill/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "burpees",
+    "name": "Burpees",
+    "nameEn": "Burpee",
+    "equipment": "bodyweight",
+    "measureType": "reps",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "burpee",
+        "locale": "es"
+      },
+      {
+        "alias": "saltos con flexion",
+        "locale": "es"
+      },
+      {
+        "alias": "squat thrust",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "pecho",
+        "percentage": 15
+      },
+      {
+        "slug": "hombros",
+        "percentage": 15
+      },
+      {
+        "slug": "triceps",
+        "percentage": 10
+      },
+      {
+        "slug": "cuadriceps",
+        "percentage": 20
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 15
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 15
+      },
+      {
+        "slug": "gemelos",
+        "percentage": 10
+      }
+    ],
+    "description": "Secuencia de sentadilla, plancha, lagartija y salto. Ejercicio intenso de cuerpo completo.",
+    "instructions": [
+      "Desde parado, agachate y apoyá las manos en el piso.",
+      "Llevá los pies hacia atrás de un salto hasta quedar en plancha.",
+      "Hacé una lagartija (opcional) y volvé a traer los pies cerca de las manos.",
+      "Saltá hacia arriba estirando el cuerpo.",
+      "Evitá: dejar caer la cadera cuando quedás en plancha."
+    ],
+    "media": {
+      "source": "svg",
+      "path": null,
+      "license": null
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "jumping-jacks",
+    "name": "Jumping Jacks",
+    "nameEn": "Jumping Jacks",
+    "equipment": "bodyweight",
+    "measureType": "duration",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "saltos de tijera",
+        "locale": "es"
+      },
+      {
+        "alias": "polichinelas",
+        "locale": "es"
+      },
+      {
+        "alias": "jumping jack",
+        "locale": "en"
+      },
+      {
+        "alias": "star jumps",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "gemelos",
+        "percentage": 25
+      },
+      {
+        "slug": "cuadriceps",
+        "percentage": 20
+      },
+      {
+        "slug": "hombros",
+        "percentage": 20
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 15
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 10
+      },
+      {
+        "slug": "trapecio",
+        "percentage": 10
+      }
+    ],
+    "description": "Saltos abriendo y cerrando piernas y brazos, a buen ritmo. Registralo por tiempo.",
+    "instructions": [
+      "Parate con los pies juntos y los brazos a los costados.",
+      "Saltá abriendo las piernas y subiendo los brazos por encima de la cabeza.",
+      "Saltá de nuevo para volver a la posición inicial.",
+      "Mantené un ritmo constante durante el tiempo elegido.",
+      "Evitá: caer con las rodillas rígidas."
+    ],
+    "media": {
+      "source": "svg",
+      "path": null,
+      "license": null
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "box-jumps",
+    "name": "Box Jumps",
+    "nameEn": "Box Jump",
+    "equipment": "other",
+    "measureType": "reps",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "saltos al cajon",
+        "locale": "es"
+      },
+      {
+        "alias": "salto al cajon",
+        "locale": "es"
+      },
+      {
+        "alias": "box jumps",
+        "locale": "en"
+      },
+      {
+        "alias": "plyo box jump",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "cuadriceps",
+        "percentage": 35
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 30
+      },
+      {
+        "slug": "gemelos",
+        "percentage": 20
+      },
+      {
+        "slug": "isquiotibiales",
+        "percentage": 10
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 5
+      }
+    ],
+    "description": "Saltar desde el piso a un cajón firme. Trabaja la potencia de piernas.",
+    "instructions": [
+      "Parate frente a un cajón firme, a unos 30 cm, con los pies al ancho de la cadera.",
+      "Bajá un poco la cadera y balanceá los brazos hacia atrás.",
+      "Saltá hacia arriba y adelante, y caé con los dos pies enteros sobre el cajón, con las rodillas flexionadas.",
+      "Parate arriba y bajá caminando.",
+      "Evitá: usar un cajón más alto de lo que podés saltar con seguridad."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Front_Box_Jump/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "battle-ropes",
+    "name": "Battle Ropes",
+    "nameEn": "Battle Ropes",
+    "equipment": "other",
+    "measureType": "duration",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "cuerdas de batalla",
+        "locale": "es"
+      },
+      {
+        "alias": "sogas pesadas",
+        "locale": "es"
+      },
+      {
+        "alias": "battling ropes",
+        "locale": "en"
+      },
+      {
+        "alias": "battle rope",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "hombros",
+        "percentage": 30
+      },
+      {
+        "slug": "trapecio",
+        "percentage": 20
+      },
+      {
+        "slug": "antebrazo",
+        "percentage": 20
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 15
+      },
+      {
+        "slug": "espalda",
+        "percentage": 15
+      }
+    ],
+    "description": "Hacer ondas con dos sogas pesadas ancladas. Ejercicio intenso para brazos, hombros y abdomen. Registralo por tiempo.",
+    "instructions": [
+      "Agarrá un extremo de soga con cada mano y alejate hasta que queden apenas flojas.",
+      "Flexioná un poco las rodillas y la cadera, con el torso firme.",
+      "Subí y bajá los brazos rápido, en forma alternada o juntos, para generar ondas.",
+      "Mantené el ritmo durante el tiempo elegido.",
+      "Evitá: redondear la espalda o quedarte con las piernas rígidas."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Battling_Ropes/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "kettlebell-swings",
+    "name": "Kettlebell Swings",
+    "nameEn": "Kettlebell Swing",
+    "equipment": "kettlebell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "balanceo con pesa rusa",
+        "locale": "es"
+      },
+      {
+        "alias": "swing con pesa rusa",
+        "locale": "es"
+      },
+      {
+        "alias": "kb swing",
+        "locale": "en"
+      },
+      {
+        "alias": "russian swing",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "gluteos",
+        "percentage": 30
+      },
+      {
+        "slug": "isquiotibiales",
+        "percentage": 25
+      },
+      {
+        "slug": "lumbar",
+        "percentage": 15
+      },
+      {
+        "slug": "hombros",
+        "percentage": 10
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 10
+      },
+      {
+        "slug": "antebrazo",
+        "percentage": 10
+      }
+    ],
+    "description": "Balanceo de la pesa rusa impulsado por la cadera. Trabaja glúteos, isquiotibiales y espalda baja.",
+    "instructions": [
+      "Parate con los pies un poco más abiertos que la cadera y la pesa rusa en el piso, adelante tuyo.",
+      "Agarrala con las dos manos, llevá la cadera hacia atrás y balanceala entre las piernas.",
+      "Empujá la cadera hacia adelante con fuerza para que la pesa suba hasta la altura del pecho.",
+      "Dejala bajar acompañando con la cadera hacia atrás y repetí.",
+      "Evitá: levantar la pesa con los brazos o redondear la espalda."
+    ],
+    "media": {
+      "source": "svg",
+      "path": null,
+      "license": null
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "movilidad-de-cadera",
+    "name": "Movilidad de Cadera",
+    "nameEn": "Hip Mobility",
+    "equipment": "bodyweight",
+    "measureType": "duration",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "movilidad cadera",
+        "locale": "es"
+      },
+      {
+        "alias": "apertura de cadera",
+        "locale": "es"
+      },
+      {
+        "alias": "hip mobility drills",
+        "locale": "en"
+      },
+      {
+        "alias": "hip circles",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "gluteos",
+        "percentage": 35
+      },
+      {
+        "slug": "aductores",
+        "percentage": 25
+      },
+      {
+        "slug": "isquiotibiales",
+        "percentage": 20
+      },
+      {
+        "slug": "cuadriceps",
+        "percentage": 20
+      }
+    ],
+    "description": "Serie de movimientos suaves para mover la cadera en todo su rango. Registralo por tiempo.",
+    "instructions": [
+      "Parate con apoyo a mano y hacé círculos amplios con una rodilla, hacia afuera y hacia adentro.",
+      "Hacé balanceos de pierna hacia adelante y atrás, y después hacia los costados.",
+      "En el piso, sentate con las piernas en 90/90 y girá las rodillas de un lado al otro.",
+      "Repetí del otro lado y movete sin apuro, sin llegar al dolor.",
+      "Evitá: forzar las posiciones o hacer rebotes."
+    ],
+    "media": {
+      "source": "svg",
+      "path": null,
+      "license": null
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "movilidad-de-hombros",
+    "name": "Movilidad de Hombros",
+    "nameEn": "Shoulder Mobility",
+    "equipment": "bodyweight",
+    "measureType": "duration",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "movilidad hombro",
+        "locale": "es"
+      },
+      {
+        "alias": "circulos de brazos",
+        "locale": "es"
+      },
+      {
+        "alias": "shoulder mobility drills",
+        "locale": "en"
+      },
+      {
+        "alias": "arm circles",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "hombros",
+        "percentage": 60
+      },
+      {
+        "slug": "trapecio",
+        "percentage": 20
+      },
+      {
+        "slug": "espalda",
+        "percentage": 20
+      }
+    ],
+    "description": "Movimientos suaves para preparar los hombros, ideales antes de entrenar tren superior. Registralo por tiempo.",
+    "instructions": [
+      "Hacé círculos con los brazos estirados, primero chicos y después más grandes, hacia adelante y hacia atrás.",
+      "Con un palo o una banda, llevá los brazos estirados desde adelante hasta atrás por encima de la cabeza.",
+      "Juntá y separá los omóplatos con los brazos estirados al frente.",
+      "Movete sin apuro y sin llegar al dolor.",
+      "Evitá: forzar el rango con tirones bruscos."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Arm_Circles/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "movilidad-de-tobillos",
+    "name": "Movilidad de Tobillos",
+    "nameEn": "Ankle Mobility",
+    "equipment": "bodyweight",
+    "measureType": "duration",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "movilidad tobillo",
+        "locale": "es"
+      },
+      {
+        "alias": "circulos de tobillo",
+        "locale": "es"
+      },
+      {
+        "alias": "ankle circles",
+        "locale": "en"
+      },
+      {
+        "alias": "ankle mobility drills",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "gemelos",
+        "percentage": 60
+      },
+      {
+        "slug": "cuadriceps",
+        "percentage": 20
+      },
+      {
+        "slug": "isquiotibiales",
+        "percentage": 20
+      }
+    ],
+    "description": "Ejercicios para mejorar la flexión del tobillo, útiles antes de sentadillas o de correr. Registralo por tiempo.",
+    "instructions": [
+      "Apoyado en una pared o un soporte, hacé círculos con un tobillo en los dos sentidos.",
+      "Poné un pie a unos centímetros de la pared y llevá la rodilla hacia la pared sin despegar el talón.",
+      "Alejá el pie de a poco a medida que te resulte fácil.",
+      "Repetí con el otro pie.",
+      "Evitá: despegar el talón del piso al llevar la rodilla hacia adelante."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Ankle_Circles/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "estiramiento-de-isquios",
+    "name": "Estiramiento de Isquios",
+    "nameEn": "Hamstring Stretch",
+    "equipment": "bodyweight",
+    "measureType": "duration",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "elongacion de isquiotibiales",
+        "locale": "es"
+      },
+      {
+        "alias": "estiramiento isquiotibiales",
+        "locale": "es"
+      },
+      {
+        "alias": "hamstrings stretch",
+        "locale": "en"
+      },
+      {
+        "alias": "lying hamstring stretch",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "isquiotibiales",
+        "percentage": 80
+      },
+      {
+        "slug": "lumbar",
+        "percentage": 20
+      }
+    ],
+    "description": "Estiramiento de la parte de atrás del muslo, acostado boca arriba. Registralo por tiempo.",
+    "instructions": [
+      "Acostate boca arriba con las dos piernas estiradas.",
+      "Subí una pierna estirada y agarrala por detrás del muslo o con una banda en el pie.",
+      "Acercala hacia vos hasta sentir un estiramiento suave.",
+      "Sostené respirando tranquilo y después cambiá de pierna.",
+      "Evitá: tirar con fuerza o hacer rebotes."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Hamstring_Stretch/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "estiramiento-de-cuadriceps",
+    "name": "Estiramiento de Cuádriceps",
+    "nameEn": "Quad Stretch",
+    "equipment": "bodyweight",
+    "measureType": "duration",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "elongacion de cuadriceps",
+        "locale": "es"
+      },
+      {
+        "alias": "estiramiento cuadriceps parado",
+        "locale": "es"
+      },
+      {
+        "alias": "quadriceps stretch",
+        "locale": "en"
+      },
+      {
+        "alias": "standing quad stretch",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "cuadriceps",
+        "percentage": 85
+      },
+      {
+        "slug": "aductores",
+        "percentage": 15
+      }
+    ],
+    "description": "Estiramiento de la parte de adelante del muslo, de pie. Registralo por tiempo.",
+    "instructions": [
+      "Parate derecho con apoyo a mano si lo necesitás.",
+      "Flexioná una rodilla y agarrá el empeine con la mano del mismo lado.",
+      "Llevá el talón hacia la cola, con las rodillas juntas y la cadera apenas hacia adelante.",
+      "Sostené respirando tranquilo y después cambiá de pierna.",
+      "Evitá: arquear la espalda baja para llegar más lejos."
+    ],
+    "media": {
+      "source": "svg",
+      "path": null,
+      "license": null
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "movilidad-toracica",
+    "name": "Movilidad Torácica",
+    "nameEn": "Thoracic Mobility",
+    "equipment": "bodyweight",
+    "measureType": "duration",
+    "tracksWeight": false,
+    "aliases": [
+      {
+        "alias": "movilidad de columna dorsal",
+        "locale": "es"
+      },
+      {
+        "alias": "rotaciones toracicas",
+        "locale": "es"
+      },
+      {
+        "alias": "thoracic rotation",
+        "locale": "en"
+      },
+      {
+        "alias": "t spine mobility",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "espalda",
+        "percentage": 45
+      },
+      {
+        "slug": "trapecio",
+        "percentage": 25
+      },
+      {
+        "slug": "hombros",
+        "percentage": 20
+      },
+      {
+        "slug": "lumbar",
+        "percentage": 10
+      }
+    ],
+    "description": "Movimientos para la parte media de la espalda: rotaciones y extensiones suaves. Registralo por tiempo.",
+    "instructions": [
+      "En cuatro patas, apoyá una mano detrás de la cabeza.",
+      "Girá el torso llevando ese codo hacia el techo y después hacia el brazo de apoyo.",
+      "Repetí del otro lado.",
+      "Movete sin apuro y sin llegar al dolor.",
+      "Evitá: girar desde la cadera en lugar de la espalda."
+    ],
+    "media": {
+      "source": "svg",
+      "path": null,
+      "license": null
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "thrusters",
+    "name": "Thrusters",
+    "nameEn": "Thruster",
+    "equipment": "barbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "sentadilla con press",
+        "locale": "es"
+      },
+      {
+        "alias": "thruster con barra",
+        "locale": "es"
+      },
+      {
+        "alias": "squat to press",
+        "locale": "en"
+      },
+      {
+        "alias": "barbell thruster",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "cuadriceps",
+        "percentage": 25
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 20
+      },
+      {
+        "slug": "hombros",
+        "percentage": 25
+      },
+      {
+        "slug": "triceps",
+        "percentage": 10
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 10
+      },
+      {
+        "slug": "pecho",
+        "percentage": 10
+      }
+    ],
+    "description": "Sentadilla frontal que termina en un press por encima de la cabeza, en un solo movimiento.",
+    "instructions": [
+      "Apoyá la barra adelante de los hombros, con los pies al ancho de los hombros.",
+      "Bajá a una sentadilla frontal con el torso derecho.",
+      "Subí con fuerza y usá ese impulso para empujar la barra por encima de la cabeza.",
+      "Bajá la barra a los hombros y encadená la siguiente repetición.",
+      "Evitá: arquear la espalda baja al empujar la barra."
+    ],
+    "media": {
+      "source": "svg",
+      "path": null,
+      "license": null
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "clean-and-press",
+    "name": "Clean and Press",
+    "nameEn": "Clean and Press",
+    "equipment": "barbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "cargada y press",
+        "locale": "es"
+      },
+      {
+        "alias": "cargada con empuje",
+        "locale": "es"
+      },
+      {
+        "alias": "power clean and press",
+        "locale": "en"
+      },
+      {
+        "alias": "clean & press",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "hombros",
+        "percentage": 20
+      },
+      {
+        "slug": "trapecio",
+        "percentage": 20
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 15
+      },
+      {
+        "slug": "cuadriceps",
+        "percentage": 15
+      },
+      {
+        "slug": "espalda",
+        "percentage": 10
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 10
+      },
+      {
+        "slug": "antebrazo",
+        "percentage": 10
+      }
+    ],
+    "description": "Llevar la barra del piso a los hombros (cargada) y después empujarla por encima de la cabeza.",
+    "instructions": [
+      "Parate con la barra sobre la mitad del pie y agarrala un poco más abierto que las piernas, con la espalda recta.",
+      "Subí la barra con un empuje explosivo de piernas y cadera, y recibila apoyada adelante de los hombros.",
+      "Parate derecho y empujá la barra por encima de la cabeza.",
+      "Bajá la barra a los hombros y después al piso de forma controlada.",
+      "Evitá: tirar de la barra con los brazos en lugar de usar las piernas y la cadera."
+    ],
+    "media": {
+      "source": "free-exercise-db",
+      "path": "Clean_and_Press/0.jpg",
+      "license": "Unlicense"
+    },
+    "reviewed": false
+  },
+  {
+    "slug": "snatch-con-mancuerna",
+    "name": "Snatch con Mancuerna",
+    "nameEn": "Dumbbell Snatch",
+    "equipment": "dumbbell",
+    "measureType": "reps",
+    "tracksWeight": true,
+    "aliases": [
+      {
+        "alias": "arranque con mancuerna",
+        "locale": "es"
+      },
+      {
+        "alias": "arranque a una mano",
+        "locale": "es"
+      },
+      {
+        "alias": "single arm dumbbell snatch",
+        "locale": "en"
+      },
+      {
+        "alias": "db snatch",
+        "locale": "en"
+      }
+    ],
+    "muscles": [
+      {
+        "slug": "hombros",
+        "percentage": 20
+      },
+      {
+        "slug": "trapecio",
+        "percentage": 20
+      },
+      {
+        "slug": "gluteos",
+        "percentage": 20
+      },
+      {
+        "slug": "cuadriceps",
+        "percentage": 15
+      },
+      {
+        "slug": "espalda",
+        "percentage": 10
+      },
+      {
+        "slug": "abdominales",
+        "percentage": 10
+      },
+      {
+        "slug": "antebrazo",
+        "percentage": 5
+      }
+    ],
+    "description": "Llevar una mancuerna del piso hasta arriba de la cabeza en un solo movimiento explosivo, con un brazo.",
+    "instructions": [
+      "Parate con los pies al ancho de la cadera y la mancuerna en el piso, entre los pies.",
+      "Agachate con la espalda recta y agarrala con una mano.",
+      "Empujá con fuerza con piernas y cadera, y llevá la mancuerna pegada al cuerpo hasta arriba de la cabeza.",
+      "Bajala controlada a los hombros y después al piso.",
+      "Evitá: redondear la espalda al agarrar la mancuerna del piso."
+    ],
+    "media": {
+      "source": "svg",
+      "path": null,
+      "license": null
+    },
+    "reviewed": false
+  }
+]
