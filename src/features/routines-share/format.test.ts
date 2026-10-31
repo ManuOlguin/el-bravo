@@ -13,6 +13,8 @@ Press de banca — 4×8 @ 60 kg · desc 90s
 Remo con barra — 10 @ 50 kg, 8 @ 55 kg, 6 @ 62,5 kg
 Plancha — 3×45s
 Dominadas — 3×máx
+Muscle up — 3×fallo
+Fondos — F máx @ 10 kg
 
 Hecho con El Bravo · https://elbravo.vercel.app/routines/abc`);
     expect(p.name).toBe("Pecho y espalda");
@@ -21,7 +23,9 @@ Hecho con El Bravo · https://elbravo.vercel.app/routines/abc`);
       { name: "Press de banca", restSeconds: 90, sets: [s(8, 60), s(8, 60), s(8, 60), s(8, 60)] },
       { name: "Remo con barra", restSeconds: null, sets: [s(10, 50), s(8, 55), s(6, 62.5)] },
       { name: "Plancha", restSeconds: null, sets: [s(null, null, "normal", 45), s(null, null, "normal", 45), s(null, null, "normal", 45)] },
-      { name: "Dominadas", restSeconds: null, sets: [s(null, null, "failure"), s(null, null, "failure"), s(null, null, "failure")] },
+      { name: "Dominadas", restSeconds: null, sets: [s(null), s(null), s(null)] },
+      { name: "Muscle up", restSeconds: null, sets: [s(null, null, "failure"), s(null, null, "failure"), s(null, null, "failure")] },
+      { name: "Fondos", restSeconds: null, sets: [s(null, 10, "failure")] },
     ]);
     expect(p.unparsedLines).toEqual([]);
     expect(looksLikeBravoFormat(p)).toBe(true);
@@ -69,6 +73,18 @@ const ROUTINE: RoutineForEditor = {
   ],
 };
 
+/** Series con objetivos en blanco: deben sobrevivir a exportar y volver a importar. */
+const BLANK_ROUTINE: RoutineForEditor = {
+  id: "r2", name: "Libre", notes: null,
+  exercises: [
+    { exercise: ex("Flexiones", { tracksWeight: false }), restSeconds: null, notes: null, sets: [rs(null), rs(null), rs(null)] },
+    { exercise: ex("Aperturas"), restSeconds: null, notes: null, sets: [rs(null, null, "warmup"), rs(12, 10)] },
+    { exercise: ex("Curl"), restSeconds: 60, notes: null, sets: [rs(10, 20), rs(null, 15, "drop")] },
+    { exercise: ex("Remo"), restSeconds: null, notes: null, sets: [rs(null, 20, "warmup"), rs(null, null, "failure")] },
+    { exercise: ex("Press militar"), restSeconds: null, notes: null, sets: [rs(12, 20, "warmup"), rs(12, 20, "warmup"), rs(12, 20, "warmup")] },
+  ],
+};
+
 describe("routineToText", () => {
   it("escribe el formato canónico", () => {
     expect(routineToText(ROUTINE, { url: "https://elbravo.vercel.app/routines/r1" })).toBe(`🏋️ Pecho y espalda
@@ -77,7 +93,7 @@ Notas: llegar al fallo
 Press de banca — 4×8 @ 60 kg · desc 90s
 Remo con barra — 10 @ 50 kg, 8 @ 55 kg, 6 @ 62,5 kg
 Plancha — 2×45s
-Dominadas — 2×máx
+Dominadas — 2×F máx
 Prensa — W 15 @ 50 kg, 10 @ 120 kg
 
 Hecho con El Bravo · https://elbravo.vercel.app/routines/r1`);
@@ -88,6 +104,16 @@ Hecho con El Bravo · https://elbravo.vercel.app/routines/r1`);
     expect(p.name).toBe(ROUTINE.name);
     expect(p.exercises.map((e) => [e.name, e.restSeconds, e.sets.map((x) => [x.kind, x.reps, x.weightKg, x.durationSeconds])])).toEqual(
       ROUTINE.exercises.map((e) => [e.exercise.name, e.restSeconds, e.sets.map((x) => [x.kind, x.targetReps, x.targetWeightKg, x.targetDurationSeconds])])
+    );
+  });
+
+  it("ida y vuelta sin pérdida con series en blanco, de calentamiento o drop sin reps", () => {
+    const text = routineToText(BLANK_ROUTINE);
+    expect(text).toContain("Flexiones — 3×máx\n");
+    expect(text).toContain("Press militar — 3×W 12 @ 20 kg\n");
+    const p = parseRoutineText(text);
+    expect(p.exercises.map((e) => [e.name, e.restSeconds, e.sets.map((y) => [y.kind, y.reps, y.weightKg, y.durationSeconds])])).toEqual(
+      BLANK_ROUTINE.exercises.map((e) => [e.exercise.name, e.restSeconds, e.sets.map((y) => [y.kind, y.targetReps, y.targetWeightKg, y.targetDurationSeconds])])
     );
   });
 

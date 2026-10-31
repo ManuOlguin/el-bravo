@@ -35,7 +35,12 @@ function parseOneSet(raw: string): ParsedSet | null {
     kind = KIND_PREFIX[pre[1].toLowerCase()];
     t = t.slice(pre[0].length);
   }
-  if (/^(m[aá]x|fallo)$/i.test(t)) return set({ kind: "failure" });
+  // "máx" = sin reps fijas (el tipo sale del prefijo); "fallo" = al fallo. Ambos admiten "@ peso".
+  const open = t.match(new RegExp(`^(m[aá]x|fallo)(?:\\s*@\\s*${NUM}\\s*(?:kgs?)?)?$`, "i"));
+  if (open) {
+    const weightKg = open[2] ? Math.min(1000, num(open[2])) : null;
+    return set({ kind: /^fallo$/i.test(open[1]) ? "failure" : kind, weightKg });
+  }
   const dur = parseDuration(t);
   if (dur !== null) return set({ kind, durationSeconds: clampInt(dur, 1, 36000) });
   const m = t.match(new RegExp(`^(\\d+)(?:\\s*(?:reps?)?)?(?:\\s*@\\s*${NUM}\\s*(?:kgs?)?)?$`, "i"));
@@ -104,19 +109,18 @@ const PREFIX: Partial<Record<SetKind, string>> = { warmup: "W ", drop: "D ", fai
 type TargetSet = RoutineForEditor["exercises"][number]["sets"][number];
 
 function oneSetText(s: TargetSet): string {
+  const prefix = PREFIX[s.kind] ?? "";
   if (s.targetDurationSeconds) {
     const d = s.targetDurationSeconds;
-    return `${PREFIX[s.kind] ?? ""}${d >= 60 && d % 60 !== 0 ? `${Math.floor(d / 60)}:${String(d % 60).padStart(2, "0")}` : d >= 60 ? `${d / 60}:00` : `${d}s`}`;
+    return `${prefix}${d >= 60 && d % 60 !== 0 ? `${Math.floor(d / 60)}:${String(d % 60).padStart(2, "0")}` : d >= 60 ? `${d / 60}:00` : `${d}s`}`;
   }
-  if (s.targetReps === null) return s.kind === "failure" ? "máx" : `${PREFIX[s.kind] ?? ""}máx`;
-  return `${PREFIX[s.kind] ?? ""}${s.targetReps}${s.targetWeightKg !== null ? ` @ ${fmtNum(s.targetWeightKg)} kg` : ""}`;
+  const weight = s.targetWeightKg !== null ? ` @ ${fmtNum(s.targetWeightKg)} kg` : "";
+  return `${prefix}${s.targetReps === null ? "máx" : s.targetReps}${weight}`;
 }
 
 function setsText(sets: TargetSet[]): string {
   const first = oneSetText(sets[0]);
-  const allSame = sets.every((s) => oneSetText(s) === first);
-  // "4×F 8" no se lee bien: las series iguales con prefijo (salvo máx) van como lista.
-  if (allSame && (sets[0].kind === "normal" || first === "máx")) return `${sets.length}×${first}`;
+  if (sets.every((s) => oneSetText(s) === first)) return `${sets.length}×${first}`;
   return sets.map(oneSetText).join(", ");
 }
 
