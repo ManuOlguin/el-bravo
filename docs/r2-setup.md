@@ -92,3 +92,37 @@ R2_PUBLIC_BASE_URL=http://127.0.0.1:9000/elbravo-media
 Consola web: <http://127.0.0.1:9001> (usuario y contraseña `minioadmin`). Para ver objetos: `mc ls --recursive elbravo/elbravo-media`.
 
 Si MinIO deja de instalarse, cualquier servidor S3-compatible sirve (SeaweedFS, Garage, etc.) mientras soporte URLs prefirmadas y path-style.
+
+## Migrar imágenes existentes a R2 (W3)
+
+`scripts/migrate-images-to-r2.ts` copia al bucket las imágenes que siguen en otros hosts (Vercel Blob, etc.) y actualiza las filas. Recorre `User.photoUrl`, `Group.photoUrl`, `ActivityMedia.url` y, con `--exercises`, `Exercise.mediaUrl`.
+
+- Saltea las URLs que ya empiezan con `R2_PUBLIC_BASE_URL`: es idempotente y se puede cortar y volver a correr.
+- Descarga con timeout de 15 s y exige `content-type: image/*`.
+- Si pesa más de 1 MB o el formato no está permitido, recomprime con `sharp` a WebP (máx. 1600 px). Las fotos de actividades quedan siempre en WebP y con miniatura de 400 px (`thumbUrl`).
+- Si una URL falla (404, timeout, no es imagen), la fila **queda como estaba** y el reporte la marca `failed`.
+- Reporte: `scripts/out/migrate-images-<fecha>.csv` (`tabla,id,url_vieja,url_nueva,estado,detalle`; `scripts/out/` está ignorado por git).
+
+Opciones: `--dry-run` (descarga para validar, pero no sube ni escribe en la DB), `--limit N` (procesa como mucho N filas pendientes) y `--exercises`.
+
+`--conditions=react-server` es necesario: hace que `server-only` no falle fuera de Next.
+
+### Contra producción
+
+1. **Backup primero:**
+
+   ```bash
+   mysqldump --single-transaction --routines --triggers -h <host> -P <port> -u <user> -p <db> > backup-pre-r2-$(date +%F).sql
+   ```
+
+2. **Variables:** exportar `DATABASE_URL` de producción y las `R2_*` reales en la terminal (tienen prioridad sobre `.env.local`/`.env`), sin `R2_ENDPOINT`.
+3. **Dry-run:**
+
+   ```bash
+   npx tsx --conditions=react-server scripts/migrate-images-to-r2.ts --dry-run
+   ```
+
+4. **Revisar el CSV:** que las `failed` sean esperables (links muertos) y que los tamaños tengan sentido.
+5. **Prueba chica:** `--limit 5`, y abrir en la app un par de las filas migradas.
+6. **Corrida real:** sin flags (o con `--exercises` si el catálogo tiene medios externos). Si se corta, se vuelve a correr.
+7. Guardar los CSV junto con el backup.
