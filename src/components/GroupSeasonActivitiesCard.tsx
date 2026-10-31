@@ -10,8 +10,8 @@ type Props = {
 export default function GroupSeasonActivitiesCard({ activity }: Props) {
   const router = useRouter();
   return (
-    <div  className="bg-surface2 rounded-lg w-full flex min-h-[170px]">
-      <div className="bg-surfacehover  h-full w-[150px] min-w-[150px] rounded-l-lg">{/* aca va foto del entrenamiento */}</div>
+    <div  className="bg-surface-1 rounded-lg w-full flex min-h-[170px]">
+      <div className="bg-surface-3  h-full w-[150px] min-w-[150px] rounded-l-lg">{/* aca va foto del entrenamiento */}</div>
       <div className="px-4 py-3  h-min w-full ">
         <div className="flex justify-between w-full border-b-1 pb-1 border-white/40">
         <div className="flex flex-col justify-between"> 
