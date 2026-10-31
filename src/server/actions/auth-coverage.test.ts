@@ -32,8 +32,14 @@ vi.mock("@/src/lib/db", () => {
 });
 
 const ROOT = path.resolve(__dirname, "../../..");
-/** Acciones públicas a propósito (login/registro) o que solo borran la cookie. */
-const PUBLIC = new Set(["account.loginAction", "account.registerAction", "account.logoutAction"]);
+/** Acciones públicas a propósito (login/registro/recuperar contraseña) o que solo borran la cookie. */
+const PUBLIC = new Set([
+  "account.loginAction",
+  "account.registerAction",
+  "account.logoutAction",
+  "account.requestPasswordResetAction",
+  "account.resetPasswordAction",
+]);
 
 function findUseServerModules(): string[] {
   const out: string[] = [];

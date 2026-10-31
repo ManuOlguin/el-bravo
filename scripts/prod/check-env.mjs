@@ -54,6 +54,13 @@ for (const [name, check] of checks) {
   }
   seen.add(name);
 }
+// Email: opcional (sin él no hay recuperar contraseña ni mails), pero si se configura tiene que estar completo.
+const smtp = ["EMAIL_HOST", "EMAIL_USER", "EMAIL_PASSWORD"].filter((k) => env[k]);
+if (smtp.length === 0 && !env.RESEND_API_KEY) console.log("· Email: sin configurar (opcional: node scripts/prod/set-email.mjs)");
+else if (smtp.length > 0 && smtp.length < 3) {
+  failed++;
+  console.log("✗ Email: faltan EMAIL_HOST, EMAIL_USER o EMAIL_PASSWORD (correr node scripts/prod/set-email.mjs)");
+} else console.log(`✓ Email (${env.RESEND_API_KEY ? "Resend" : "SMTP"})`);
 if (env.R2_ENDPOINT) {
   failed++;
   console.log("✗ R2_ENDPOINT: es solo para MinIO local; en producción tiene que no estar");

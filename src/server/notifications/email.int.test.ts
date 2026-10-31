@@ -12,6 +12,8 @@ vi.mock("resend", () => ({
 import { getEmailSender, isDigestTime, sendPendingEmails, sendWeeklyDigests } from "./email";
 import { notify } from "./notify";
 
+vi.mock("server-only", () => ({}));
+
 const TZ = "America/Argentina/Buenos_Aires";
 const NOW = new Date("2026-11-04T18:00:00Z");
 
