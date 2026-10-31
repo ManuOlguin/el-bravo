@@ -43,6 +43,7 @@ test("páginas principales con sesión", async ({ page }, testInfo) => {
     ["/workout/new", "workout-new"],
     ["/routines", "routines"],
     ["/routines/new", "routines-new"],
+    [`/routines/${creds().routines.anaPush}`, "routine-detail"],
     [`/routines/${creds().routines.anaPush}/live`, "routine-live"],
     ["/stats", "stats"],
     ["/profile", "profile"],

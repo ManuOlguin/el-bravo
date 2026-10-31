@@ -139,8 +139,9 @@ const PREFIX: Partial<Record<SetKind, string>> = { warmup: "W ", drop: "D ", fai
 
 type TargetSet = RoutineForEditor["exercises"][number]["sets"][number];
 
-function oneSetText(s: TargetSet): string {
-  const prefix = PREFIX[s.kind] ?? "";
+/** Una serie en el formato de texto ("W 10 @ 50 kg", "45s", "máx"). `withKind: false` omite el prefijo W/D/F (la vista de lectura ya lo muestra aparte). */
+export function oneSetText(s: TargetSet, withKind = true): string {
+  const prefix = withKind ? (PREFIX[s.kind] ?? "") : "";
   if (s.targetDurationSeconds) {
     const d = s.targetDurationSeconds;
     return `${prefix}${d >= 60 && d % 60 !== 0 ? `${Math.floor(d / 60)}:${String(d % 60).padStart(2, "0")}` : d >= 60 ? `${d / 60}:00` : `${d}s`}`;
@@ -152,7 +153,7 @@ function oneSetText(s: TargetSet): string {
 function setsText(sets: TargetSet[]): string {
   const first = oneSetText(sets[0]);
   if (sets.every((s) => oneSetText(s) === first)) return `${sets.length}×${first}`;
-  return sets.map(oneSetText).join(", ");
+  return sets.map((s) => oneSetText(s)).join(", ");
 }
 
 export function routineToText(r: RoutineForEditor, opts: { url?: string } = {}): string {
