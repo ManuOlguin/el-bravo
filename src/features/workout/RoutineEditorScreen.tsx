@@ -3,6 +3,8 @@ import { useReducer, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Field, Input, PageHeader, Textarea, toast } from "@/src/components/ui";
 import type { RoutineForEditor } from "@/src/schemas/routine";
+import { referencedPending } from "@/src/features/routines-share/match";
+import type { NewExerciseDraft } from "@/src/features/routines-share/types";
 import { createRoutineAction, updateRoutineAction } from "@/src/server/actions/routines";
 import { WorkoutDraftError, draftFromRoutine, newDraft, toRoutineInput, workoutReducer } from "./state";
 import { WorkoutEditor } from "./WorkoutEditor";
@@ -11,16 +13,26 @@ const NOW = { localDate: "1970-01-01", localTime: "00:00" }; // en modo plan la 
 
 /**
  * Crear o editar una rutina (modo `plan`): nombre, notas y ejercicios con series objetivo
- * (peso/reps o tiempo y descanso por serie). Los ejercicios nuevos se crean desde el picker,
- * nunca al guardar la rutina (eso causaba el "ya existe un ejercicio" al reintentar).
+ * (peso/reps o tiempo y descanso por serie). Los ejercicios nuevos se crean desde el picker.
+ * Excepción: `initial` precarga una rutina NUEVA importada, cuyos ejercicios pueden ser "pendientes"
+ * (`pendingExercises`, id `new:<tempId>`); el servidor los crea dentro de la transacción de guardado.
  */
-export function RoutineEditorScreen({ routine }: { routine?: RoutineForEditor }) {
+export function RoutineEditorScreen({
+  routine,
+  initial,
+  pendingExercises = [],
+}: {
+  routine?: RoutineForEditor;
+  initial?: RoutineForEditor;
+  pendingExercises?: NewExerciseDraft[];
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [errors, setErrors] = useState<Record<string, string[]>>({});
-  const [draft, dispatch] = useReducer(workoutReducer, undefined, () =>
-    routine ? draftFromRoutine(routine, "plan", NOW) : newDraft("plan", NOW)
-  );
+  const [draft, dispatch] = useReducer(workoutReducer, undefined, () => {
+    const base = routine ?? initial;
+    return base ? draftFromRoutine(base, "plan", NOW) : newDraft("plan", NOW);
+  });
 
   const onSave = () => {
     let input;
@@ -35,9 +47,11 @@ export function RoutineEditorScreen({ routine }: { routine?: RoutineForEditor })
       throw e;
     }
     setErrors({});
+    const newExercises = referencedPending(pendingExercises, input.exercises.map((e) => e.exerciseId));
+    const body = newExercises.length ? { ...input, newExercises } : input;
     start(async () => {
       try {
-        const r = routine ? await updateRoutineAction(routine.id, input) : await createRoutineAction(input);
+        const r = routine ? await updateRoutineAction(routine.id, body) : await createRoutineAction(body);
         if (!r.ok) {
           setErrors(r.fieldErrors ?? {});
           toast.error(r.error);
@@ -54,7 +68,10 @@ export function RoutineEditorScreen({ routine }: { routine?: RoutineForEditor })
 
   return (
     <div className="space-y-4 pb-24">
-      <PageHeader title={routine ? "Editar rutina" : "Nueva rutina"} back="/routines" />
+      <PageHeader
+        title={routine ? "Editar rutina" : initial ? "Revisá la rutina importada" : "Nueva rutina"}
+        back={initial && !routine ? "/routines/import" : "/routines"}
+      />
       <Card className="space-y-3">
         <Field label="Nombre" htmlFor="r-name" error={errors.name?.[0]}>
           <Input

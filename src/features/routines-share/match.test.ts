@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CatalogEntry } from "@/src/features/exercises/types";
-import { importDraftToRoutine, isPendingExerciseId, matchImport } from "./match";
+import { importDraftToRoutine, isPendingExerciseId, matchImport, referencedPending } from "./match";
 import { parseRoutineText } from "./format";
 
 const cat = (name: string, o: Partial<CatalogEntry> = {}): CatalogEntry => ({
@@ -66,5 +66,15 @@ describe("matchImport", () => {
     expect(r.exercises[0].exercise.id).toBe("press-de-banca");
     expect(isPendingExerciseId(r.exercises[1].exercise.id)).toBe(true);
     expect(r.exercises[0].sets[0]).toEqual({ kind: "normal", targetReps: 8, targetWeightKg: 60, targetDurationSeconds: null, restSeconds: null });
+  });
+});
+
+describe("referencedPending", () => {
+  const mk = (tempId: string) => ({ tempId, name: tempId, nameEn: null, measureType: "reps" as const, equipment: "other" as const, tracksWeight: true, muscles: [], source: "user" as const });
+  it("keeps only pending exercises still used by the draft", () => {
+    const pending = [mk("a"), mk("b")];
+    expect(referencedPending(pending, ["x", "new:b"]).map((p) => p.tempId)).toEqual(["b"]);
+    expect(referencedPending(pending, ["x"])).toEqual([]);
+    expect(referencedPending([], ["new:a"])).toEqual([]);
   });
 });

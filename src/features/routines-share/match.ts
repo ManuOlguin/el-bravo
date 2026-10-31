@@ -90,3 +90,9 @@ export function importDraftToRoutine(d: ImportDraft): RoutineForEditor {
     })),
   };
 }
+
+/** De los ejercicios pendientes del import, solo los que el borrador todavía referencia (el usuario pudo quitarlos o reemplazarlos). */
+export function referencedPending(pending: NewExerciseDraft[], usedExerciseIds: Iterable<string>): NewExerciseDraft[] {
+  const used = new Set(usedExerciseIds);
+  return pending.filter((p) => used.has(`${PENDING_PREFIX}${p.tempId}`));
+}

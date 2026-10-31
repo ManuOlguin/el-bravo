@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/src/components/ui";
 import { ExercisePicker, type ExerciseSummary } from "@/src/features/exercises";
+import { isPendingExerciseId } from "@/src/features/routines-share/match";
 import { getLastPerformanceAction } from "@/src/server/actions/activities";
 import { ExerciseBlock } from "./ExerciseBlock";
 import type { PreviousSetLike } from "./format";
@@ -53,7 +54,7 @@ export function WorkoutEditor({
   const idsKey = useMemo(() => [...new Set(draft.exercises.map((e) => e.exercise.id))].sort().join(","), [draft.exercises]);
   useEffect(() => {
     if (mode === "plan" || !idsKey) return;
-    const missing = idsKey.split(",").filter((id) => !requested.current.has(id));
+    const missing = idsKey.split(",").filter((id) => !requested.current.has(id) && !isPendingExerciseId(id));
     if (missing.length === 0) return;
     missing.forEach((id) => requested.current.add(id));
     // Sin cancelar en el cleanup: cada id se pide una sola vez (con el doble efecto de StrictMode,

@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
-import { Card, Chip, IconButton, Sheet, Textarea, cn } from "@/src/components/ui";
+import { Card, Chip, IconButton, Pill, Sheet, Textarea, cn } from "@/src/components/ui";
 import { ExerciseInfoButton, ExerciseThumb } from "@/src/features/exercises";
+import { isPendingExerciseId } from "@/src/features/routines-share/match";
 import { REST_PRESETS, formatSeconds, restLabel, type PreviousSetLike } from "./format";
 import { ArrowIcon, MoreIcon, NoteIcon, SwapIcon, TimerIcon, TrashIcon } from "./icons";
 import { SetTable } from "./SetTable";
@@ -77,7 +78,13 @@ export function ExerciseBlock({
             {ex.restSeconds ? `Descanso ${formatSeconds(ex.restSeconds)}` : "Sin descanso"}
           </p>
         </button>
-        <ExerciseInfoButton exerciseId={ex.exercise.id} name={ex.exercise.name} />
+        {isPendingExerciseId(ex.exercise.id) ? (
+          <span title="Se crea al guardar la rutina">
+            <Pill tone="primary">Nuevo</Pill>
+          </span>
+        ) : (
+          <ExerciseInfoButton exerciseId={ex.exercise.id} name={ex.exercise.name} />
+        )}
         <IconButton label={`Opciones de ${ex.exercise.name}`} onClick={() => setMenu("main")}>
           <MoreIcon />
         </IconButton>
