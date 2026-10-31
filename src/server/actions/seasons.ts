@@ -12,6 +12,16 @@ import { ok, fail, parseInput, runAction, type ActionResult } from "@/src/server
 import { seasonInputSchema, type SeasonInput } from "@/src/schemas/season";
 import { recomputeSeason, finalizeSeason, publishSeasonResults, reopenSeason } from "@/src/server/scoring/recompute";
 import { statusOfDbSeason, finalizeSeasonIfDue } from "@/src/server/seasons/lifecycle";
+import { emitSeasonPublished } from "@/src/server/notifications";
+
+/** Las notificaciones nunca rompen la acción; el cron de notificaciones reintenta. */
+async function notifySeasonPublished(seasonId: string) {
+  try {
+    await emitSeasonPublished(seasonId);
+  } catch (e) {
+    console.error("[notifications] season published", e);
+  }
+}
 
 type Tx = Prisma.TransactionClient;
 
@@ -193,7 +203,10 @@ export async function finalizeSeasonAction(seasonId: string): Promise<ActionResu
     await requireGroupAdmin(s.groupId);
     const status = statusOfDbSeason(s);
     if (status === "upcoming") return fail("La temporada todavía no empezó");
-    if (status !== "finalized") await finalizeSeason(seasonId, { publish: s.resultsReveal === "auto" });
+    if (status !== "finalized") {
+      await finalizeSeason(seasonId, { publish: s.resultsReveal === "auto" });
+      if (s.resultsReveal === "auto") await notifySeasonPublished(seasonId);
+    }
     revalidateGroup(s.groupId);
     return ok(undefined, "Temporada finalizada");
   });
@@ -205,6 +218,7 @@ export async function publishSeasonResultsAction(seasonId: string): Promise<Acti
     await requireGroupAdmin(s.groupId);
     if (!s.finalizedAt) return fail("Primero finalizá la temporada");
     await publishSeasonResults(seasonId);
+    await notifySeasonPublished(seasonId);
     revalidateGroup(s.groupId);
     return ok(undefined, "Resultados publicados");
   });

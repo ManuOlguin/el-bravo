@@ -13,6 +13,7 @@ import { HomeEmptyState } from "@/src/features/home/HomeEmptyState";
 import { FriendsFeed } from "@/src/features/home/FriendsFeed";
 import { getHomeGroupStandings, getQuickRoutines } from "@/src/features/home/queries";
 import { greetingMessage } from "@/src/features/home/logic";
+import { HomeFeed } from "@/src/features/notifications/HomeFeed";
 
 export const metadata: Metadata = { title: "Inicio" };
 
@@ -70,7 +71,7 @@ export default async function HomePage() {
 
       <FriendsFeed feed={feed} photos={photos} followingCount={following.length} suggestions={suggestions} viewer={viewer} viewerTz={user.timezone} />
 
-      {/* W2-3: <HomeFeed /> */}
+      <HomeFeed userId={user.id} tz={user.timezone} />
     </div>
   );
 }

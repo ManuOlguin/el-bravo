@@ -3,7 +3,12 @@ import { randomUUID } from "node:crypto";
 import { resetDb, prisma } from "@/tests/setup/db";
 import { cookieJar, resetNextMocks } from "@/src/server/account/testing/next-mocks";
 
-const { sendNotification, setVapidDetails } = vi.hoisted(() => ({ sendNotification: vi.fn(), setVapidDetails: vi.fn() }));
+const { sendNotification, setVapidDetails } = vi.hoisted(() => {
+  // web-push está mockeado: las claves solo tienen que existir para que el canal se considere configurado.
+  process.env.VAPID_PUBLIC_KEY ||= "test-public-key";
+  process.env.VAPID_PRIVATE_KEY ||= "test-private-key";
+  return { sendNotification: vi.fn(), setVapidDetails: vi.fn() };
+});
 vi.mock("web-push", () => ({ default: { sendNotification, setVapidDetails } }));
 vi.mock("server-only", () => ({}));
 vi.mock("next/headers", async () => (await import("@/src/server/account/testing/next-mocks")).nextHeadersMock);
