@@ -102,9 +102,11 @@ export function MembersList({
           );
         })}
       </ul>
-      <Sheet open={!!selected} onClose={() => setSelected(null)} title="Opciones del miembro">
-        {selected && <MemberActionsSheet groupId={groupId} member={selected} onClose={() => setSelected(null)} />}
-      </Sheet>
+      {isAdmin && (
+        <Sheet open={!!selected} onClose={() => setSelected(null)} title="Opciones del miembro">
+          {selected && <MemberActionsSheet groupId={groupId} member={selected} onClose={() => setSelected(null)} />}
+        </Sheet>
+      )}
     </Card>
   );
 }
