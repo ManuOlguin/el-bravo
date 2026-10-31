@@ -9,7 +9,7 @@ type Props = {
 export default function GroupSeasonActivities({ activities }: Props) {
   const router = useRouter();
   return (
-<div className="w-full bg-surface rounded-lg flex py-3 px-4 flex-col gap-2 overflow-auto max-h-[400px] minimal-scrollbar">
+<div className="w-full bg-surface-2 rounded-lg flex py-3 px-4 flex-col gap-2 overflow-auto max-h-[400px] minimal-scrollbar">
  {activities.map((activity, index) => (
   <>    
   <div className="flex items-center w-full mb-1" key={33}>

@@ -1,115 +1,123 @@
 @import "tailwindcss";
 
+@theme {
+  --color-bg: #08142d;
+  --color-surface-1: #0f1d35;
+  --color-surface-2: #172742;
+  --color-surface-3: #22365a;
+  --color-border: #2c4268;
+  --color-fg: #ffffff;
+  --color-fg-muted: #a3b3cc;
+  --color-fg-subtle: #6b7f9e;
+  --color-primary: #8ac617;
+  --color-primary-strong: #63710b;
+  --color-on-primary: #0b1500;
+  --color-danger: #ef4444;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-gold: #facc15;
+  --color-silver: #cbd5e1;
+  --color-bronze: #d97706;
+
+  --font-sans: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --radius-card: 1.25rem;
+  --shadow-card: 0 1px 0 0 rgb(255 255 255 / 0.04) inset, 0 8px 24px -12px rgb(0 0 0 / 0.6);
+  --spacing-13: 3.25rem;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-@theme {
-  --font-sans: var(--font-montserrat);
+  color-scheme: dark;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-@theme {
-  --color-surface: #262626;
-  --color-surfacehover: #3A3A3A;
-  --color-surface2: #1A1A1A;
-  --color-calendarweek: #202020;
-  --color-calendarweekcommonstreak: #2E2E2E;
-  --color-calendarweekgoldenstreak: #303323;
-  --color-calendargreen: linear-gradient(to bottom, #8AC617, #63710B);
-  --color-calendargray: #838383;
-  --color-graytext: #606060;
-
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  html,
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+  }
+  body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+  }
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@utility bg-primary-gradient {
+  background-image: linear-gradient(to bottom, var(--color-primary), var(--color-primary-strong));
 }
 
-/* CONTENEDOR */
-.minimal-scrollbar {
+@utility pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+}
+
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+/*
+ * Scrollbars legacy (usadas por pantallas viejas: GroupPageClient, profile,
+ * GroupSeasonActivities, GroupUserCalendar). Migradas a tokens.
+ */
+@utility minimal-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 999px;
+  }
+  &:hover {
+    scrollbar-color: rgb(255 255 255 / 0.25) transparent;
+  }
+  &:hover::-webkit-scrollbar-thumb {
+    background-color: rgb(255 255 255 / 0.25);
+  }
 }
 
-/* WEBKIT (Chrome, Edge, Safari) */
-.minimal-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-
-/* 🔥 Oculta COMPLETAMENTE los botones (flechas) */
-.minimal-scrollbar::-webkit-scrollbar-button {
-  display: none !important;
-  width: 0;
-  height: 0;
-}
-
-/* Sin fondo */
-.minimal-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-/* Thumb invisible por defecto */
-.minimal-scrollbar::-webkit-scrollbar-thumb {
-  background-color: transparent;
-  border-radius: 999px;
-  transition: background-color 0.2s ease;
-}
-
-/* 👇 SOLO aparece al hover del contenedor */
-.minimal-scrollbar:hover::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.25);
-}
-
-/* Hover sobre la barra */
-.minimal-scrollbar:hover::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 255, 255, 0.45);
-}
-
-/* Firefox */
-.minimal-scrollbar:hover {
-  scrollbar-color: rgba(255,255,255,0.25) transparent;
-}
-
-.scrollbar-elbravo {
+@utility scrollbar-elbravo {
   scrollbar-width: thin;
-  scrollbar-color: #64748b #0f172a;
+  scrollbar-color: var(--color-fg-subtle) var(--color-surface-1);
+
+  &::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  &::-webkit-scrollbar-track,
+  &::-webkit-scrollbar-corner {
+    background: var(--color-surface-1);
+    border-radius: 9999px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--color-fg-subtle);
+    border-radius: 9999px;
+    border: 2px solid var(--color-surface-1);
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: var(--color-fg-muted);
+  }
 }
 
-.scrollbar-elbravo::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
-
-.scrollbar-elbravo::-webkit-scrollbar-track {
-  background: #0f172a;
-  border-radius: 9999px;
-}
-
-.scrollbar-elbravo::-webkit-scrollbar-thumb {
-  background: #64748b;
-  border-radius: 9999px;
-  border: 2px solid #0f172a;
-}
-
-.scrollbar-elbravo::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-.scrollbar-elbravo::-webkit-scrollbar-corner {
-  background: #0f172a;
-}
-

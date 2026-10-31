@@ -17,7 +17,7 @@ export default function GroupSeasonMembersCard({ member, weeklyRequired }: Props
   const hasExtra = currentWeekCount > weeklyRequired;
 
   return (
-    <div className="bg-surface2 px-3 py-2 rounded-lg flex justify-between">
+    <div className="bg-surface-1 px-3 py-2 rounded-lg flex justify-between">
       <div className="flex">
         <div className="w-12 h-12 rounded-lg bg-gray-700 overflow-hidden mr-3">
           {member.photoUrl ? (

@@ -19,7 +19,7 @@ export default function InviteGroupButton({ setPopupInviteOpen }: Props) {
     <button
       type="button"
       onClick={onInvite}
-      className="inline-flex items-center px-3 py-2 bg-surface rounded-md text-sm font-bold hover:bg-surfacehover"
+      className="inline-flex items-center px-3 py-2 bg-surface-2 rounded-md text-sm font-bold hover:bg-surface-3"
       title="Solo admins"
     >
       Invitar
