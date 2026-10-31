@@ -3,6 +3,7 @@
  * WhatsApp. `parseRoutineText` es tolerante con lo que escribe la gente; `routineToText` (Task 3)
  * escribe el formato canónico. Puro, sin I/O.
  */
+import type { RoutineForEditor } from "@/src/schemas/routine";
 import type { SetKind } from "@/src/features/workout/state";
 import type { ParsedExercise, ParsedRoutine, ParsedSet } from "./types";
 
@@ -95,4 +96,37 @@ export function parseRoutineText(text: string): ParsedRoutine {
 /** Alcanza para importar sin IA: al menos un ejercicio y casi todo entendido (≤ 1 línea suelta). */
 export function looksLikeBravoFormat(p: ParsedRoutine): boolean {
   return p.exercises.length > 0 && p.unparsedLines.length <= 1;
+}
+
+const fmtNum = (n: number) => String(Math.round(n * 100) / 100).replace(".", ",");
+const PREFIX: Partial<Record<SetKind, string>> = { warmup: "W ", drop: "D ", failure: "F " };
+
+type TargetSet = RoutineForEditor["exercises"][number]["sets"][number];
+
+function oneSetText(s: TargetSet): string {
+  if (s.targetDurationSeconds) {
+    const d = s.targetDurationSeconds;
+    return `${PREFIX[s.kind] ?? ""}${d >= 60 && d % 60 !== 0 ? `${Math.floor(d / 60)}:${String(d % 60).padStart(2, "0")}` : d >= 60 ? `${d / 60}:00` : `${d}s`}`;
+  }
+  if (s.targetReps === null) return s.kind === "failure" ? "máx" : `${PREFIX[s.kind] ?? ""}máx`;
+  return `${PREFIX[s.kind] ?? ""}${s.targetReps}${s.targetWeightKg !== null ? ` @ ${fmtNum(s.targetWeightKg)} kg` : ""}`;
+}
+
+function setsText(sets: TargetSet[]): string {
+  const first = oneSetText(sets[0]);
+  const allSame = sets.every((s) => oneSetText(s) === first);
+  // "4×F 8" no se lee bien: las series iguales con prefijo (salvo máx) van como lista.
+  if (allSame && (sets[0].kind === "normal" || first === "máx")) return `${sets.length}×${first}`;
+  return sets.map(oneSetText).join(", ");
+}
+
+export function routineToText(r: RoutineForEditor, opts: { url?: string } = {}): string {
+  const lines = [`🏋️ ${r.name}`];
+  if (r.notes?.trim()) lines.push(`Notas: ${r.notes.trim().replace(/\s*\n\s*/g, " ")}`);
+  lines.push("");
+  for (const e of r.exercises) {
+    lines.push(`${e.exercise.name} — ${setsText(e.sets)}${e.restSeconds ? ` · desc ${e.restSeconds}s` : ""}`);
+  }
+  lines.push("", opts.url ? `Hecho con El Bravo · ${opts.url}` : "Hecho con El Bravo");
+  return lines.join("\n");
 }
