@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/db";
 import bcrypt from "bcryptjs";
-import { signAuthToken } from "@/src/lib/auth";
-
-const COOKIE_NAME = process.env.JWT_COOKIE_NAME || "elbravo_token";
+import { setSessionCookie } from "@/src/server/auth/session";
 
 export async function POST(req: Request) {
   try {
@@ -34,16 +32,9 @@ export async function POST(req: Request) {
       select: { id: true, email: true, name: true, photoUrl: true, createdAt: true },
     });
 
-    const token = await signAuthToken({ sub: user.id, email: user.email });
+    await setSessionCookie({ userId: user.id, email: user.email });
 
     const res = NextResponse.json({ user });
-    res.cookies.set(COOKIE_NAME, token, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30,
-    });
 
     return res;
   } catch {

@@ -109,8 +109,11 @@ function getActivityTypeLabel(type: string) {
       return "Deporte";
     case "mobility":
       return "Movilidad";
-    default:
+    case "other":
       return "Otro";
+    default:
+      // Las temporadas ya envían el nombre de la categoría (ej. "Fuerza").
+      return type || "Otro";
   }
 }
 

@@ -2,23 +2,15 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/src/lib/currentUser";
 import { prisma } from "@/src/lib/db";
 import GroupPageClient from "./GroupPageClient";
-import { getSeasonLeaderboard } from "@/src/lib/scoring/getSeasonLeaderboard";
+import {
+  getSeasonLeaderboard,
+  type SeasonLeaderboardEntry,
+} from "@/src/lib/scoring/getSeasonLeaderboard";
 import { finalizeSeasonIfNeeded } from "@/src/lib/scoring/finalizeSeasonIfNeeded";
 
 type ActivityMuscleItem = {
   name: string;
   percentage: number;
-};
-
-type SeasonLeaderboardEntry = {
-  userId: string;
-  name: string | null;
-  email: string | null;
-  photoUrl: string | null;
-  points: number;
-  rank: number;
-  activeWeeks: number;
-  perfectWeeks: number;
 };
 
 type UserSeasonStanding = {
@@ -606,11 +598,9 @@ export default async function GroupByIdPage({
       startDate: season.startDate,
       endDate: season.endDate,
       weeklyGoal: season.weeklyGoal,
-      allowedActivityTypes: season.allowedActivityTypeLinks.map((item) => ({
-        id: item.activityCategory.id,
-        slug: item.activityCategory.slug,
-        name: item.activityCategory.name,
-      })),
+      allowedActivityTypes: season.allowedActivityTypeLinks.map(
+        (item) => item.activityCategory.name
+      ),
       members: season.members.map((member) => ({
         id: member.user.id,
         userId: member.userId,

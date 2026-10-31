@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json(
-        { error: "Unauthorized" },
+        { error: "Tenés que iniciar sesión." },
         { status: 401 }
       );
     }
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
 
     if (existingExercises.length !== exerciseIds.length) {
       return NextResponse.json(
-        { error: "One or more exercises do not exist" },
+        { error: "Alguno de los ejercicios no existe" },
         { status: 400 }
       );
     }
@@ -50,30 +50,15 @@ export async function POST(req: Request) {
           connect: { id: user.id },
         },
         exercises: {
-          create: exercises.map((e: any) => {
+          create: exercises.map((e) => {
             const exercise = exerciseById.get(e.exerciseId);
-
-            const reps =
-              e.reps === null || e.reps === undefined || e.reps === ""
-                ? null
-                : Number(e.reps);
-
-            const durationSeconds =
-              e.durationSeconds === null ||
-              e.durationSeconds === undefined ||
-              e.durationSeconds === ""
-                ? null
-                : Number(e.durationSeconds);
+            const isDuration = exercise?.measureType === "duration";
 
             return {
-              sets: Number(e.sets),
-              reps: exercise?.measureType === "reps" ? reps : null,
-              durationSeconds:
-                exercise?.measureType === "duration" ? durationSeconds : null,
-              weightKg:
-                e.weightKg === null || e.weightKg === undefined || e.weightKg === ""
-                  ? null
-                  : Number(e.weightKg),
+              sets: e.sets,
+              reps: isDuration ? null : e.reps,
+              durationSeconds: isDuration ? e.durationSeconds : null,
+              weightKg: e.weightKg,
               exercise: {
                 connect: { id: e.exerciseId },
               },
@@ -87,14 +72,14 @@ export async function POST(req: Request) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { errors: error.errors },
+        { error: error.issues[0]?.message ?? "Datos inválidos", issues: error.issues },
         { status: 400 }
       );
     }
 
     console.error(error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Algo salió mal. Probá de nuevo." },
       { status: 500 }
     );
   }
