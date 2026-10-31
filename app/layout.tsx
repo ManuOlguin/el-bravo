@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Montserrat } from "next/font/google";
 import "./globals.css";
 import AppNavbarShell from "@/src/components/AppNavbarShell";
+import { Providers } from "@/src/components/ui/Providers";
 import { getSession } from "@/src/server/auth/dal";
 
 const montserrat = Montserrat({ subsets: ["latin"], variable: "--font-montserrat", display: "swap" });
@@ -24,10 +25,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="es-AR" className={`${montserrat.variable} dark`} style={{ colorScheme: "dark" }}>
       <body className="min-h-dvh bg-bg font-sans text-fg">
-        {session ? (
-          <AppNavbarShell userName={session.name ?? session.email} photoUrl={session.photoUrl} />
-        ) : null}
-        {children}
+        <Providers>
+          {session ? (
+            <AppNavbarShell userName={session.name ?? session.email} photoUrl={session.photoUrl} />
+          ) : null}
+          {children}
+        </Providers>
       </body>
     </html>
   );
