@@ -42,7 +42,10 @@ export function DeleteWorkoutButton({
         return;
       }
       const lost = r.data.effects.scoring.reduce((n, s) => n + Math.max(0, s.totalBefore - s.totalAfter), 0);
-      toast.success(lost > 0 ? `Entrenamiento borrado (−${lost} pts)` : "Entrenamiento borrado");
+      const downgraded = r.data.effects.badges.filter((b) => b.levelAfter < b.levelBefore).map((b) => b.name);
+      toast.success(lost > 0 ? `Entrenamiento borrado (−${lost} pts)` : "Entrenamiento borrado", {
+        description: downgraded.length ? `Bajaste de nivel en: ${downgraded.join(", ")}` : undefined,
+      });
       if (redirectTo) router.replace(redirectTo);
       else router.refresh();
     });

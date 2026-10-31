@@ -6,6 +6,8 @@ import {
   draftFromActivity,
   draftFromRoutine,
   draftSummary,
+  defaultStart,
+  inputSummary,
   newDraft,
   setIdGenerator,
   toActivityInput,
@@ -306,6 +308,26 @@ describe("draftSummary", () => {
       { type: "toggleSetDone", exerciseKey: ex.key, setKey: ex.sets[1].key, nowMs: 2 },
     );
     expect(draftSummary(d)).toEqual({ exercises: 1, setsDone: 2, setsTotal: 3, volumeKg: 800 });
+  });
+});
+
+describe("inputSummary / defaultStart", () => {
+  it("resume lo enviado", () => {
+    expect(
+      inputSummary({
+        clientRequestId: "x", activityCategoryId: "c", localDate: "2026-10-31", localTime: "18:00", durationMinutes: 50,
+        exercises: [{ exerciseId: "e", notes: null, sets: [
+          { kind: "normal", reps: 10, weightKg: 40, durationSeconds: null, restSeconds: null, completed: true },
+          { kind: "normal", reps: null, weightKg: null, durationSeconds: 60, restSeconds: null, completed: true },
+        ] }],
+      })
+    ).toEqual({ durationMinutes: 50, exercises: 1, sets: 2, volumeKg: 400 });
+  });
+
+  it("la hora por defecto es ahora menos la duración (puede caer el día anterior)", () => {
+    const now = Date.parse("2026-10-31T03:20:00Z"); // 00:20 en Buenos Aires
+    expect(defaultStart(now, null, TZ)).toEqual({ localDate: "2026-10-31", localTime: "00:20" });
+    expect(defaultStart(now, 45, TZ)).toEqual({ localDate: "2026-10-30", localTime: "23:35" });
   });
 });
 

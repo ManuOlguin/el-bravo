@@ -3,11 +3,11 @@ import { prisma } from "@/src/lib/db";
 import type { ScoringEffect } from "@/src/server/scoring";
 import { exerciseSummarySelect, toExerciseSummary } from "@/src/server/routines/service";
 import type { ExerciseSummary } from "@/src/features/exercises/types";
-import type { SetKind } from "../state";
+import type { CategoryOption, PreviousSet } from "../types";
+
+export type { CategoryOption, PreviousSet };
 
 /** Lecturas de entrenamientos (W2-1). Las escrituras pasan siempre por `src/server/activities/service.ts`. */
-
-export type CategoryOption = { id: string; slug: string; name: string; usesExercises: boolean };
 
 /** Categorías activas; las que más usó el usuario primero, después el orden del catálogo. */
 export async function listActivityCategoriesForUser(userId: string): Promise<CategoryOption[]> {
@@ -25,8 +25,6 @@ export async function listActivityCategoriesForUser(userId: string): Promise<Cat
     .sort((a, b) => b.n - a.n || a.i - b.i)
     .map(({ c }) => c);
 }
-
-export type PreviousSet = { kind: SetKind; reps: number | null; durationSeconds: number | null; weightKg: number | null };
 
 /** Series de la última vez que el usuario hizo cada ejercicio (columna "Anterior"). */
 export async function getLastPerformance(
@@ -92,6 +90,57 @@ export async function currentScoringEffects(userId: string, activityId: string):
     };
   });
 }
+
+/** Todo lo que muestra `/workout/[id]` (sin permisos: los chequea la página). */
+export async function getWorkoutDetail(activityId: string) {
+  const a = await prisma.activity.findUnique({
+    where: { id: activityId },
+    select: {
+      id: true,
+      userId: true,
+      routineId: true,
+      startedAt: true,
+      durationMinutes: true,
+      notes: true,
+      user: { select: { id: true, name: true, photoUrl: true, timezone: true } },
+      activityCategory: { select: { id: true, slug: true, name: true } },
+      routine: { select: { id: true, name: true } },
+      media: { where: { status: "ready" }, orderBy: { position: "asc" }, select: { id: true, url: true, thumbUrl: true } },
+      exercises: {
+        orderBy: { position: "asc" },
+        select: {
+          id: true,
+          notes: true,
+          exercise: { select: exerciseSummarySelect },
+          sets: {
+            orderBy: { position: "asc" },
+            select: { id: true, kind: true, reps: true, durationSeconds: true, weightKg: true, restSeconds: true },
+          },
+        },
+      },
+      scoreEntries: {
+        where: { kind: "workout" },
+        select: { seasonId: true, points: true, reason: true, detail: true, season: { select: { name: true, groupId: true, group: { select: { name: true } } } } },
+      },
+    },
+  });
+  if (!a) return null;
+  return {
+    ...a,
+    exercises: a.exercises.map((e) => ({ ...e, exercise: toExerciseSummary(e.exercise) })),
+    points: a.scoreEntries.map((s) => ({
+      seasonId: s.seasonId,
+      seasonName: s.season.name,
+      groupId: s.season.groupId,
+      groupName: s.season.group.name,
+      points: s.points,
+      reason: s.reason,
+      sharedDay: isSharedDay(s.detail),
+    })),
+  };
+}
+
+export type WorkoutDetail = NonNullable<Awaited<ReturnType<typeof getWorkoutDetail>>>;
 
 /**
  * Temporadas en las que la actividad compartió el día con otras (el motor guarda en `ScoreEntry.detail`

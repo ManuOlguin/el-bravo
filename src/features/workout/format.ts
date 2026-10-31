@@ -50,3 +50,10 @@ export function restLabel(s: number | null): string {
   if (s === 0) return "Sin descanso";
   return `Descanso: ${formatSeconds(s)}`;
 }
+
+/** El motor dice "Sumó al tiempo del día"; en la UI se lee mejor en segunda persona. */
+export function displayReason(reason: string | null): string | null {
+  if (!reason) return null;
+  if (reason === "Sumó al tiempo del día") return "Se sumó al tiempo de tu día";
+  return reason;
+}

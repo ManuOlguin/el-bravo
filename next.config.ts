@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/profile/edit", destination: "/settings/profile", permanent: false }, // W1-4
+      { source: "/load", destination: "/workout/new", permanent: false }, // W2-1
+      { source: "/create-routine", destination: "/routines/new", permanent: false }, // W2-1
+      { source: "/routine", destination: "/routines", permanent: false }, // W2-1
+      { source: "/routine/:id/edit", destination: "/routines/:id/edit", permanent: false }, // W2-1
     ];
   },
 };

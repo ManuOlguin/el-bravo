@@ -379,3 +379,22 @@ export function draftSummary(d: WorkoutDraft): { exercises: number; setsDone: nu
   }
   return { exercises: d.exercises.length, setsDone, setsTotal, volumeKg: Math.round(volumeKg * 10) / 10 };
 }
+
+/** Números del resumen post-entreno a partir de lo que se envió (volumen = reps × kg). */
+export function inputSummary(input: ActivityInput): { durationMinutes: number; exercises: number; sets: number; volumeKg: number } {
+  let sets = 0;
+  let volumeKg = 0;
+  for (const e of input.exercises) {
+    for (const s of e.sets) {
+      sets++;
+      if (s.reps !== null && s.weightKg !== null) volumeKg += s.reps * s.weightKg;
+    }
+  }
+  return { durationMinutes: input.durationMinutes, exercises: input.exercises.length, sets, volumeKg: Math.round(volumeKg * 10) / 10 };
+}
+
+/** Hora de inicio por defecto al registrar: ahora menos la duración, en la zona del usuario. */
+export function defaultStart(nowMs: number, durationMinutes: number | null, tz: string): { localDate: string; localTime: string } {
+  const start = new Date(nowMs - (durationMinutes ?? 0) * 60_000);
+  return { localDate: localDateOf(start, tz), localTime: localTimeOf(start, tz) };
+}

@@ -53,15 +53,11 @@ export function WorkoutEditor({
     const missing = idsKey.split(",").filter((id) => !requested.current.has(id));
     if (missing.length === 0) return;
     missing.forEach((id) => requested.current.add(id));
-    let cancelled = false;
+    // Sin cancelar en el cleanup: cada id se pide una sola vez (con el doble efecto de StrictMode,
+    // cancelar descartaba la única respuesta) y el resultado es válido aunque cambie la lista.
     loadPrevious(missing, excludeActivityId)
-      .then((data) => {
-        if (!cancelled) setPrevious((p) => ({ ...p, ...data }));
-      })
+      .then((data) => setPrevious((p) => ({ ...p, ...data })))
       .catch(() => missing.forEach((id) => requested.current.delete(id)));
-    return () => {
-      cancelled = true;
-    };
   }, [idsKey, mode, excludeActivityId, loadPrevious]);
 
   const onSetDone = useCallback(
