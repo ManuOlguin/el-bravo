@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { AuthError } from "@/src/server/auth/errors";
 import { requirePageUser } from "@/src/server/auth/dal";
 import { getPublicRoutine } from "@/src/server/routines/service";
 import { routineShareUrl } from "@/src/server/routines/share-url";
@@ -11,7 +12,10 @@ export const metadata: Metadata = { title: "Rutina" };
 export default async function RoutinePage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requirePageUser();
   const { id } = await params;
-  const routine = await getPublicRoutine(user.id, id).catch(() => null);
+  const routine = await getPublicRoutine(user.id, id).catch((e: unknown) => {
+    if (e instanceof AuthError && e.code === "NOT_FOUND") return null;
+    throw e; // fallo de DB/red: que lo atrape el error boundary, no un 404 engañoso
+  });
   if (!routine) notFound();
   const shareUrl = routine.visibility === "public" ? routineShareUrl(routine.id) : undefined;
   return <RoutineDetailView routine={routine} shareUrl={shareUrl} />;

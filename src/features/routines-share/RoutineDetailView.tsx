@@ -24,7 +24,7 @@ export function RoutineDetailView({ routine, shareUrl }: { routine: RoutineView;
         title={routine.name}
         back={isOwner ? "/routines" : `/u/${owner.id}`}
         subtitle={routineCountsLabel(routine.exercises.length, sets)}
-        actions={isOwner ? <VisibilityPill visibility={routine.visibility} /> : undefined}
+        actions={isOwner && routine.visibility === "public" ? <VisibilityPill visibility={routine.visibility} /> : undefined}
       />
 
       {!isOwner && (
@@ -41,18 +41,18 @@ export function RoutineDetailView({ routine, shareUrl }: { routine: RoutineView;
       <CopiedFromNote userName={routine.copiedFromUserName} />
       {routine.notes && <Card className="whitespace-pre-line text-sm text-fg-muted">{routine.notes}</Card>}
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-2">
         {isOwner ? (
           <>
-            <LinkButton href={`/routines/${routine.id}/live`} className="flex-1">
-              <PlayIcon size={16} />
+            <LinkButton href={`/routines/${routine.id}/live`} className="min-w-0 flex-1">
+              <PlayIcon size={16} className="shrink-0" />
               Empezar
             </LinkButton>
             <LinkButton href={`/routines/${routine.id}/edit`} variant="secondary">
               Editar
             </LinkButton>
             <ShareRoutineButton routineId={routine.id} routine={routine} url={shareUrl} />
-            <CopyRoutineButton routineId={routine.id} label="Duplicar" variant="ghost" />
+            <CopyRoutineButton routineId={routine.id} label="Duplicar" variant="ghost" size="sm" />
           </>
         ) : (
           <>
