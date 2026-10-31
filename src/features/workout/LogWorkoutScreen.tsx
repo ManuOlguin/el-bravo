@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Button, Card, Chip, Field, Input, NumberInput, PageHeader, Textarea, cn, toast, useConfirm } from "@/src/components/ui";
 import type { ExerciseSummary } from "@/src/features/exercises";
@@ -185,7 +186,8 @@ export function LogWorkoutScreen({
   };
 
   const err = (k: string) => errors[k]?.[0] ?? null;
-  const usesExercisesRoutines = category?.usesExercises && routines.length > 0;
+  // Solo al registrar: al editar no se cambia de rutina.
+  const showRoutines = kind !== "edit" && !!category?.usesExercises;
 
   return (
     <div className="space-y-4 pb-24">
@@ -209,16 +211,30 @@ export function LogWorkoutScreen({
             {err("activityCategoryId")}
           </p>
         )}
-        {usesExercisesRoutines && (
+        {showRoutines && (
           <div className="space-y-2 border-t border-border pt-3">
-            <p className="text-sm font-semibold">Desde una rutina</p>
-            <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
-              {routines.map((r) => (
-                <Chip key={r.id} selected={draft.routineId === r.id} onClick={() => void pickRoutine(r)} disabled={loadingRoutine !== null}>
-                  {loadingRoutine === r.id ? "Cargando…" : r.name}
-                </Chip>
-              ))}
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="text-sm font-semibold">Desde una rutina</p>
+              <Link href="/routines" className="text-xs font-semibold text-primary hover:underline">
+                Mis rutinas →
+              </Link>
             </div>
+            {routines.length > 0 ? (
+              <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
+                {routines.map((r) => (
+                  <Chip key={r.id} selected={draft.routineId === r.id} onClick={() => void pickRoutine(r)} disabled={loadingRoutine !== null}>
+                    {loadingRoutine === r.id ? "Cargando…" : r.name}
+                  </Chip>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-fg-muted">
+                Armá una rutina con tus ejercicios y pesos, y la próxima vez la cargás con un toque.{" "}
+                <Link href="/routines/new" className="font-semibold text-primary hover:underline">
+                  Crear rutina
+                </Link>
+              </p>
+            )}
           </div>
         )}
       </Section>

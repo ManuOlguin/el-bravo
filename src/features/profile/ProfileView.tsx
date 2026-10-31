@@ -58,9 +58,14 @@ export function ProfileView({
             minutes={stats.totals.minutes}
           />
           {isOwner && (
-            <Link href="/stats" className="block text-right text-sm font-semibold text-primary hover:underline">
-              Ver mis stats →
-            </Link>
+            <div className="flex justify-end gap-4 text-sm font-semibold text-primary">
+              <Link href="/routines" className="hover:underline">
+                Mis rutinas →
+              </Link>
+              <Link href="/stats" className="hover:underline">
+                Ver mis stats →
+              </Link>
+            </div>
           )}
         </section>
       )}

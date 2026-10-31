@@ -101,6 +101,7 @@ async function main() {
 
   // Limpieza idempotente.
   await prisma.activity.deleteMany({ where: { userId: { in: ids } } });
+  await prisma.routine.deleteMany({ where: { userId: { in: ids } } });
   await prisma.group.deleteMany({ where: { createdBy: { in: ids } } });
   await prisma.follow.deleteMany({ where: { followerId: { in: ids } } });
   await prisma.follow.createMany({
@@ -139,6 +140,33 @@ async function main() {
       members: { create: ids.map((userId) => ({ userId })) },
     },
   });
+
+  // Ana tiene las dos rutinas de fuerza guardadas, para probar "Desde una rutina" y el modo en vivo.
+  const routineNames = ["Pecho, piernas y espalda", "Hombros y peso muerto"];
+  for (const [i, routine] of STRENGTH_ROUTINES.entries()) {
+    await prisma.routine.create({
+      data: {
+        userId: ana.id,
+        name: routineNames[i],
+        exercises: {
+          create: routine
+            .filter(([exSlug]) => exerciseBySlug.has(exSlug))
+            .map(([exSlug, sets, reps, kg], position) => ({
+              exerciseId: exerciseBySlug.get(exSlug)!,
+              position,
+              restSeconds: 90,
+              sets: {
+                create: Array.from({ length: sets }, (_, j) =>
+                  exSlug === "plancha"
+                    ? { position: j, targetDurationSeconds: 60 }
+                    : { position: j, targetReps: reps, targetWeightKg: kg > 0 ? kg + 5 : null }
+                ),
+              },
+            })),
+        },
+      },
+    });
+  }
 
   let created = 0;
   for (const u of users) {
