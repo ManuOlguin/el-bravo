@@ -9,7 +9,7 @@ Registro del orquestador. Cada ola se ejecuta con subagentes en worktrees separa
 | 0b | W0-C Schema v2 | ✅ mergeado | `v2/w0-c-schema` | 5 commits: schema v2 completo en una migración, migración de datos v1→v2 probada con fixture, seed modular, servicio único de actividades (idempotente, transaccional, hora local→UTC), puente para que las pantallas viejas funcionen. 43 unit + 16 integración OK |
 | 1 | W1-1 Puntos · W1-2 Insignias · W1-3 Ejercicios · W1-4 Social · W1-5 Fotos | ✅ mergeados | `v2/w1-*` | ver bitácora |
 | 2 | W2-1 Entrenamientos · W2-2 Grupo/Temporadas · W2-3 Notificaciones · W2-4 Home/Perfil/Stats | ✅ mergeados | `v2/w2-*` | ver bitácora |
-| 3 | W3 Release | ⏳ Tasks 1–3 en curso (E2E, guardas, seguridad/perf). Task 4 (producción) espera por vos | `v2/w3-hardening` | |
+| 3 | W3 Release | ✅ Tasks 1–3 mergeadas (E2E, guardas, seguridad/perf). ⏸️ Task 4 (producción) espera por vos | `v2/w3-hardening` | ver bitácora |
 | 4 | W4 App móvil | no se ejecuta sin vos (Firebase, Android Studio) | | |
 
 ## Bitácora
@@ -29,3 +29,50 @@ Registro del orquestador. Cada ola se ejecuta con subagentes en worktrees separa
 - W2-1 (entrenamientos y rutinas) mergeado: registro tipo Strong con series individuales (peso/reps/tiempo/descanso), "Anterior" por ejercicio, temporizador de descanso, modo en vivo a pantalla completa con retomar, editar entrenamiento, fotos, pantalla de envío con estados (guardando/error con reintento idempotente/resultado con puntos por temporada e insignias afectadas), reacciones en el detalle. Orquestador: borradas las últimas rutas y componentes viejos; solo quedan `app/api/cron/*` y `health`.
 - **Ola 2 completa.** Integración: typecheck OK, 332 unit + 226 integración, **lint sin errores** (los heredados desaparecieron con las reescrituras), colores OK, build OK. Recorrido visual en el navegador (375 px, demo `ana@demo.test` / `demo1234` en `elbravo_main`): home, grupo, registrar y stats sin errores de consola.
 - Arranca W3 (Tasks 1–3: E2E con Playwright, guardas estrictas, revisión de seguridad y performance).
+- W3 Tasks 1–3 mergeadas:
+  - **E2E:** 17 tests con Playwright, todos pasan. Cubren auth, registrar entrenamiento con fotos, modo en vivo, temporada completa con sliders y premios, social, reintento sin red y smoke visual de 24 páginas.
+  - **Bugs reales encontrados y arreglados:** open redirect en `?next=`, series perdidas al recargar el modo en vivo, botón "Seguir" colgado.
+  - **Seguridad** (detalle en `docs/security-review.md`):
+    - un usuario podía borrar fotos ajenas;
+    - las URLs prefirmadas no limitaban el tamaño;
+    - el rate limit del login se podía saltear;
+    - invitaciones viejas anulaban expulsiones;
+    - SSRF por el endpoint de push;
+    - faltaban headers de seguridad.
+  - **Performance** (detalle en `docs/perf.md`): `recomputeSeason` ~190 ms con 6.000 actividades y página de grupo ~20 ms.
+  - **Guardas:** lint con `no-alert` y reglas de fechas como error, 0 colores hex fuera de los tokens, README nuevo.
+
+---
+
+## Resumen para la mañana
+
+**Estado:** el plan está ejecutado de la Ola 0 a la 2, más las Tasks 1–3 de W3, todo en la rama local `rework/v2`. No hice push de nada.
+
+**Gates finales** en `rework/v2`:
+- typecheck OK;
+- lint con 0 problemas;
+- 350 tests unitarios y 230 de integración;
+- colores OK;
+- build OK;
+- E2E 17/17 OK, corrido también en la integración (1,4 min).
+
+**Para probarla:**
+```bash
+cd ~/ElBravo && git checkout rework/v2 && npm ci && npm run dev
+```
+Abrí http://localhost:3000 y entrá con `ana@demo.test` / `demo1234` (datos demo en `elbravo_main`). Para fotos tiene que estar corriendo MinIO local; si no, mirá `docs/r2-setup.md`.
+
+**Lo que te necesita a vos:**
+1. **Revisar los textos de los 78 ejercicios** (escritos por IA, con `reviewed: false`): `npx tsx scripts/exercises/validate.ts --pending`.
+2. **Cloudflare:** crear la cuenta y el bucket R2 siguiendo `docs/r2-setup.md`. Hay que verificar subidas reales contra R2.
+3. **Base de producción (D13):** confirmar en Aiven qué es `el-bravo-prod` y elegir hosting para la DB nueva.
+4. **W3 Task 4 (deploy):** hosting de la DB, variables en Vercel (`CRON_SECRET`, `APP_URL`, `R2_*`, `VAPID_*`) y `vercel.json` con los crons.
+5. **Probar push en un celular real:** necesita HTTPS, es decir, un deploy de preview.
+6. **W4 (APK de Android + widget):** necesita una cuenta de Firebase y Android Studio.
+7. **Decidir:** email (dominio), iOS (Apple Developer) y los riesgos aceptados de `docs/security-review.md`.
+
+**Desvíos que conviene saber:**
+- Las reacciones se guardan como clave ASCII (`muscle`, `fire`…). Con la collation de MySQL los emojis se comparan como iguales.
+- Expulsado de un grupo = no puede volver con el código, solo con una invitación personal.
+- La racha "semanas cumplidas" del perfil y de stats cuenta entrenamientos por semana (como la insignia Imparable). La competencia de temporada cuenta días entrenados (D1).
+- `Exercise.name` es único global: un ejercicio propio no puede llamarse igual que el de otro usuario.
