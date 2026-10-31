@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/src/lib/db";
 import { AuthError } from "@/src/server/auth/errors";
 import { primaryGroupKeyOf, visibleTo } from "@/src/server/exercises/catalog";
+import { buildVisibleNameIndex } from "@/src/server/exercises/name-index";
 import { slugify } from "@/prisma/seed/slugify";
 import { normalize } from "@/src/features/exercises/search";
 import { isPendingExerciseId, PENDING_PREFIX } from "@/src/features/routines-share/match";
@@ -82,8 +83,8 @@ async function resolvePendingExercises(tx: Tx, userId: string, input: RoutineInp
   const pending = input.exercises.filter((e) => isPendingExerciseId(e.exerciseId));
   if (pending.length === 0) return input;
   const defs = new Map((input.newExercises ?? []).map((n) => [n.tempId, n]));
-  const visible = await tx.exercise.findMany({ where: visibleTo(userId), select: { id: true, name: true } });
-  const byName = new Map(visible.map((v) => [normalize(v.name), v.id]));
+  const visible = await tx.exercise.findMany({ where: visibleTo(userId), select: { id: true, name: true, createdByUserId: true } });
+  const byName = buildVisibleNameIndex(visible);
   const muscleRows = await tx.muscle.findMany({ select: { id: true, slug: true } });
   const muscleId = new Map(muscleRows.map((m) => [m.slug, m.id]));
   const tempIdOf = (exerciseId: string) => exerciseId.slice(PENDING_PREFIX.length);
