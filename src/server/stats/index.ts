@@ -3,7 +3,10 @@ export { getUserStats } from "./getUserStats";
 export {
   computeUserStats,
   computePersonalRecords,
-  computeMuscleBalance,
+  computeMuscleMinutes,
+  DAYPARTS,
+  type Daypart,
+  type MuscleMinutes,
   isStatsRange,
   STATS_RANGES,
   type StatsRange,

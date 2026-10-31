@@ -4,11 +4,14 @@ import { requirePageUser } from "@/src/server/auth/dal";
 import { getUserStats, isStatsRange, type StatsRange } from "@/src/server/stats";
 import { LOG_WORKOUT_HREF } from "@/src/features/home/QuickStart";
 import { CategoryBreakdown } from "@/src/features/stats/CategoryBreakdown";
-import { MuscleBalance } from "@/src/features/stats/MuscleBalance";
+import { DaypartBreakdown } from "@/src/features/stats/DaypartBreakdown";
+import { GoalDots } from "@/src/features/stats/GoalDots";
+import { MuscleGroupMinutes, TopMuscleMinutes } from "@/src/features/stats/MuscleMinutes";
 import { PersonalRecords } from "@/src/features/stats/PersonalRecords";
 import { RangeTabs } from "@/src/features/stats/RangeTabs";
 import { StatsSummary } from "@/src/features/stats/StatsSummary";
-import { WeekdayHeatmap } from "@/src/features/stats/WeekdayHeatmap";
+import { StreakCards } from "@/src/features/stats/StreakCards";
+import { WeekdayBars } from "@/src/features/stats/WeekdayBars";
 import { WeeklyBarChart } from "@/src/features/stats/WeeklyBarChart";
 
 export const metadata: Metadata = { title: "Stats" };
@@ -40,7 +43,7 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
         <EmptyState
           icon={<span className="text-xl">📊</span>}
           title="Registrá entrenamientos para ver tus stats"
-          description="Acá vas a ver tus semanas, tus categorías, tus récords y qué músculos trabajás."
+          description="Acá vas a ver tus rachas, tu objetivo semanal, cuándo entrenás, tus récords y qué músculos trabajás."
           action={<LinkButton href={LOG_WORKOUT_HREF}>Registrar entrenamiento</LinkButton>}
         />
       </div>
@@ -51,24 +54,38 @@ export default async function StatsPage({ searchParams }: { searchParams: Promis
     <div className="mx-auto max-w-screen-sm space-y-4">
       <PageHeader title="Stats" subtitle="Tus números, en tu zona horaria." />
 
+      <StreakCards stats={stats} />
+
       <StatsSummary stats={stats} />
 
       <RangeTabs value={range} />
 
-      <Section title="Entrenamientos por semana" subtitle={RANGE_LABEL[range]}>
+      <Section title="Objetivo semanal" subtitle={`Un punto por cada entrenamiento de tu objetivo, ${RANGE_LABEL[range]}`}>
+        <GoalDots weeks={stats.goalProgress} />
+      </Section>
+
+      <Section title="Por semana" subtitle={RANGE_LABEL[range]}>
         <WeeklyBarChart weeks={stats.weekly} goal={stats.thisWeek.goal} />
+      </Section>
+
+      <Section title="Minutos por día de la semana" subtitle={RANGE_LABEL[range]}>
+        <WeekdayBars days={stats.byWeekdayInRange} />
+      </Section>
+
+      <Section title="Minutos por horario" subtitle={`Según la hora de inicio, ${RANGE_LABEL[range]}`}>
+        <DaypartBreakdown dayparts={stats.byDaypart} />
       </Section>
 
       <Section title="Por categoría" subtitle={`Minutos, ${RANGE_LABEL[range]}`}>
         <CategoryBreakdown categories={stats.byCategory} />
       </Section>
 
-      <Section title="Días de la semana" subtitle="Cuántas veces entrenaste cada día, desde que empezaste">
-        <WeekdayHeatmap byWeekday={stats.byWeekday} />
+      <Section title="Minutos por grupo muscular" subtitle={`El tiempo de cada entrenamiento repartido entre sus ejercicios, ${RANGE_LABEL[range]}`}>
+        <MuscleGroupMinutes data={stats.muscleMinutes} />
       </Section>
 
-      <Section title="Balance muscular" subtitle="Series completadas por grupo, desde que empezaste">
-        <MuscleBalance groups={stats.byMuscleGroup} />
+      <Section title="Minutos por músculo" subtitle={RANGE_LABEL[range]}>
+        <TopMuscleMinutes data={stats.muscleMinutes} />
       </Section>
 
       <Section title="Récords personales" subtitle="Tu mejor peso por ejercicio">

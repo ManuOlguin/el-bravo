@@ -50,6 +50,24 @@ const PLANS: Record<(typeof USERS)[number]["email"], Plan> = {
   ],
 };
 
+/**
+ * Rutinas de fuerza que se alternan en los entrenamientos de "strength" (para que /stats tenga
+ * minutos por músculo y récords): [slug del ejercicio, series, reps, kg inicial]. El peso sube 2,5 kg por semana.
+ */
+const STRENGTH_ROUTINES: [slug: string, sets: number, reps: number, kg: number][][] = [
+  [
+    ["press-de-banca", 4, 8, 50],
+    ["sentadillas", 4, 8, 70],
+    ["remo-con-barra", 3, 10, 45],
+  ],
+  [
+    ["press-militar", 3, 8, 30],
+    ["peso-muerto", 3, 5, 90],
+    ["dominadas", 3, 8, 0],
+    ["plancha", 3, 1, 0],
+  ],
+];
+
 async function main() {
   const args = process.argv.slice(2);
   const ended = args.includes("--ended");
@@ -91,6 +109,9 @@ async function main() {
 
   const categories = await prisma.activityCategory.findMany({ where: { isActive: true }, select: { id: true, slug: true } });
   const bySlug = new Map(categories.map((c) => [c.slug, c.id]));
+  const exerciseSlugs = [...new Set(STRENGTH_ROUTINES.flat().map(([slug]) => slug))];
+  const exercises = await prisma.exercise.findMany({ where: { slug: { in: exerciseSlugs } }, select: { id: true, slug: true } });
+  const exerciseBySlug = new Map(exercises.map((e) => [e.slug, e.id]));
 
   const [ana] = users;
   const group = await prisma.group.create({
@@ -121,13 +142,36 @@ async function main() {
 
   let created = 0;
   for (const u of users) {
+    let strengthCount = 0;
     for (const [w, d, time, minutes, slug] of PLANS[u.email as keyof typeof PLANS]) {
       const date = addDays(addWeeks(start, w), d);
       if (date > lastDay) continue;
       const categoryId = bySlug.get(slug);
       if (!categoryId) throw new Error(`Falta la categoría ${slug} (¿corriste el seed?)`);
+      const routine = slug === "strength" ? STRENGTH_ROUTINES[strengthCount++ % STRENGTH_ROUTINES.length] : [];
       await prisma.activity.create({
-        data: { userId: u.id, activityCategoryId: categoryId, startedAt: zonedToUtc(date, time, tz), durationMinutes: minutes, notes: "demo" },
+        data: {
+          userId: u.id,
+          activityCategoryId: categoryId,
+          startedAt: zonedToUtc(date, time, tz),
+          durationMinutes: minutes,
+          notes: "demo",
+          exercises: {
+            create: routine
+              .filter(([exSlug]) => exerciseBySlug.has(exSlug))
+              .map(([exSlug, sets, reps, kg], position) => ({
+                exerciseId: exerciseBySlug.get(exSlug)!,
+                position,
+                sets: {
+                  create: Array.from({ length: sets }, (_, i) =>
+                    exSlug === "plancha"
+                      ? { position: i, durationSeconds: 45 + 15 * w, completed: true }
+                      : { position: i, reps, weightKg: kg > 0 ? kg + 2.5 * w : null, completed: true }
+                  ),
+                },
+              })),
+          },
+        },
       });
       created++;
     }

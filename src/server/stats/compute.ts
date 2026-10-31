@@ -5,7 +5,7 @@
  * "Semana cumplida" = semana (lunes a domingo, zona del usuario) con ≥ `weeklyGoal` entrenamientos,
  * igual que la insignia "Imparable" (`src/server/badges/metrics.ts`), así ambos números coinciden.
  */
-import { addDays, addWeeks, localDateOf, weekKeyOf, weekKeyOfLocalDate, type LocalDate, type WeekKey } from "@/src/lib/time";
+import { addDays, addWeeks, localDateOf, localTimeOf, weekKeyOf, weekKeyOfLocalDate, type LocalDate, type WeekKey } from "@/src/lib/time";
 
 export type StatsActivity = {
   id: string;
@@ -17,7 +17,7 @@ export type StatsActivity = {
   sets: number;
 };
 
-/** Rango del selector de /stats. Afecta `weekly` y `byCategory`. */
+/** Rango del selector de /stats. Afecta todo lo que tiene "del rango" en `UserStats`. */
 export type StatsRange = "4w" | "12w" | "all";
 export const STATS_RANGES: readonly StatsRange[] = ["4w", "12w", "all"];
 export function isStatsRange(v: unknown): v is StatsRange {
@@ -32,6 +32,10 @@ export type PersonalRecord = {
   date: LocalDate;
 };
 
+/** Franja horaria (hora local de inicio): madrugada 0–6, mañana 6–12, tarde 12–18, noche 18–24. */
+export type Daypart = "late" | "morning" | "afternoon" | "night";
+export const DAYPARTS: readonly Daypart[] = ["morning", "afternoon", "night", "late"];
+
 export type UserStats = {
   thisWeek: { weekKey: WeekKey; workouts: number; goal: number; days: { date: LocalDate; count: number }[] };
   /** Semanas consecutivas cumpliendo el objetivo, terminando en la actual (si ya cumple) o en la anterior. */
@@ -41,6 +45,12 @@ export type UserStats = {
   bestStreakWeeks: number;
   /** Total de semanas con el objetivo cumplido. */
   perfectWeeks: number;
+  /** Total de semanas con ≥ 1 entrenamiento. */
+  activeWeeks: number;
+  /** Mejor racha histórica de semanas con ≥ 1 entrenamiento. */
+  bestActiveStreakWeeks: number;
+  /** Semanas que cubre el rango elegido: de `start` (lunes) a la actual. */
+  range: { start: WeekKey; weeks: number };
   totals: { workouts: number; minutes: number; volumeKg: number; sets: number };
   /** Últimas 12 semanas (sin contar las anteriores al primer entrenamiento). */
   averages: { workoutsPerWeek: number; minutesPerWorkout: number };
@@ -51,7 +61,17 @@ export type UserStats = {
   byCategory: { categoryId: string; name: string; workouts: number; minutes: number }[];
   /** Entrenamientos de por vida por día de la semana: lunes..domingo. */
   byWeekday: number[];
-  byMuscleGroup: { groupKey: string; sets: number }[];
+  /**
+   * Objetivo vs. hecho por semana, del rango (sin las semanas anteriores al primer entrenamiento).
+   * `done` tope en `goal`; lo que sobra va a `extra`. La semana en curso tiene `current: true`.
+   */
+  goalProgress: { weekKey: WeekKey; goal: number; done: number; extra: number; current: boolean }[];
+  /** Del rango, lunes..domingo. */
+  byWeekdayInRange: { workouts: number; minutes: number }[];
+  /** Del rango, en el orden de `DAYPARTS`. */
+  byDaypart: { key: Daypart; workouts: number; minutes: number }[];
+  /** Del rango: minutos atribuidos a cada grupo y músculo (ver `computeMuscleMinutes`). */
+  muscleMinutes: MuscleMinutes;
   /** Top 10 por peso. */
   personalRecords: PersonalRecord[];
 };
@@ -90,7 +110,10 @@ function rangeWeeks(range: StatsRange, current: WeekKey, firstWeek: WeekKey | nu
   return Math.max(12, n);
 }
 
-export function computeUserStats(activities: StatsActivity[], ctx: StatsContext): Omit<UserStats, "byMuscleGroup" | "personalRecords"> {
+export function computeUserStats(
+  activities: StatsActivity[],
+  ctx: StatsContext
+): Omit<UserStats, "personalRecords" | "muscleMinutes"> {
   const { tz, now } = ctx;
   const goal = Math.max(1, ctx.weeklyGoal);
   const range = ctx.range ?? "12w";
@@ -142,6 +165,28 @@ export function computeUserStats(activities: StatsActivity[], ctx: StatsContext)
     c.minutes += a.durationMinutes;
     cats.set(a.categoryId, c);
   }
+  const byWeekdayInRange = Array.from({ length: 7 }, () => ({ workouts: 0, minutes: 0 }));
+  const dayparts = new Map<Daypart, { workouts: number; minutes: number }>(DAYPARTS.map((k) => [k, { workouts: 0, minutes: 0 }]));
+  for (const { week, a } of enriched) {
+    if (week < rangeStart || week > current) continue;
+    const date = localDateOf(a.startedAt, tz);
+    const wd = byWeekdayInRange[Math.round((Date.parse(date) - Date.parse(week)) / 86_400_000)];
+    wd.workouts++;
+    wd.minutes += a.durationMinutes;
+    const dp = dayparts.get(daypartOf(localTimeOf(a.startedAt, tz)))!;
+    dp.workouts++;
+    dp.minutes += a.durationMinutes;
+  }
+
+  const goalProgress: UserStats["goalProgress"] = [];
+  if (firstWeek) {
+    // Sin penalizar las semanas anteriores al primer entrenamiento.
+    for (let w = firstWeek > rangeStart ? firstWeek : rangeStart; w <= current; w = addWeeks(w, 1)) {
+      const n = counts.get(w) ?? 0;
+      goalProgress.push({ weekKey: w, goal, done: Math.min(n, goal), extra: Math.max(0, n - goal), current: w === current });
+    }
+  }
+
   const byCategory = [...cats.values()].sort((x, y) => y.minutes - x.minutes || y.workouts - x.workouts || x.name.localeCompare(y.name));
 
   // Promedios: últimas 12 semanas, sin penalizar a quien empezó hace menos.
@@ -170,6 +215,9 @@ export function computeUserStats(activities: StatsActivity[], ctx: StatsContext)
     activeWeeksStreak: streakEndingAt(counts, current, 1),
     bestStreakWeeks: bestStreak(counts, goal),
     perfectWeeks: [...counts.values()].filter((n) => n >= goal).length,
+    activeWeeks: [...counts.values()].filter((n) => n >= 1).length,
+    bestActiveStreakWeeks: bestStreak(counts, 1),
+    range: { start: rangeStart, weeks: nWeeks },
     totals,
     averages: {
       workoutsPerWeek: avgWorkouts === 0 ? 0 : round1(avgWorkouts / avgWeeks),
@@ -179,7 +227,18 @@ export function computeUserStats(activities: StatsActivity[], ctx: StatsContext)
     weekly,
     byCategory,
     byWeekday,
+    goalProgress,
+    byWeekdayInRange,
+    byDaypart: DAYPARTS.map((key) => ({ key, ...dayparts.get(key)! })),
   };
+}
+
+function daypartOf(time: string): Daypart {
+  const h = Number(time.slice(0, 2));
+  if (h < 6) return "late";
+  if (h < 12) return "morning";
+  if (h < 18) return "afternoon";
+  return "night";
 }
 
 /** Una serie completada con su contexto (para récords). */
@@ -229,23 +288,56 @@ export function computePersonalRecords(sets: StatsSet[], tz: string, limit = 10)
     .slice(0, limit);
 }
 
+export type MuscleMinutes = {
+  groups: { groupKey: string; minutes: number }[];
+  muscles: { muscleId: string; name: string; groupKey: string; minutes: number; workouts: number }[];
+};
+
+export type MuscleRef = { muscleId: string; name: string; groupKey: string; percentage: number };
+
 /**
- * Series por grupo muscular. Cada serie se reparte entre los grupos del ejercicio según sus porcentajes
- * (normalizados), así la suma de los grupos es la cantidad de series con músculos cargados.
+ * Minutos por músculo. La duración de cada actividad se reparte entre sus ejercicios según las series
+ * completadas de cada uno, y la parte de cada ejercicio entre sus músculos según sus porcentajes
+ * (normalizados). Actividades sin series con músculos (correr, fútbol…) no suman.
+ * `workouts` = en cuántas actividades aparece el músculo.
  */
-export function computeMuscleBalance(
-  setsPerExercise: { exerciseId: string; sets: number }[],
-  musclesByExercise: Map<string, { groupKey: string; percentage: number }[]>
-): { groupKey: string; sets: number }[] {
-  const out = new Map<string, number>();
-  for (const { exerciseId, sets } of setsPerExercise) {
-    const muscles = (musclesByExercise.get(exerciseId) ?? []).filter((m) => m.percentage > 0);
-    const total = muscles.reduce((acc, m) => acc + m.percentage, 0);
-    if (total <= 0 || sets <= 0) continue;
-    for (const m of muscles) out.set(m.groupKey, (out.get(m.groupKey) ?? 0) + (sets * m.percentage) / total);
+export function computeMuscleMinutes(
+  activities: { activityId: string; durationMinutes: number; exercises: { exerciseId: string; sets: number }[] }[],
+  musclesByExercise: Map<string, MuscleRef[]>
+): MuscleMinutes {
+  const muscles = new Map<string, { muscleId: string; name: string; groupKey: string; minutes: number; workouts: number }>();
+  const groups = new Map<string, number>();
+  for (const a of activities) {
+    const withMuscles = a.exercises
+      .map((e) => ({ sets: e.sets, muscles: (musclesByExercise.get(e.exerciseId) ?? []).filter((m) => m.percentage > 0) }))
+      .filter((e) => e.sets > 0 && e.muscles.length > 0);
+    const totalSets = withMuscles.reduce((acc, e) => acc + e.sets, 0);
+    if (totalSets === 0 || a.durationMinutes <= 0) continue;
+    const seen = new Set<string>();
+    for (const e of withMuscles) {
+      const exMinutes = (a.durationMinutes * e.sets) / totalSets;
+      const pctTotal = e.muscles.reduce((acc, m) => acc + m.percentage, 0);
+      for (const m of e.muscles) {
+        const min = (exMinutes * m.percentage) / pctTotal;
+        const cur = muscles.get(m.muscleId) ?? { muscleId: m.muscleId, name: m.name, groupKey: m.groupKey, minutes: 0, workouts: 0 };
+        cur.minutes += min;
+        if (!seen.has(m.muscleId)) {
+          cur.workouts++;
+          seen.add(m.muscleId);
+        }
+        muscles.set(m.muscleId, cur);
+        groups.set(m.groupKey, (groups.get(m.groupKey) ?? 0) + min);
+      }
+    }
   }
-  return [...out.entries()]
-    .map(([groupKey, sets]) => ({ groupKey, sets: round1(sets) }))
-    .filter((g) => g.sets > 0)
-    .sort((x, y) => y.sets - x.sets || x.groupKey.localeCompare(y.groupKey));
+  return {
+    groups: [...groups.entries()]
+      .map(([groupKey, minutes]) => ({ groupKey, minutes: Math.round(minutes) }))
+      .filter((g) => g.minutes > 0)
+      .sort((x, y) => y.minutes - x.minutes || x.groupKey.localeCompare(y.groupKey)),
+    muscles: [...muscles.values()]
+      .map((m) => ({ ...m, minutes: Math.round(m.minutes) }))
+      .filter((m) => m.minutes > 0)
+      .sort((x, y) => y.minutes - x.minutes || x.name.localeCompare(y.name)),
+  };
 }

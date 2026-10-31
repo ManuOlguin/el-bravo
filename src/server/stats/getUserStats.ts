@@ -1,7 +1,8 @@
 import "server-only";
 import { prisma } from "@/src/lib/db";
+import { weekKeyOf } from "@/src/lib/time";
 import {
-  computeMuscleBalance,
+  computeMuscleMinutes,
   computePersonalRecords,
   computeUserStats,
   type StatsActivity,
@@ -33,19 +34,22 @@ export async function getUserStats(userId: string, opts: { range?: StatsRange; n
   const exercises = exerciseIds.length
     ? await prisma.exercise.findMany({
         where: { id: { in: exerciseIds } },
-        select: { id: true, name: true, muscles: { select: { percentage: true, muscle: { select: { groupKey: true } } } } },
+        select: { id: true, name: true, muscles: { select: { percentage: true, muscle: { select: { id: true, name: true, groupKey: true } } } } },
       })
     : [];
 
   const perActivity = new Map<string, { volumeKg: number; sets: number }>();
-  const perExercise = new Map<string, number>();
+  /** activityId → exerciseId → series completadas. */
+  const setsByActivityExercise = new Map<string, Map<string, number>>();
   for (const s of sets) {
     const { activityId, exerciseId } = s.activityExercise;
+    const byEx = setsByActivityExercise.get(activityId) ?? new Map<string, number>();
+    byEx.set(exerciseId, (byEx.get(exerciseId) ?? 0) + 1);
+    setsByActivityExercise.set(activityId, byEx);
     const agg = perActivity.get(activityId) ?? { volumeKg: 0, sets: 0 };
     agg.sets++;
     if (s.weightKg && s.reps) agg.volumeKg += s.weightKg * s.reps;
     perActivity.set(activityId, agg);
-    perExercise.set(exerciseId, (perExercise.get(exerciseId) ?? 0) + 1);
   }
 
   const statsActivities: StatsActivity[] = activities.map((a) => ({
@@ -76,11 +80,22 @@ export async function getUserStats(userId: string, opts: { range?: StatsRange; n
     range: opts.range,
   });
 
+  const inRange = activities.filter((a) => weekKeyOf(a.startedAt, user.timezone) >= base.range.start);
+
   return {
     ...base,
-    byMuscleGroup: computeMuscleBalance(
-      [...perExercise].map(([exerciseId, n]) => ({ exerciseId, sets: n })),
-      new Map(exercises.map((e) => [e.id, e.muscles.map((m) => ({ groupKey: m.muscle.groupKey, percentage: m.percentage }))]))
+    muscleMinutes: computeMuscleMinutes(
+      inRange.map((a) => ({
+        activityId: a.id,
+        durationMinutes: a.durationMinutes,
+        exercises: [...(setsByActivityExercise.get(a.id) ?? [])].map(([exerciseId, n]) => ({ exerciseId, sets: n })),
+      })),
+      new Map(
+        exercises.map((e) => [
+          e.id,
+          e.muscles.map((m) => ({ muscleId: m.muscle.id, name: m.muscle.name, groupKey: m.muscle.groupKey, percentage: m.percentage })),
+        ])
+      )
     ),
     personalRecords: computePersonalRecords(statsSets, user.timezone),
   };

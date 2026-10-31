@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DEFAULT_TZ, addDays, zonedToUtc, type LocalDate } from "@/src/lib/time";
-import { computeMuscleBalance, computePersonalRecords, computeUserStats, type StatsActivity, type StatsSet } from "./compute";
+import { computeMuscleMinutes, computePersonalRecords, computeUserStats, type MuscleRef, type StatsActivity, type StatsSet } from "./compute";
 
 const AR = DEFAULT_TZ;
 // Miércoles 4/11/2026 12:00 AR → semana actual = lunes 2026-11-02.
@@ -191,22 +191,142 @@ describe("récords personales y balance muscular", () => {
     expect(prs).toHaveLength(10);
     expect(prs[0].bestWeightKg).toBe(15);
   });
+});
 
-  it("series por grupo muscular repartidas según el porcentaje de cada ejercicio", () => {
-    const groups = computeMuscleBalance(
+describe("semanas activas y perfectas: actual, mejor y total", () => {
+  it("activas cuenta semanas con ≥ 1; perfectas, con el objetivo; cada una con su mejor racha", () => {
+    // Hace 6..4: activas y perfectas · hace 3: vacía · hace 2..0: activas, solo hace 1 perfecta.
+    const s = computeUserStats(
       [
-        { exerciseId: "bench", sets: 10 },
-        { exerciseId: "squat", sets: 4 },
+        ...inWeek(week(6), 3),
+        ...inWeek(week(5), 3),
+        ...inWeek(week(4), 3),
+        ...inWeek(week(2), 1),
+        ...inWeek(week(1), 3),
+        ...inWeek(W0, 1),
       ],
-      new Map([
-        ["bench", [{ groupKey: "chest", percentage: 70 }, { groupKey: "arms", percentage: 30 }]],
-        ["squat", [{ groupKey: "legs", percentage: 100 }]],
-      ])
+      ctx(3)
     );
-    expect(groups).toEqual([
-      { groupKey: "chest", sets: 7 },
-      { groupKey: "legs", sets: 4 },
-      { groupKey: "arms", sets: 3 },
+    expect([s.activeWeeksStreak, s.bestActiveStreakWeeks, s.activeWeeks]).toEqual([3, 3, 6]);
+    expect([s.currentStreakWeeks, s.bestStreakWeeks, s.perfectWeeks]).toEqual([1, 3, 4]);
+  });
+});
+
+describe("goalProgress (puntos del objetivo)", () => {
+  it("tope en el objetivo por semana, lo que sobra va a extra y la actual queda marcada", () => {
+    const s = computeUserStats([...inWeek(week(2), 5), ...inWeek(week(1), 1), ...inWeek(W0, 2)], { ...ctx(3), range: "4w" });
+    expect(s.goalProgress).toEqual([
+      { weekKey: week(2), goal: 3, done: 3, extra: 2, current: false },
+      { weekKey: week(1), goal: 3, done: 1, extra: 0, current: false },
+      { weekKey: W0, goal: 3, done: 2, extra: 0, current: true },
     ]);
+  });
+
+  it("no cuenta semanas anteriores al primer entrenamiento, ni fuera del rango", () => {
+    const s = computeUserStats([...inWeek(week(20), 1), ...inWeek(week(1), 2)], { ...ctx(2), range: "4w" });
+    expect(s.goalProgress.map((w) => w.weekKey)).toEqual([week(3), week(2), week(1), W0]);
+    const all = computeUserStats([...inWeek(week(20), 1), ...inWeek(week(1), 2)], { ...ctx(2), range: "all" });
+    expect(all.goalProgress).toHaveLength(21);
+    expect(all.goalProgress[0]).toMatchObject({ weekKey: week(20), done: 1 });
+  });
+
+  it("sin entrenamientos no hay puntos", () => {
+    expect(computeUserStats([], ctx()).goalProgress).toEqual([]);
+  });
+});
+
+describe("minutos por día de la semana y por horario (del rango, zona del usuario)", () => {
+  it("suma minutos por día del rango e ignora lo anterior", () => {
+    const s = computeUserStats(
+      [
+        act(W0, { durationMinutes: 30 }), // lunes
+        act(addDays(W0, 1), { durationMinutes: 60 }), // martes
+        act(week(1), { durationMinutes: 45 }), // lunes anterior
+        act(week(10), { durationMinutes: 90 }), // fuera de 4 semanas
+      ],
+      { ...ctx(), range: "4w" }
+    );
+    expect(s.byWeekdayInRange[0]).toEqual({ workouts: 2, minutes: 75 });
+    expect(s.byWeekdayInRange[1]).toEqual({ workouts: 1, minutes: 60 });
+    expect(s.byWeekdayInRange.slice(2).every((d) => d.workouts === 0)).toBe(true);
+  });
+
+  it("franjas por hora local de inicio: 05:59 madrugada, 06:00 mañana, 12:00 tarde, 18:00 y 23:59 noche", () => {
+    const s = computeUserStats(
+      [
+        act(W0, { time: "05:59", durationMinutes: 10 }),
+        act(W0, { time: "06:00", durationMinutes: 20 }),
+        act(W0, { time: "12:00", durationMinutes: 30 }),
+        act(W0, { time: "18:00", durationMinutes: 40 }),
+        act(W0, { time: "23:59", durationMinutes: 50 }),
+      ],
+      ctx()
+    );
+    expect(s.byDaypart).toEqual([
+      { key: "morning", workouts: 1, minutes: 20 },
+      { key: "afternoon", workouts: 1, minutes: 30 },
+      { key: "night", workouts: 2, minutes: 90 },
+      { key: "late", workouts: 1, minutes: 10 },
+    ]);
+  });
+
+  it("la franja usa la zona del usuario, no UTC", () => {
+    // 07:00 en Buenos Aires = 10:00 UTC: tiene que ser "mañana" igual.
+    const s = computeUserStats([act(W0, { time: "07:00" })], ctx());
+    expect(s.byDaypart.find((d) => d.key === "morning")?.workouts).toBe(1);
+  });
+});
+
+describe("computeMuscleMinutes", () => {
+  const muscles = new Map<string, MuscleRef[]>([
+    [
+      "bench",
+      [
+        { muscleId: "pec", name: "Pectoral", groupKey: "chest", percentage: 70 },
+        { muscleId: "tri", name: "Tríceps", groupKey: "arms", percentage: 30 },
+      ],
+    ],
+    ["squat", [{ muscleId: "quad", name: "Cuádriceps", groupKey: "legs", percentage: 100 }]],
+  ]);
+
+  it("reparte la duración entre ejercicios por series y entre músculos por porcentaje", () => {
+    // 60 min: banca 4 series (40 min → 28 pecho, 12 tríceps), sentadilla 2 series (20 min).
+    const r = computeMuscleMinutes(
+      [{ activityId: "a", durationMinutes: 60, exercises: [{ exerciseId: "bench", sets: 4 }, { exerciseId: "squat", sets: 2 }] }],
+      muscles
+    );
+    expect(r.groups).toEqual([
+      { groupKey: "chest", minutes: 28 },
+      { groupKey: "legs", minutes: 20 },
+      { groupKey: "arms", minutes: 12 },
+    ]);
+    expect(r.muscles.map((m) => [m.name, m.minutes, m.workouts])).toEqual([
+      ["Pectoral", 28, 1],
+      ["Cuádriceps", 20, 1],
+      ["Tríceps", 12, 1],
+    ]);
+  });
+
+  it("cuenta en cuántos entrenamientos aparece cada músculo (una vez por entrenamiento)", () => {
+    const r = computeMuscleMinutes(
+      [
+        { activityId: "a", durationMinutes: 30, exercises: [{ exerciseId: "bench", sets: 3 }] },
+        { activityId: "b", durationMinutes: 30, exercises: [{ exerciseId: "bench", sets: 3 }, { exerciseId: "squat", sets: 3 }] },
+      ],
+      muscles
+    );
+    expect(r.muscles.find((m) => m.muscleId === "pec")).toMatchObject({ minutes: 32, workouts: 2 });
+    expect(r.muscles.find((m) => m.muscleId === "quad")).toMatchObject({ minutes: 15, workouts: 1 });
+  });
+
+  it("sin series con músculos (correr) no suma; ejercicios sin músculos no se llevan tiempo", () => {
+    const r = computeMuscleMinutes(
+      [
+        { activityId: "run", durationMinutes: 45, exercises: [] },
+        { activityId: "a", durationMinutes: 40, exercises: [{ exerciseId: "squat", sets: 2 }, { exerciseId: "mystery", sets: 2 }] },
+      ],
+      muscles
+    );
+    expect(r.groups).toEqual([{ groupKey: "legs", minutes: 40 }]);
   });
 });

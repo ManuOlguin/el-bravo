@@ -58,11 +58,33 @@ describe("getUserStats", () => {
     expect(s.personalRecords).toEqual([
       { exerciseId: bench.id, exerciseName: "Press de banca", bestWeightKg: 80, bestReps: 5, date: "2026-11-02" },
     ]);
-    expect(s.byMuscleGroup).toEqual([
-      { groupKey: "chest", sets: 1.4 },
-      { groupKey: "arms", sets: 0.6 },
+    // 60 min de banca (las 2 series completadas) → 70 % pecho, 30 % tríceps. Correr no suma músculos.
+    expect(s.muscleMinutes.groups).toEqual([
+      { groupKey: "chest", minutes: 42 },
+      { groupKey: "arms", minutes: 18 },
+    ]);
+    expect(s.muscleMinutes.muscles.map((m) => [m.name, m.minutes, m.workouts])).toEqual([
+      ["Pecho", 42, 1],
+      ["Tríceps", 18, 1],
     ]);
     expect(s.byCategory.map((c) => c.name)).toEqual(["Fuerza", "Running"]);
+  });
+
+  it("minutos por músculo respetan el rango elegido", async () => {
+    const { user, gym, bench } = await setup();
+    const old = await prisma.activity.create({
+      data: { userId: user.id, activityCategoryId: gym.id, startedAt: zonedToUtc("2026-08-03", "18:00", DEFAULT_TZ), durationMinutes: 50 },
+    });
+    await prisma.activityExercise.create({
+      data: { activityId: old.id, exerciseId: bench.id, position: 0, sets: { create: [{ position: 0, reps: 10, weightKg: 60 }] } },
+    });
+    const last4 = await getUserStats(user.id, { now: NOW, range: "4w" });
+    expect(last4.muscleMinutes.groups).toEqual([]);
+    const all = await getUserStats(user.id, { now: NOW, range: "all" });
+    expect(all.muscleMinutes.groups).toEqual([
+      { groupKey: "chest", minutes: 35 },
+      { groupKey: "arms", minutes: 15 },
+    ]);
   });
 
   it("no trunca: 200 actividades con series, en menos de 500 ms", async () => {
@@ -99,7 +121,8 @@ describe("getUserStats", () => {
     const s = await getUserStats(user.id, { now: NOW });
     expect(s.totals.workouts).toBe(0);
     expect(s.personalRecords).toEqual([]);
-    expect(s.byMuscleGroup).toEqual([]);
+    expect(s.muscleMinutes).toEqual({ groups: [], muscles: [] });
+    expect(s.goalProgress).toEqual([]);
     expect(s.weekly).toHaveLength(12);
   });
 });
