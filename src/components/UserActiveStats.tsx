@@ -1,5 +1,7 @@
 "use client";
 
+import { addWeeks, weekKeyOf, DEFAULT_TZ, type WeekKey } from "@/src/lib/time";
+
 type WorkoutLike = {
   date?: Date | string;
   startedAt?: Date | string;
@@ -8,112 +10,44 @@ type WorkoutLike = {
 type Props = {
   activities: WorkoutLike[];
   weeklyRequired: number;
+  timezone?: string;
 };
 
-function toLocalDay(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-
-// Lunes como inicio de semana
-function startOfWeekMonday(d: Date) {
-  const day = d.getDay(); // 0 = domingo, 1 = lunes, ...
-  const diff = day === 0 ? -6 : 1 - day; // si es domingo, ir 6 días atrás
-  const monday = new Date(d);
-  monday.setDate(d.getDate() + diff);
-  return toLocalDay(monday);
-}
-
 function getActivityDate(a: WorkoutLike): Date | null {
-  const raw = (a.date ?? a.startedAt) as Date | string | undefined;
+  const raw = a.date ?? a.startedAt;
   if (!raw) return null;
   const d = raw instanceof Date ? raw : new Date(raw);
   return isNaN(d.getTime()) ? null : d;
 }
 
-function computeStreaks(
-  activities: WorkoutLike[],
-  weeklyRequired: number
-): {
-  normalStreak: number;
-  goldenStreak: number;
-  currentWeekCount: number;
-} {
+/** Racha de semanas consecutivas (hasta la actual) que cumplen `min`. La semana en curso no corta la racha. */
+function weekStreak(weekCounts: Map<WeekKey, number>, currentWeek: WeekKey, min: number) {
+  let streak = (weekCounts.get(currentWeek) ?? 0) >= min ? 1 : 0;
+  for (let w = addWeeks(currentWeek, -1); (weekCounts.get(w) ?? 0) >= min; w = addWeeks(w, -1)) streak++;
+  return streak;
+}
+
+function computeStreaks(activities: WorkoutLike[], weeklyRequired: number, tz: string) {
   if (!activities.length || weeklyRequired <= 0) {
     return { normalStreak: 0, goldenStreak: 0, currentWeekCount: 0 };
   }
-
-  const weekCounts = new Map<string, number>();
-  let earliestWeekStart: Date | null = null;
-
+  const weekCounts = new Map<WeekKey, number>();
   for (const a of activities) {
     const d = getActivityDate(a);
     if (!d) continue;
-
-    const weekStart = startOfWeekMonday(d);
-    const key = weekStart.toISOString().slice(0, 10);
-
+    const key = weekKeyOf(d, tz);
     weekCounts.set(key, (weekCounts.get(key) ?? 0) + 1);
-
-    if (!earliestWeekStart || weekStart < earliestWeekStart) {
-      earliestWeekStart = weekStart;
-    }
   }
-
-  if (!earliestWeekStart) {
-    return { normalStreak: 0, goldenStreak: 0, currentWeekCount: 0 };
-  }
-
-  const today = new Date();
-  const currentWeekStart = startOfWeekMonday(today);
-  const currentWeekKey = currentWeekStart.toISOString().slice(0, 10);
-  const currentWeekCount = weekCounts.get(currentWeekKey) ?? 0;
-
-  let normalStreak = 0;
-  let goldenStreak = 0;
-
-  for (
-    let w = new Date(earliestWeekStart);
-    w <= currentWeekStart;
-    w.setDate(w.getDate() + 7)
-  ) {
-    const weekStart = toLocalDay(w);
-    const key = weekStart.toISOString().slice(0, 10);
-    const count = weekCounts.get(key) ?? 0;
-    const isCurrentWeek = weekStart.getTime() === currentWeekStart.getTime();
-
-    if (isCurrentWeek) {
-      if (count >= 1) {
-        normalStreak += 1;
-      }
-    } else {
-      if (count >= 1) {
-        normalStreak += 1;
-      } else {
-        normalStreak = 0;
-      }
-    }
-
-    if (isCurrentWeek) {
-      if (count >= weeklyRequired) {
-        goldenStreak += 1;
-      }
-    } else {
-      if (count >= weeklyRequired) {
-        goldenStreak += 1;
-      } else {
-        goldenStreak = 0;
-      }
-    }
-  }
-
-  return { normalStreak, goldenStreak, currentWeekCount };
+  const currentWeek = weekKeyOf(new Date(), tz);
+  return {
+    normalStreak: weekStreak(weekCounts, currentWeek, 1),
+    goldenStreak: weekStreak(weekCounts, currentWeek, weeklyRequired),
+    currentWeekCount: weekCounts.get(currentWeek) ?? 0,
+  };
 }
 
-export default function UserActiveStats({ activities, weeklyRequired }: Props) {
-  const { normalStreak, goldenStreak, currentWeekCount } = computeStreaks(
-    activities,
-    weeklyRequired
-  );
+export default function UserActiveStats({ activities, weeklyRequired, timezone = DEFAULT_TZ }: Props) {
+  const { normalStreak, goldenStreak, currentWeekCount } = computeStreaks(activities, weeklyRequired, timezone);
 
   const baseCircles = Math.max(weeklyRequired, 0);
   const hasExtra = currentWeekCount > weeklyRequired;

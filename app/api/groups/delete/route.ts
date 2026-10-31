@@ -38,12 +38,6 @@ export async function POST(req: Request) {
     const seasonIds = seasons.map((season) => season.id);
 
     if (seasonIds.length > 0) {
-      await tx.awardEarned.deleteMany({
-        where: {
-          seasonId: { in: seasonIds },
-        },
-      });
-
       await tx.seasonMember.deleteMany({
         where: {
           seasonId: { in: seasonIds },

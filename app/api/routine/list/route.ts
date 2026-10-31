@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/db";
 import { getCurrentUser } from "@/src/lib/currentUser";
+import { legacyRoutineFields, routineSetsInclude } from "../legacy";
 
 export async function GET() {
   try {
@@ -22,12 +23,10 @@ export async function GET() {
         name: true,
         createdAt: true,
         exercises: {
+          orderBy: { position: "asc" },
           select: {
             id: true,
-            sets: true,
-            reps: true,
-            durationSeconds: true,
-            weightKg: true,
+            sets: { ...routineSetsInclude, select: { targetReps: true, targetDurationSeconds: true, targetWeightKg: true } },
             exercise: {
               select: {
                 id: true,
@@ -64,10 +63,7 @@ export async function GET() {
         exerciseId: entry.exercise.id,
         name: entry.exercise.name,
         measureType: entry.exercise.measureType,
-        sets: entry.sets,
-        reps: entry.reps ?? null,
-        durationSeconds: entry.durationSeconds ?? null,
-        weightKg: entry.weightKg ?? null,
+        ...legacyRoutineFields(entry),
         muscles: entry.exercise.muscles.map((muscleEntry) => ({
           exerciseId: muscleEntry.exerciseId,
           muscleId: muscleEntry.muscleId,

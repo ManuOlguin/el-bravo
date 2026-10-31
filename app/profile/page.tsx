@@ -1,14 +1,13 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/src/lib/currentUser";
 import LogoutButton from "@/src/components/LogoutButton";
 import { prisma } from "@/src/lib/db";
-import { evaluateAwardsForUser } from "@/src/lib/awards/evaluateAwards";
+import { addWeeks, formatDate, formatDateTime, weekKeyOf, type WeekKey } from "@/src/lib/time";
+import { requirePageUser } from "@/src/server/auth/dal";
+import { getUserBadges, type UserBadgeView } from "@/src/server/badges";
 import DeleteActivityButton from "@/src/components/DeleteActivityButton";
 
 type ActivityExerciseItem = {
   id: string;
-  sets: number;
-  reps: number;
   exercise: {
     id: string;
     name: string;
@@ -16,12 +15,14 @@ type ActivityExerciseItem = {
 };
 
 type ActivityForStats = {
-  id: string;
-  type: string;
-  notes: string | null;
   startedAt: Date;
-  endedAt: Date;
-  durationMinutes: number | null;
+  durationMinutes: number;
+};
+
+type ActivityListItem = ActivityForStats & {
+  id: string;
+  notes: string | null;
+  activityCategory: { name: string };
   exercises: ActivityExerciseItem[];
 };
 
@@ -49,75 +50,10 @@ type RoutineItem = {
   }[];
 };
 
-type ProfileAwardItem = {
-  id: string;
-  code: string;
-  name: string;
-  description: string;
-  iconKey: string | null;
-  category: string | null;
-  level: number | null;
-  scope: string;
-  pointsBonus: number;
-  earned: boolean;
-  progressCurrent: number;
-  progressTarget: number;
-  progressPct: number;
-  seasonId: string | null;
-};
-
-function getActivityDurationMinutes(activity: {
-  startedAt: Date;
-  endedAt: Date;
-  durationMinutes: number | null;
-}) {
-  if (typeof activity.durationMinutes === "number" && activity.durationMinutes > 0) {
-    return activity.durationMinutes;
-  }
-
-  const started = new Date(activity.startedAt).getTime();
-  const ended = new Date(activity.endedAt).getTime();
-  const diff = ended - started;
-
-  if (Number.isNaN(diff) || diff <= 0) return 0;
-
-  return Math.round(diff / 60000);
-}
-
-function getWeekStart(date: Date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-
-  d.setDate(d.getDate() + diff);
-  return d;
-}
-
-function getWeekKey(date: Date) {
-  return getWeekStart(date).toISOString().slice(0, 10);
-}
-
-function getCurrentConsecutiveWeekStreak(
-  weekCounts: Map<string, number>,
-  predicate: (count: number) => boolean
-) {
-  let streak = 0;
-  let cursor = getWeekStart(new Date());
-
-  while (true) {
-    const key = cursor.toISOString().slice(0, 10);
-    const count = weekCounts.get(key) ?? 0;
-
-    if (!predicate(count)) {
-      break;
-    }
-
-    streak += 1;
-    cursor = addDays(cursor, -7);
-  }
-
+/** Racha de semanas consecutivas (hasta la actual) que cumplen `min` actividades. La semana en curso no corta la racha. */
+function weekStreak(weekCounts: Map<WeekKey, number>, currentWeek: WeekKey, min: number) {
+  let streak = (weekCounts.get(currentWeek) ?? 0) >= min ? 1 : 0;
+  for (let w = addWeeks(currentWeek, -1); (weekCounts.get(w) ?? 0) >= min; w = addWeeks(w, -1)) streak++;
   return streak;
 }
 
@@ -132,151 +68,42 @@ function formatMinutes(totalMinutes: number) {
   return `${minutes}m`;
 }
 
-function formatDateLabel(date: Date) {
-  return new Date(date).toLocaleDateString("es-AR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
-
-function formatDateTimeLabel(date: Date) {
-  return new Date(date).toLocaleString("es-AR");
-}
-
-function addDays(date: Date, days: number) {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d;
-}
-
-function computeProfileStats(activities: ActivityForStats[], weeklyGoal: number) {
-  const now = new Date();
-  const currentWeekKey = getWeekKey(now);
-  const currentWeekStart = getWeekStart(now);
-
-  const weekCounts = new Map<string, number>();
-  const weekMinutes = new Map<string, number>();
-
+function computeProfileStats(activities: ActivityForStats[], weeklyGoal: number, tz: string) {
+  const currentWeekKey = weekKeyOf(new Date(), tz);
+  const weekCounts = new Map<WeekKey, number>();
+  const weekMinutes = new Map<WeekKey, number>();
   let totalMinutes = 0;
   let longestWorkoutMinutes = 0;
 
   for (const activity of activities) {
-    const minutes = getActivityDurationMinutes(activity);
-    const weekKey = getWeekKey(activity.startedAt);
-
+    const minutes = activity.durationMinutes;
+    const weekKey = weekKeyOf(activity.startedAt, tz);
     totalMinutes += minutes;
     longestWorkoutMinutes = Math.max(longestWorkoutMinutes, minutes);
-
     weekCounts.set(weekKey, (weekCounts.get(weekKey) ?? 0) + 1);
     weekMinutes.set(weekKey, (weekMinutes.get(weekKey) ?? 0) + minutes);
   }
 
-  const sortedWeekStarts = Array.from(
-    new Set(
-      activities.map((activity: ActivityForStats) => getWeekStart(activity.startedAt).getTime())
-    )
-  )
-    .sort((a, b) => a - b)
-    .map((time) => new Date(time));
-
+  // Racha histórica más larga de semanas consecutivas con al menos un entrenamiento.
   let longestActiveStreak = 0;
-  let currentHistoricalStreak = 0;
-  let previousWeekStart: Date | null = null;
-
-  for (const weekStart of sortedWeekStarts) {
-    if (!previousWeekStart) {
-      currentHistoricalStreak = 1;
-    } else {
-      const diffDays =
-        (weekStart.getTime() - previousWeekStart.getTime()) / (1000 * 60 * 60 * 24);
-
-      if (diffDays === 7) {
-        currentHistoricalStreak += 1;
-      } else {
-        currentHistoricalStreak = 1;
-      }
-    }
-
-    longestActiveStreak = Math.max(longestActiveStreak, currentHistoricalStreak);
-    previousWeekStart = weekStart;
+  let run = 0;
+  let previous: WeekKey | null = null;
+  for (const week of Array.from(weekCounts.keys()).sort()) {
+    run = previous !== null && addWeeks(previous, 1) === week ? run + 1 : 1;
+    longestActiveStreak = Math.max(longestActiveStreak, run);
+    previous = week;
   }
-
-  const allWeekStartsDesc = Array.from(weekCounts.keys())
-    .map((weekKey) => getWeekStart(new Date(`${weekKey}T12:00:00`)))
-    .sort((a, b) => b.getTime() - a.getTime());
-
-  let currentActiveWeeks = 0;
-  let currentPerfectWeeks = 0;
-
-  for (const weekStart of allWeekStartsDesc) {
-    const weekKey = getWeekKey(weekStart);
-    const count = weekCounts.get(weekKey) ?? 0;
-    const isCurrentWeek = weekStart.getTime() === currentWeekStart.getTime();
-
-    if (isCurrentWeek) {
-      if (count >= 1) {
-        currentActiveWeeks += 1;
-      }
-      continue;
-    }
-
-    if (count >= 1) {
-      currentActiveWeeks += 1;
-    } else {
-      break;
-    }
-  }
-
-  for (const weekStart of allWeekStartsDesc) {
-    const weekKey = getWeekKey(weekStart);
-    const count = weekCounts.get(weekKey) ?? 0;
-    const isCurrentWeek = weekStart.getTime() === currentWeekStart.getTime();
-
-    if (isCurrentWeek) {
-      if (count >= weeklyGoal) {
-        currentPerfectWeeks += 1;
-      }
-      continue;
-    }
-
-    if (count >= weeklyGoal) {
-      currentPerfectWeeks += 1;
-    } else {
-      break;
-    }
-  }
-
-  const workoutsThisWeek = weekCounts.get(currentWeekKey) ?? 0;
-  const maxWeeklyMinutes = Math.max(0, ...Array.from(weekMinutes.values()));
-  const averageMinutes =
-    activities.length > 0 ? Math.round(totalMinutes / activities.length) : 0;
 
   return {
-    activeWeeks: currentActiveWeeks,
-    workoutsThisWeek,
-    perfectWeeks: currentPerfectWeeks,
+    activeWeeks: weekStreak(weekCounts, currentWeekKey, 1),
+    workoutsThisWeek: weekCounts.get(currentWeekKey) ?? 0,
+    perfectWeeks: weekStreak(weekCounts, currentWeekKey, weeklyGoal),
     longestActiveStreak,
-    maxWeeklyMinutes,
+    maxWeeklyMinutes: Math.max(0, ...Array.from(weekMinutes.values())),
     longestWorkoutMinutes,
     totalMinutes,
-    averageMinutes,
+    averageMinutes: activities.length > 0 ? Math.round(totalMinutes / activities.length) : 0,
   };
-}
-
-function getTypeLabel(type: string) {
-  switch (type) {
-    case "gym":
-      return "Gym";
-    case "run":
-      return "Run";
-    case "sport":
-      return "Deporte";
-    case "mobility":
-      return "Movilidad";
-    default:
-      return "Otro";
-  }
 }
 
 function getAwardShortLabel(name: string) {
@@ -336,8 +163,8 @@ function ProfileStatCard({
 }
 
 export default async function ProfilePage() {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  const user = await requirePageUser();
+  const tz = user.timezone;
 
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
@@ -345,23 +172,26 @@ export default async function ProfilePage() {
 
   if (!dbUser) redirect("/home");
 
-  const [activitiesRaw, membershipsRaw, routinesRaw, evaluatedAwardsRaw] = await Promise.all([
+  const [statsActivities, activitiesRaw, membershipsRaw, routinesRaw, badges] = await Promise.all([
+    // Stats sobre TODAS las actividades (no solo las últimas 50).
+    prisma.activity.findMany({
+      where: { userId: user.id },
+      select: { startedAt: true, durationMinutes: true },
+    }),
     prisma.activity.findMany({
       where: {
         userId: user.id,
-        isDeleted: false,
       },
       select: {
         id: true,
-        type: true,
         notes: true,
         startedAt: true,
-        endedAt: true,
+        durationMinutes: true,
+        activityCategory: { select: { name: true } },
         exercises: {
+          orderBy: { position: "asc" },
           select: {
             id: true,
-            sets: true,
-            reps: true,
             exercise: {
               select: {
                 id: true,
@@ -410,18 +240,17 @@ export default async function ProfilePage() {
       orderBy: { createdAt: "desc" },
       take: 6,
     }),
-    evaluateAwardsForUser(user.id),
+    getUserBadges(user.id),
   ]);
 
-  const activities = activitiesRaw as unknown as ActivityForStats[];
+  const activities: ActivityListItem[] = activitiesRaw;
   const memberships = membershipsRaw as unknown as MembershipItem[];
   const routines = routinesRaw as unknown as RoutineItem[];
-  const evaluatedAwards = evaluatedAwardsRaw as ProfileAwardItem[];
 
-  const earnedAwards = evaluatedAwards
-    .filter((award) => award.earned)
+  const earnedAwards: UserBadgeView[] = badges
+    .filter((badge) => badge.level > 0)
     .sort((a, b) => {
-      const levelDiff = (b.level ?? 0) - (a.level ?? 0);
+      const levelDiff = b.level - a.level;
       if (levelDiff !== 0) return levelDiff;
       return a.name.localeCompare(b.name);
     })
@@ -429,7 +258,7 @@ export default async function ProfilePage() {
 
   const profileWeeklyGoal =
     (dbUser as typeof dbUser & { weeklyGoal?: number | null }).weeklyGoal ?? 3;
-  const stats = computeProfileStats(activities, profileWeeklyGoal);
+  const stats = computeProfileStats(statsActivities, profileWeeklyGoal, tz);
 
   return (
     <main className="min-h-screen bg-[#08142d] p-6 text-white">
@@ -566,7 +395,7 @@ export default async function ProfilePage() {
                           className={`flex h-20 w-20 items-center justify-center rounded-full border-4 ${ring.border} ${ring.bg} ${ring.text} ${ring.glow} transition-transform hover:scale-105`}
                         >
                           <span className="px-1 text-center text-[10px] font-bold leading-tight">
-                            {getAwardShortLabel(award.name)}
+                            {getAwardShortLabel(award.level > 1 ? `${award.name} ${award.level}` : award.name)}
                           </span>
                         </div>
 
@@ -646,8 +475,8 @@ export default async function ProfilePage() {
                   </div>
                 ) : (
                   <div className="scrollbar-elbravo max-h-[620px] space-y-3 overflow-y-auto pr-1">
-                      {activities.map((activity: ActivityForStats) => {
-                      const minutes = getActivityDurationMinutes(activity);
+                      {activities.map((activity: ActivityListItem) => {
+                      const minutes = activity.durationMinutes;
 
                       return (
                         <div
@@ -657,7 +486,7 @@ export default async function ProfilePage() {
                           <div className="flex items-start justify-between gap-4">
                             <div>
                               <div className="text-xl font-semibold">
-                                {formatDateLabel(activity.startedAt)}
+                                {formatDate(activity.startedAt, tz, "long")}
                               </div>
                               <div className="mt-1 text-sm text-slate-400">
                                 {formatMinutes(minutes)}
@@ -665,13 +494,13 @@ export default async function ProfilePage() {
                             </div>
 
                             <div className="text-right text-sm text-slate-400">
-                              {formatDateTimeLabel(activity.startedAt)}
+                              {formatDateTime(activity.startedAt, tz)}
                             </div>
                           </div>
 
                           <div className="mt-4 flex flex-wrap items-center gap-2">
                             <span className="rounded-full bg-indigo-600/20 px-3 py-1 text-xs font-medium text-indigo-300">
-                              {getTypeLabel(activity.type)}
+                              {activity.activityCategory.name}
                             </span>
 
                             {activity.exercises
@@ -736,7 +565,7 @@ export default async function ProfilePage() {
                         </div>
 
                         <div className="text-sm text-slate-400">
-                          {new Date(membership.joinedAt).toLocaleDateString("es-AR")}
+                          {formatDate(membership.joinedAt, tz, "long")}
                         </div>
                       </a>
                     ))}

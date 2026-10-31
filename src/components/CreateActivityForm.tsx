@@ -86,6 +86,8 @@ export default function CreateActivityForm() {
   const [notes, setNotes] = useState("");
 
   const [exercises, setExercises] = useState<ActivityExerciseFormItem[]>([]);
+  // Idempotencia: un reintento del mismo formulario no duplica la actividad.
+  const [clientRequestId] = useState(() => crypto.randomUUID());
   const [saving, setSaving] = useState(false);
   const [updatingRoutine, setUpdatingRoutine] = useState(false);
   const [error, setError] = useState("");
@@ -233,8 +235,8 @@ export default function CreateActivityForm() {
     setExercises((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function validateExercisesForSave() {
-    if (exercises.length === 0) {
+  function validateExercisesForSave(requireAtLeastOne = true) {
+    if (requireAtLeastOne && exercises.length === 0) {
       return "Carga por lo menos un ejercicio para guardar tu actividad.";
     }
 
@@ -377,7 +379,8 @@ export default function CreateActivityForm() {
       return;
     }
 
-    const validationError = validateExercisesForSave();
+    // Running, yoga, etc. se cargan sin ejercicios.
+    const validationError = validateExercisesForSave(false);
     if (validationError) {
       setError(validationError);
       return;
@@ -396,6 +399,8 @@ export default function CreateActivityForm() {
 
     try {
       const payload = {
+        clientRequestId,
+        durationMinutes: duration,
         startedAt: startedAt.toISOString(),
         endedAt: endedAt.toISOString(),
         activityCategoryId,

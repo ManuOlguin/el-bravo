@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/src/lib/currentUser";
 import { prisma } from "@/src/lib/db";
+import { dbDateToLocalDate, localDateOf } from "@/src/lib/time";
+import { recomputeSeason } from "@/src/server/scoring";
 
 export async function POST(req: Request) {
   try {
@@ -40,6 +42,8 @@ export async function POST(req: Request) {
       select: {
         id: true,
         endDate: true,
+        finalizedAt: true,
+        group: { select: { timezone: true } },
       },
     });
 
@@ -47,7 +51,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Season not found" }, { status: 404 });
     }
 
-    if (new Date(season.endDate) < new Date()) {
+    // endDate es fecha local (inclusiva) en la zona del grupo.
+    if (season.finalizedAt || dbDateToLocalDate(season.endDate) < localDateOf(new Date(), season.group.timezone)) {
       return NextResponse.json(
         { error: "Cannot join a finished season" },
         { status: 400 }
@@ -88,6 +93,7 @@ export async function POST(req: Request) {
         joinedAt: now,
       },
     });
+    await recomputeSeason(seasonId);
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error) {

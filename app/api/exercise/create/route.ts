@@ -1,6 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/src/lib/db";
 import { getCurrentUser } from "@/src/lib/currentUser";
+import { slugify } from "@/prisma/seed/slugify";
+
+// Slug único (PUENTE W0-C hasta que W1-3 reescriba la creación de ejercicios).
+async function uniqueExerciseSlug(name: string) {
+  const base = slugify(name).slice(0, 70) || "ejercicio";
+  for (let i = 1; ; i++) {
+    const slug = i === 1 ? base : `${base}-${i}`;
+    const taken = await prisma.exercise.findUnique({ where: { slug }, select: { id: true } });
+    if (!taken) return slug;
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -95,9 +106,13 @@ export async function POST(req: Request) {
       );
     }
 
+    const measureType = body?.measureType === "duration" ? "duration" : "reps";
     const createdRaw = await prisma.exercise.create({
       data: {
         name,
+        slug: await uniqueExerciseSlug(name),
+        measureType,
+        createdByUserId: user.id,
         muscles: {
           create: muscles.map((item: any) => ({
             muscleId: item.muscleId,

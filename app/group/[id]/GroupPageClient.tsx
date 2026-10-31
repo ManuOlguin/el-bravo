@@ -7,6 +7,7 @@ import GroupUserCalendar from "@/src/components/GroupUserCalendar";
 import InviteGroupButton from "@/src/components/InviteGroupButton";
 import GroupInviteCodePanel from "@/src/components/GroupInviteCodePanel";
 import GroupSettingsPopup from "@/src/components/GroupSettingsPopup";
+import { formatDate as formatInstant } from "@/src/lib/time";
 
 type MemberBadge = {
   id: string;
@@ -81,6 +82,7 @@ type GroupPageClientProps = {
   currentUserId: string;
   seasonLeaderboard: SeasonLeaderboardEntry[];
   userSeasonStanding: UserSeasonStanding;
+  timezone: string;
 };
 
 type MeResponse = {
@@ -135,6 +137,7 @@ export default function GroupPageClient({
   currentUserId,
   seasonLeaderboard,
   userSeasonStanding,
+  timezone,
 }: GroupPageClientProps) {
   const router = useRouter();
 
@@ -381,6 +384,7 @@ export default function GroupPageClient({
                     <UserActiveStats
                       activities={myActivities}
                       weeklyRequired={activeSeason.weeklyGoal}
+                      timezone={timezone}
                     />
                   </div>
 
@@ -445,7 +449,7 @@ export default function GroupPageClient({
                                         {activity.user?.name ?? activity.user?.email ?? "Usuario"}
                                       </div>
                                       <div className="mt-1 text-xs text-slate-400">
-                                        {new Date(activity.startedAt).toLocaleDateString("es-AR")} ·{" "}
+                                        {formatInstant(new Date(activity.startedAt), timezone)} ·{" "}
                                         {getActivityTypeLabel(activity.type)}
                                       </div>
                                     </div>

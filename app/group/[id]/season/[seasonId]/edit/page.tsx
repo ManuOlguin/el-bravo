@@ -3,13 +3,7 @@ import { getCurrentUser } from "@/src/lib/currentUser";
 import { prisma } from "@/src/lib/db";
 import LogoutButton from "@/src/components/LogoutButton";
 import EditSeasonForm from "@/src/components/EditSeasonForm";
-
-function toDateInputValue(date: Date) {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(date.getUTCDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
+import { dbDateToLocalDate } from "@/src/lib/time";
 
 export default async function EditSeasonPage({
   params,
@@ -47,7 +41,7 @@ export default async function EditSeasonPage({
       startDate: true,
       endDate: true,
       weeklyGoal: true,
-      allowedActivityTypeLinks: {
+      categories: {
         select: {
           activityCategoryId: true,
         },
@@ -84,10 +78,10 @@ export default async function EditSeasonPage({
             seasonId={season.id}
             initialName={season.name}
             initialDescription={season.description ?? ""}
-            initialStartDate={toDateInputValue(season.startDate)}
-            initialEndDate={toDateInputValue(season.endDate)}
+            initialStartDate={dbDateToLocalDate(season.startDate)}
+            initialEndDate={dbDateToLocalDate(season.endDate)}
             initialWeeklyGoal={season.weeklyGoal}
-            initialAllowedActivityCategoryIds={season.allowedActivityTypeLinks.map(
+            initialAllowedActivityCategoryIds={season.categories.map(
               (item: { activityCategoryId: string }) => item.activityCategoryId
             )}
           />
