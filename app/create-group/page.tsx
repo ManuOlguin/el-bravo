@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button, toastResult } from "@/src/components/ui";
+import { createGroupAction } from "@/src/server/actions/groups";
 
 const STEPS = ["Detalles", "Foto", "Descripción", "Confirmar"];
 
@@ -41,31 +43,13 @@ export default function CreateGroupPage() {
     }
 
     setLoading(true);
-
-    try {
-      const res = await fetch("/api/groups/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          photoUrl: photoUrl || null,
-          description: description || null,
-        }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        setError(data?.error || "Error creando el grupo.");
-        setLoading(false);
-        return;
-      }
-
-      router.push("/group");
-    } catch {
-      setError("Error de red.");
+    const r = await createGroupAction({ name, photoUrl: photoUrl || null, description: description || null });
+    if (!toastResult(r)) {
+      setError(r.error);
       setLoading(false);
+      return;
     }
+    router.push(`/group/${r.data.groupId}`);
   }
 
   return (
@@ -283,14 +267,9 @@ export default function CreateGroupPage() {
                   Siguiente
                 </button>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => handleCreate()}
-                  disabled={loading}
-                  className="rounded-md bg-lime-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-lime-500 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {loading ? "Creando..." : "Crear grupo"}
-                </button>
+                <Button onClick={() => handleCreate()} pending={loading}>
+                  Crear grupo
+                </Button>
               )}
 
               <button

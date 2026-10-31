@@ -1,7 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useTransition } from "react";
+import { Button, toastResult, useConfirm } from "@/src/components/ui";
+import { deleteGroupAction } from "@/src/server/actions/groups";
 
 type Props = {
   groupId: string;
@@ -10,49 +12,29 @@ type Props = {
 
 export default function DeleteGroupButton({ groupId, groupName }: Props) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const confirm = useConfirm();
+  const [pending, startTransition] = useTransition();
 
   async function onDelete() {
-    if (loading) return;
-
-    const ok = confirm(
-      `⚠️ Estás a punto de BORRAR el grupo "${groupName}".\n\nEsto elimina miembros y temporadas asociadas. No se puede deshacer.\n\n¿Estás seguro?`
-    );
+    const ok = await confirm({
+      title: `¿Borrar "${groupName}"?`,
+      description: "Se borran los miembros, las temporadas y sus puntos. No se puede deshacer.",
+      confirmLabel: "Borrar grupo",
+      danger: true,
+    });
     if (!ok) return;
-
-    setLoading(true);
-    try {
-      const res = await fetch("/api/groups/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ groupId }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        alert(data?.error || "No se pudo borrar el grupo");
-        return;
+    startTransition(async () => {
+      const r = await deleteGroupAction(groupId);
+      if (toastResult(r)) {
+        router.push("/home");
+        router.refresh();
       }
-
-      router.push("/dashboard");
-      router.refresh();
-    } catch (e) {
-      alert("Network error");
-    } finally {
-      setLoading(false);
-    }
+    });
   }
 
   return (
-    <button
-      type="button"
-      onClick={onDelete}
-      disabled={loading}
-      className="inline-flex items-center px-3 py-2 bg-red-700 rounded-md text-sm hover:bg-red-600 disabled:opacity-60 disabled:cursor-not-allowed"
-      title="Solo admins"
-    >
-      {loading ? "Borrando..." : "Borrar grupo"}
-    </button>
+    <Button variant="danger" pending={pending} onClick={onDelete} title="Solo admins">
+      Borrar grupo
+    </Button>
   );
 }

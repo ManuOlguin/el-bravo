@@ -1,7 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { Button, toastResult, useConfirm } from "@/src/components/ui";
+import { leaveGroupAction } from "@/src/server/actions/groups";
 
 type Props = {
   groupId: string;
@@ -11,52 +13,52 @@ type Props = {
 
 export default function LeaveGroupButton({ groupId, isAdmin, activeMemberCount }: Props) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const confirm = useConfirm();
+  const [pending, startTransition] = useTransition();
+  // Además del toast, el error se muestra acá: este botón vive dentro de un modal (top layer).
+  const [error, setError] = useState<string | null>(null);
 
   async function onLeave() {
-    if (loading) return;
-
-    const isLastMemberAdmin = isAdmin && activeMemberCount === 1;
-
-    const message = isLastMemberAdmin
-      ? "Sos el único miembro restante del grupo.\n\nSalir del grupo borrará el grupo actual (incluyendo temporadas asociadas). ¿Querés continuar?"
-      : "¿Seguro que querés salir del grupo? También vas a salir de las temporadas activas de este grupo.";
-
-    const ok = confirm(message);
+    const isLastMember = activeMemberCount === 1;
+    const ok = await confirm(
+      isLastMember
+        ? {
+            title: "¿Salir y borrar el grupo?",
+            description: "Sos el único miembro: al salir se borra el grupo con sus temporadas. No se puede deshacer.",
+            confirmLabel: "Salir y borrar",
+            danger: true,
+          }
+        : {
+            title: "¿Salir del grupo?",
+            description: isAdmin
+              ? "También vas a salir de las temporadas en curso. Si sos el único admin, primero nombrá a otro."
+              : "También vas a salir de las temporadas en curso del grupo.",
+            confirmLabel: "Salir",
+            danger: true,
+          }
+    );
     if (!ok) return;
-
-    setLoading(true);
-    try {
-      const res = await fetch("/api/groups/leave", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ groupId }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        alert(data?.error || "No se pudo salir del grupo");
-        return;
+    startTransition(async () => {
+      const r = await leaveGroupAction(groupId);
+      setError(r.ok ? null : r.error);
+      if (toastResult(r)) {
+        router.push("/home");
+        router.refresh();
       }
-
-      router.push("/dashboard");
-      router.refresh();
-    } catch {
-      alert("Network error");
-    } finally {
-      setLoading(false);
-    }
+    });
   }
 
   return (
-    <button
-      type="button"
-      onClick={onLeave}
-      disabled={loading}
-      className="inline-flex items-center px-3 py-2 bg-red-600 rounded-md text-sm hover:bg-red-500 disabled:opacity-60 disabled:cursor-not-allowed"
-    >
-      {loading ? "Saliendo..." : "Salir del grupo"}
-    </button>
+    <div className="space-y-2">
+      <Button variant="danger" pending={pending} onClick={onLeave}>
+        Salir del grupo
+      </Button>
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+          {isAdmin && error.includes("admin") ? " Usá “Hacer admin” en la lista de miembros." : null}
+        </p>
+      )}
+    </div>
   );
 }

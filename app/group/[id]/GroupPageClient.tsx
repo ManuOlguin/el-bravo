@@ -321,6 +321,8 @@ export default function GroupPageClient({
               isAdmin={isAdmin}
               activeMemberCount={group.members.length}
               createdAt={group.createdAt}
+              members={group.members.map((m: { userId: string; role: string; user: { name: string | null; photoUrl: string | null } }) => ({ userId: m.userId, name: m.user.name, photoUrl: m.user.photoUrl, role: m.role }))}
+              currentUserId={currentUserId}
             />
 
             <div className="mt-6">

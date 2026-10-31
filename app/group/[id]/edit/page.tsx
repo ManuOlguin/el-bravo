@@ -1,51 +1,23 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/src/lib/currentUser";
-import { prisma } from "@/src/lib/db";
+import { PageHeader } from "@/src/components/ui";
 import EditGroupForm from "@/src/components/EditGroupForm";
+import { requirePageUser } from "@/src/server/auth/dal";
+import { getGroupForMember } from "@/src/server/groups/queries";
 
-export default async function EditGroupByIdPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
-
-  const { id: groupId } = await params; // ✅ clave
-  if (!groupId) redirect("/dashboard"); // ✅ guard extra
-
-  const membership = await prisma.groupMember.findFirst({
-    where: { userId: user.id, groupId, leftAt: null },
-    include: { group: true },
-  });
-
-  if (!membership?.group) redirect("/dashboard");
-  if (membership.role !== "admin") redirect(`/group/${groupId}`);
-
-  const group = await prisma.group.findUnique({
-    where: { id: groupId },
-    include: { members: { where: { leftAt: null } } },
-  });
-
-  if (!group) redirect("/dashboard");
+// W2-2 la reemplaza por /group/[id]/settings. Usa el DTO sin inviteCode ni emails (W1-4).
+export default async function EditGroupByIdPage({ params }: { params: Promise<{ id: string }> }) {
+  const user = await requirePageUser();
+  const { id: groupId } = await params;
+  const group = await getGroupForMember(groupId, user.id).catch(() => null);
+  if (!group) redirect("/home");
+  if (group.myRole !== "admin") redirect(`/group/${groupId}`);
 
   return (
-    <main className="min-h-screen bg-gray-900 p-6 text-white">
-      <div className="mx-auto max-w-3xl">
-        <div className="mb-4 flex items-center justify-between gap-2">
-          <a
-            href={`/group/${groupId}`}
-            className="inline-flex items-center px-3 py-2 bg-gray-700 rounded-md text-sm hover:bg-gray-600"
-          >
-            ← Volver al grupo
-          </a>
-        </div>
-
-        <div className="bg-gray-800 rounded-lg p-6">
-          <h1 className="text-2xl font-semibold mb-4">Editar grupo</h1>
-          <EditGroupForm group={group} />
-        </div>
-      </div>
-    </main>
+    <div className="mx-auto max-w-screen-sm">
+      <PageHeader title="Editar grupo" back={`/group/${groupId}`} />
+      <EditGroupForm
+        group={{ id: group.id, name: group.name, description: group.description, photoUrl: group.photoUrl, timezone: group.timezone }}
+      />
+    </div>
   );
 }

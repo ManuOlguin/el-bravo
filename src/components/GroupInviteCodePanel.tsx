@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { Button, Modal, toast, toastResult } from "@/src/components/ui";
+import { formatDateTime } from "@/src/lib/time";
+import { getInviteCodeAction, regenerateInviteCodeAction } from "@/src/server/actions/groups";
 
 type GroupInviteCodePanelProps = {
   groupId: string;
@@ -8,126 +11,65 @@ type GroupInviteCodePanelProps = {
   onClose: () => void;
 };
 
-export default function GroupInviteCodePanel({
-  groupId,
-  open,
-  onClose,
-}: GroupInviteCodePanelProps) {
-  const [code, setCode] = useState<string | null>(null);
-  const [expiresAt, setExpiresAt] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+function browserTz() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
 
-  async function fetchCode(regenerate = false) {
-    setMsg(null);
-    setLoading(true);
-    try {
-      const res = await fetch("/api/groups/invite-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ groupId, regenerate }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setMsg(data?.error || "No se pudo obtener el código");
-        return;
+export default function GroupInviteCodePanel({ groupId, open, onClose }: GroupInviteCodePanelProps) {
+  const [code, setCode] = useState<string | null>(null);
+  const [expiresAt, setExpiresAt] = useState<Date | null>(null);
+  const [loading, startLoading] = useTransition();
+  const [regenerating, startRegenerate] = useTransition();
+
+  // Traer el código vigente (o crear uno) cuando se abre.
+  useEffect(() => {
+    if (!open) return;
+    startLoading(async () => {
+      const r = await getInviteCodeAction(groupId);
+      if (r.ok) {
+        setCode(r.data.code);
+        setExpiresAt(new Date(r.data.expiresAt));
+      } else toast.error(r.error);
+    });
+  }, [open, groupId]);
+
+  function regenerate() {
+    startRegenerate(async () => {
+      const r = await regenerateInviteCodeAction(groupId);
+      if (toastResult(r)) {
+        setCode(r.data.code);
+        setExpiresAt(new Date(r.data.expiresAt));
       }
-      setCode(data.code || null);
-      setExpiresAt(
-        data.expiresAt
-          ? new Date(data.expiresAt).toLocaleString()
-          : null
-      );
-    } finally {
-      setLoading(false);
-    }
+    });
   }
 
   async function copy() {
     if (!code) return;
-    await navigator.clipboard.writeText(code);
-    setMsg("Copiado ✅");
-    setTimeout(() => setMsg(null), 1200);
+    try {
+      await navigator.clipboard.writeText(code);
+      toast.success("Código copiado.");
+    } catch {
+      toast.error("No pudimos copiar el código.");
+    }
   }
 
-  // Traer/actualizar el código cuando se abre el popup
-  useEffect(() => {
-    if (open) {
-      fetchCode(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  // Si no está abierto, no renderizamos nada
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Fondo oscuro */}
-      <div
-        className="absolute inset-0 bg-black/60"
-        onClick={onClose}
-      />
-
-      {/* Contenido del popup */}
-      <div className="relative z-10 w-full max-w-md rounded-lg bg-gray-900 border border-gray-700 p-4 shadow-lg">
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div>
-            <div className="font-semibold text-lg">
-              Código de invitación
-            </div>
-            <div className="text-sm text-gray-300">
-              Compartilo para que se unan al grupo.
-            </div>
+    <Modal open={open} onClose={onClose} title="Código de invitación">
+      <div className="space-y-4">
+        <p className="text-sm text-fg-muted">Compartilo para que se unan al grupo. No distingue mayúsculas.</p>
+        <div className="flex items-center gap-2">
+          <div className="flex h-12 min-w-0 flex-1 items-center justify-center rounded-xl bg-surface-2 font-mono text-xl tracking-[0.3em]">
+            {loading && !code ? "…" : (code ?? "— — — —")}
           </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-2 py-1 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <button
-            type="button"
-            onClick={() => fetchCode(true)}
-            disabled={loading}
-            className="px-3 py-2 bg-gray-800 rounded-md text-sm hover:bg-gray-700 disabled:opacity-60"
-          >
-            {loading ? "..." : "Regenerar código"}
-          </button>
-        </div>
-
-        <div className="mt-1 flex items-center gap-2">
-          <div className="flex-1 px-3 py-2 bg-gray-800 rounded-md font-mono text-lg tracking-widest text-center">
-            {code ?? "— — — — — —"}
-          </div>
-
-          <button
-            type="button"
-            onClick={copy}
-            disabled={!code}
-            className="px-3 py-2 bg-indigo-600 rounded-md text-sm hover:bg-indigo-500 disabled:opacity-60"
-          >
+          <Button onClick={copy} disabled={!code}>
             Copiar
-          </button>
+          </Button>
         </div>
-
-        {expiresAt && (
-          <div className="mt-2 text-sm text-gray-400">
-            Expira: {expiresAt}
-          </div>
-        )}
-
-        {msg && (
-          <div className="mt-2 text-sm text-yellow-300">
-            {msg}
-          </div>
-        )}
+        {expiresAt && <p className="text-xs text-fg-subtle">Vence el {formatDateTime(expiresAt, browserTz())}.</p>}
+        <Button variant="secondary" fullWidth pending={regenerating} onClick={regenerate}>
+          Generar código nuevo
+        </Button>
       </div>
-    </div>
+    </Modal>
   );
 }

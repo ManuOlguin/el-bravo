@@ -1,7 +1,15 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useTransition } from "react";
 import LeaveGroupButton from "@/src/components/LeaveGroupButton";
 import DeleteGroupButton from "@/src/components/DeleteGroupButton";
+import { Avatar, Button, Modal, Pill, toastResult, useConfirm } from "@/src/components/ui";
+import { formatDate } from "@/src/lib/time";
+import { kickMemberAction, setMemberRoleAction } from "@/src/server/actions/groups";
+
+export type GroupSettingsMember = { userId: string; name: string | null; photoUrl?: string | null; role: string };
 
 type GroupSettingsPopupProps = {
   open: boolean;
@@ -11,7 +19,59 @@ type GroupSettingsPopupProps = {
   isAdmin: boolean;
   activeMemberCount: number;
   createdAt: Date;
+  members?: GroupSettingsMember[];
+  currentUserId?: string;
 };
+
+function MemberRow({ groupId, member, canManage }: { groupId: string; member: GroupSettingsMember; canManage: boolean }) {
+  const router = useRouter();
+  const confirm = useConfirm();
+  const [rolePending, startRole] = useTransition();
+  const [kickPending, startKick] = useTransition();
+  const isAdmin = member.role === "admin";
+  const name = member.name ?? "Este miembro";
+
+  function toggleRole() {
+    startRole(async () => {
+      const r = await setMemberRoleAction(groupId, member.userId, isAdmin ? "member" : "admin");
+      if (toastResult(r)) router.refresh();
+    });
+  }
+
+  async function kick() {
+    const ok = await confirm({
+      title: `¿Expulsar a ${name}?`,
+      description: "Sale del grupo y de las temporadas en curso. Para volver va a necesitar una invitación tuya.",
+      confirmLabel: "Expulsar",
+      danger: true,
+    });
+    if (!ok) return;
+    startKick(async () => {
+      const r = await kickMemberAction(groupId, member.userId);
+      if (toastResult(r)) router.refresh();
+    });
+  }
+
+  return (
+    <li className="flex flex-wrap items-center gap-2 py-2">
+      <Avatar name={member.name} src={member.photoUrl ?? null} size="sm" href={`/u/${member.userId}`} />
+      <Link href={`/u/${member.userId}`} className="min-w-0 flex-1 truncate text-sm font-semibold">
+        {member.name ?? "Usuario"}
+      </Link>
+      {isAdmin && <Pill tone="primary">Admin</Pill>}
+      {canManage && (
+        <div className="flex w-full justify-end gap-2 sm:w-auto">
+          <Button size="sm" variant="secondary" pending={rolePending} onClick={toggleRole}>
+            {isAdmin ? "Quitar admin" : "Hacer admin"}
+          </Button>
+          <Button size="sm" variant="danger" pending={kickPending} onClick={kick}>
+            Expulsar
+          </Button>
+        </div>
+      )}
+    </li>
+  );
+}
 
 export default function GroupSettingsPopup({
   open,
@@ -21,75 +81,50 @@ export default function GroupSettingsPopup({
   isAdmin,
   activeMemberCount,
   createdAt,
+  members = [],
+  currentUserId,
 }: GroupSettingsPopupProps) {
-  if (!open) return null;
-
+  const others = members.filter((m) => m.userId !== currentUserId);
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <button
-        type="button"
-        aria-label="Cerrar modal"
-        className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"
-        onClick={onClose}
-      />
-
-      <div className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-slate-700 bg-[#1a2942] shadow-2xl">
-        <div className="border-b border-slate-700/80 px-6 py-5">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-3xl font-bold text-white">
-                Configuración del grupo
-              </h2>
+    <Modal open={open} onClose={onClose} title="Configuración del grupo">
+      <div className="space-y-4">
+        {isAdmin && (
+          <section className="rounded-card border border-border bg-surface-2 p-4">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="font-semibold">Miembros</p>
+              <Link href={`/group/${groupId}/edit`} className="text-sm font-semibold text-primary">
+                Editar grupo
+              </Link>
             </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-600 bg-slate-800/70 text-slate-300 transition hover:bg-slate-700 hover:text-white"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-
-        <div className="space-y-4 px-6 py-5">
-          <section className="rounded-2xl border border-slate-700 bg-[#0f1d35] p-4">
-            <div className="mb-3">
-              <p className="text-base font-semibold text-white">
-                Tu participación
-              </p>
-            </div>
-
-            <LeaveGroupButton
-              groupId={groupId}
-              isAdmin={isAdmin}
-              activeMemberCount={activeMemberCount}
-            />
+            {others.length === 0 ? (
+              <p className="text-sm text-fg-muted">Todavía no hay otros miembros.</p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {others.map((m) => (
+                  <MemberRow key={m.userId} groupId={groupId} member={m} canManage />
+                ))}
+              </ul>
+            )}
           </section>
+        )}
 
-          {isAdmin && (
-            <section className="rounded-2xl border border-red-900/60 bg-red-950/20 p-4">
-              <div className="mb-3">
-                <p className="text-base font-semibold text-red-300">
-                  Administración del grupo
-                </p>
-                <p className="mt-1 text-sm text-red-200/70">
-                  Esta acción elimina el grupo y expulsa a sus miembros.
-                </p>
-              </div>
+        <section className="rounded-card border border-border bg-surface-2 p-4">
+          <p className="mb-3 font-semibold">Tu participación</p>
+          <LeaveGroupButton groupId={groupId} isAdmin={isAdmin} activeMemberCount={activeMemberCount} />
+        </section>
 
-              <DeleteGroupButton
-                groupId={groupId}
-                groupName={groupName}
-              />
-            </section>
-          )}
+        {isAdmin && (
+          <section className="rounded-card border border-danger/40 bg-danger/10 p-4">
+            <p className="font-semibold text-danger">Administración del grupo</p>
+            <p className="mb-3 mt-1 text-sm text-fg-muted">Esta acción elimina el grupo y expulsa a sus miembros.</p>
+            <DeleteGroupButton groupId={groupId} groupName={groupName} />
+          </section>
+        )}
 
-          <div className="border-t border-slate-700/70 pt-3 text-sm text-slate-400">
-            Creado: {new Date(createdAt).toLocaleDateString()}
-          </div>
-        </div>
+        <p className="border-t border-border pt-3 text-sm text-fg-subtle">
+          Creado: {formatDate(new Date(createdAt), Intl.DateTimeFormat().resolvedOptions().timeZone, "long")}
+        </p>
       </div>
-    </div>
+    </Modal>
   );
 }

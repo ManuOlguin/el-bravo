@@ -62,15 +62,15 @@ export const changePasswordSchema = z.object({
   newPassword: newPasswordSchema,
 });
 
-const optionalUrl = z
-  .union([z.string().trim(), z.null(), z.undefined()])
+export const optionalUrl = z
+  .string().trim().nullish()
   .transform((v) => (v ? v : null))
   .pipe(z.union([z.url({ protocol: /^https?$/, error: "Ingresá una URL válida (https://…)." }).max(2048), z.null()]));
 
 export const updateProfileSchema = z.object({
   name: nameSchema,
   bio: z
-    .union([z.string().trim(), z.null(), z.undefined()])
+    .string().trim().nullish()
     .transform((v) => (v ? v : null))
     .pipe(z.union([z.string().max(280, { error: "La bio tiene como máximo 280 caracteres." }), z.null()])),
   weeklyGoal: z.coerce
