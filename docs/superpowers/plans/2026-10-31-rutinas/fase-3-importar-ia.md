@@ -14,6 +14,7 @@
 > - En el formato, `máx` = "sin reps fijas" (tipo según prefijo W/D/F); `fallo` = al fallo. El prompt y el mapeo de la IA tienen que respetarlo.
 > - `matchImport` aplica los hints sin pisar `tempId` ni `name`; el matcher acepta solo coincidencia exacta o distancia de edición ≤ 1 (≥ 5 letras) / ≤ 2 (≥ 10 letras), sin prefijos.
 > - Pendientes de la revisión de la fase 1 que tocan la fase 3: un `muscleSlug` repetido en una definición da un P2002 genérico (deduplicar al validar la respuesta de la IA); `normalizeShares` puede dejar 0 % al primer músculo (usar mayor resto con mínimo 1); los slugs desconocidos se descartan en la UI pero cuentan en la validación de porcentajes.
+> - Fase 2 (1-nov-2026): el reuso por nombre normalizado está en `src/server/exercises/name-index.ts` (`buildVisibleNameIndex`: el oficial gana, después orden por id) y lo usan importar y copiar; los nombres que normalizan a "" (solo emoji / alfabeto no latino) nunca se reusan ni se comparten (`matchImport` incluido). `ShareRoutineButton` acepta `routine?`; `RoutineMeta.tsx` tiene los textos compartidos de rutinas.
 
 **Spec:** `docs/superpowers/specs/2026-10-31-rutinas-compartibles-ia-design.md` (Fase 3, decisiones R1 y R4, Pruebas, Migraciones) · Índice e interfaces compartidas: `docs/superpowers/plans/2026-10-31-rutinas/README.md` · Construye sobre: `fase-1-formato-texto.md` (tiene que estar implementada).
 
