@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 export default function EditGroupForm({ group }: any) {
@@ -50,7 +51,7 @@ export default function EditGroupForm({ group }: any) {
         <button type="submit" disabled={saving} className="px-4 py-2 bg-indigo-600 rounded">
           {saving ? 'Guardando...' : 'Guardar'}
         </button>
-        <a href="/group" className="px-4 py-2 bg-gray-600 rounded">Cancelar</a>
+        <Link href="/group" className="px-4 py-2 bg-gray-600 rounded">Cancelar</Link>
       </div>
     </form>
   );
