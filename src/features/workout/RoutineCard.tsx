@@ -3,10 +3,11 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Card, IconButton, LinkButton, Pill, Sheet, toast, useConfirm } from "@/src/components/ui";
 import { GROUP_LABEL } from "@/src/features/exercises";
+import { ShareRoutineButton } from "@/src/features/routines-share/ShareRoutineButton";
 import { deleteRoutineAction } from "@/src/server/actions/routines";
 import { MoreIcon, PlayIcon, TrashIcon } from "./icons";
 
-/** Tarjeta de `/routines`: "Empezar" (en vivo) es la acción principal; Editar y ⋯ → Borrar. */
+/** Tarjeta de `/routines`: "Empezar" (en vivo) es la acción principal; Editar, Compartir y ⋯ → Borrar. */
 export function RoutineCard({
   routine,
   lastUsedLabel,
@@ -69,6 +70,7 @@ export function RoutineCard({
         <LinkButton href={`/routines/${routine.id}/edit`} variant="secondary">
           Editar
         </LinkButton>
+        <ShareRoutineButton routineId={routine.id} />
       </div>
 
       <Sheet open={menu} onClose={() => setMenu(false)} title={routine.name}>
