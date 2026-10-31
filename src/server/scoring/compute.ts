@@ -3,9 +3,9 @@
  * Los puntos se derivan siempre de los datos fuente; `recomputeSeason` reescribe el resultado completo.
  */
 import { localDateOf, weekKeyOfLocalDate, weekKeysBetween, daysInWeekWithin, addDays } from "@/src/lib/time";
-import type { SeasonRules, ScoringActivity, ScoreLine, UserTotals, UserWeek, SeasonScores, RankedTotals } from "./types";
+import type { SeasonRules, ScoringActivity, ScoreLine, UserTotals, UserWeek, SeasonScores } from "./types";
 
-export type { SeasonRules, ScoringActivity, ScoreLine, UserTotals, UserWeek, SeasonScores, RankedTotals } from "./types";
+export type { SeasonRules, ScoringActivity, ScoreLine, UserTotals, UserWeek, SeasonScores } from "./types";
 
 export const SCORE_REASON = {
   category: "Esta actividad no cuenta en la temporada",
