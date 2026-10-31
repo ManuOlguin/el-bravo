@@ -30,6 +30,7 @@ import {
   useConfirm,
 } from "@/src/components/ui";
 import { BadgesSection } from "./sections/badges";
+import { MediaSection } from "./sections/media";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -351,6 +352,7 @@ export function DevUiCatalog() {
       <DataSection />
       <FormSection />
       <BadgesSection />
+      <MediaSection />
     </div>
   );
 }

@@ -148,6 +148,7 @@ export async function updateActivity(
 /** Borrado duro (D7): los hijos (ejercicios, series, medios, puntos, reacciones) caen por cascade. */
 export async function deleteActivity(userId: string, activityId: string): Promise<{ effects: ActivityEffects }> {
   const before = await loadOwned(userId, activityId);
+  await (await import("@/src/server/media")).deleteActivityObjects(activityId); // W1-5: fotos del bucket
   await prisma.activity.delete({ where: { id: activityId } });
   return { effects: await runActivityEffects({ userId, before, after: null }) };
 }
