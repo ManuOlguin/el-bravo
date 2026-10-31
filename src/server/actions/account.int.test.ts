@@ -112,6 +112,28 @@ describe("account actions", () => {
       requestHeaders.set("x-forwarded-for", "10.0.0.2");
       expect((await loginAction(null, form({ email: "ana@test.com", password: "password123" }))).ok).toBe(true);
     });
+
+    it("rotar la primera IP de x-forwarded-for (la escribe el cliente) no saltea el límite", async () => {
+      await makeUser();
+      for (let i = 0; i < 5; i++) {
+        requestHeaders.set("x-forwarded-for", `1.2.3.${i}, 172.16.0.1`);
+        await loginAction(null, form({ email: "ana@test.com", password: "mala-mala" }));
+      }
+      requestHeaders.set("x-forwarded-for", "9.9.9.9, 172.16.0.1");
+      const r = await loginAction(null, form({ email: "ana@test.com", password: "password123" }));
+      expect(r).toMatchObject({ ok: false, error: "Demasiados intentos. Probá de nuevo en 15 minutos." });
+    });
+
+    it("limita por email aunque cada intento venga de otra IP (ataque distribuido)", async () => {
+      await makeUser();
+      for (let i = 0; i < 20; i++) {
+        requestHeaders.set("x-forwarded-for", `10.1.0.${i}`);
+        expect((await loginAction(null, form({ email: "ana@test.com", password: "mala-mala" }))).ok).toBe(false);
+      }
+      requestHeaders.set("x-forwarded-for", "10.1.1.1");
+      const r = await loginAction(null, form({ email: "ana@test.com", password: "password123" }));
+      expect(r).toMatchObject({ ok: false, error: expect.stringContaining("Demasiados intentos") });
+    });
   });
 
   describe("sesiones revocables", () => {
