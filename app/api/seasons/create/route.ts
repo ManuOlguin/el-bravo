@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/src/lib/currentUser";
 import { prisma } from "@/src/lib/db";
+import { localDateToDbDate } from "@/src/lib/time";
+import { requireGroupAdmin } from "@/src/server/auth/dal";
+import { routeError, isLocalDate } from "../../bridge";
 
-function parseDateOnly(value: string) {
-  const [y, m, d] = value.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
-}
+// PUENTE (W0-C): fechas locales (@db.Date) + SeasonCategory (peso 1). W1-1/W2-2 lo reemplazan.
 
 function normalizeAllowedActivityCategoryIds(input: unknown) {
   if (!Array.isArray(input)) return [];
@@ -16,12 +15,6 @@ function normalizeAllowedActivityCategoryIds(input: unknown) {
 
 export async function POST(req: Request) {
   try {
-    const user = await getCurrentUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = await req.json().catch(() => ({}));
 
     const {
@@ -38,8 +31,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing groupId" }, { status: 400 });
     }
 
-    if (!name || typeof name !== "string" || !startDate || !endDate) {
-      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    const user = await requireGroupAdmin(groupId);
+
+    if (!name || typeof name !== "string" || !name.trim() || !isLocalDate(startDate) || !isLocalDate(endDate)) {
+      return NextResponse.json({ error: "Completá el nombre y las fechas." }, { status: 400 });
     }
 
     const normalizedWeeklyGoal = Number(minPerWeek);
@@ -62,30 +57,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const membership = await prisma.groupMember.findFirst({
-      where: {
-        userId: user.id,
-        groupId,
-        leftAt: null,
-      },
-      select: {
-        role: true,
-      },
-    });
+    const start = localDateToDbDate(startDate);
+    const end = localDateToDbDate(endDate);
 
-    if (!membership) {
-      return NextResponse.json({ error: "Not a member" }, { status: 403 });
-    }
-
-    if (membership.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const start = parseDateOnly(startDate);
-    const end = parseDateOnly(endDate);
-
-    if (isNaN(start.getTime()) || isNaN(end.getTime()) || start >= end) {
-      return NextResponse.json({ error: "Invalid dates" }, { status: 400 });
+    if (start > end) {
+      return NextResponse.json({ error: "La fecha de fin tiene que ser posterior al inicio." }, { status: 400 });
     }
 
     const overlappingSeason = await prisma.season.findFirst({
@@ -103,7 +79,6 @@ export async function POST(req: Request) {
         name: true,
         startDate: true,
         endDate: true,
-        isActive: true,
       },
     });
 
@@ -138,7 +113,7 @@ export async function POST(req: Request) {
       const created = await tx.season.create({
         data: {
           groupId,
-          name: name.trim(),
+          name: name.trim().slice(0, 80),
           description:
             typeof description === "string" && description.trim().length > 0
               ? description.trim()
@@ -146,11 +121,9 @@ export async function POST(req: Request) {
           startDate: start,
           endDate: end,
           weeklyGoal: normalizedWeeklyGoal,
-          allowedActivityTypes: categories.map((item) => item.slug),
-          allowedActivityTypeLinks: {
-            create: categories.map((item) => ({
-              activityCategoryId: item.id,
-            })),
+          createdBy: user.id,
+          categories: {
+            create: categories.map((item) => ({ activityCategoryId: item.id, weight: 1 })),
           },
         },
       });
@@ -170,7 +143,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ id: season.id }, { status: 201 });
   } catch (err) {
-    console.error("/api/seasons/create error:", err);
-    return NextResponse.json({ error: "Error creating season" }, { status: 500 });
+    return routeError(err, "No se pudo crear la temporada.");
   }
 }

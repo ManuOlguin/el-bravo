@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/src/lib/currentUser";
+import { requirePageUser } from "@/src/server/auth/dal";
 import LogoutButton from "@/src/components/LogoutButton";
 import JoinGroupModal from "@/src/components/JoinGroupModal";
 import { prisma } from "@/src/lib/db";
+import { addWeeks, dbDateToLocalDate, localDateOf, weekKeyOf, type WeekKey } from "@/src/lib/time";
 
 type ActivityForHome = {
   startedAt: Date;
-  endedAt: Date;
-  durationMinutes: number | null;
+  durationMinutes: number;
 };
 
 type HomeRoutineItem = {
@@ -52,103 +52,32 @@ function getInitial(value: string | null | undefined) {
   return (value || "U").charAt(0).toUpperCase();
 }
 
-function getWeekStart(date: Date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-
-  const day = d.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-
-  d.setDate(d.getDate() + diff);
-  return d;
+/** Racha de semanas consecutivas (hasta la actual) que cumplen `min` actividades. La semana en curso no corta la racha. */
+function weekStreak(weekCounts: Map<WeekKey, number>, currentWeek: WeekKey, min: number) {
+  let streak = (weekCounts.get(currentWeek) ?? 0) >= min ? 1 : 0;
+  for (let w = addWeeks(currentWeek, -1); (weekCounts.get(w) ?? 0) >= min; w = addWeeks(w, -1)) streak++;
+  return streak;
 }
 
-function getWeekKey(date: Date) {
-  return getWeekStart(date).toISOString().slice(0, 10);
-}
-
-function computeHomeStats(
-  activities: ActivityForHome[],
-  weeklyGoal: number
-) {
-  const now = new Date();
-  const currentWeekKey = getWeekKey(now);
-  const currentWeekStart = getWeekStart(now);
-
-  const weekCounts = new Map<string, number>();
-
+function computeHomeStats(activities: ActivityForHome[], weeklyGoal: number, tz: string) {
+  const currentWeekKey = weekKeyOf(new Date(), tz);
+  const weekCounts = new Map<WeekKey, number>();
   for (const activity of activities) {
-    const key = getWeekKey(activity.startedAt);
+    const key = weekKeyOf(activity.startedAt, tz);
     weekCounts.set(key, (weekCounts.get(key) ?? 0) + 1);
   }
-
-  const allWeekStartsDesc = Array.from(weekCounts.keys())
-    .map((weekKey) => getWeekStart(new Date(`${weekKey}T12:00:00`)))
-    .sort((a, b) => b.getTime() - a.getTime());
-
-  let activeWeeks = 0;
-  let perfectWeeks = 0;
-
-  for (const weekStart of allWeekStartsDesc) {
-    const weekKey = getWeekKey(weekStart);
-    const count = weekCounts.get(weekKey) ?? 0;
-    const isCurrentWeek = weekStart.getTime() === currentWeekStart.getTime();
-
-    if (isCurrentWeek) {
-      if (count >= 1) {
-        activeWeeks += 1;
-      }
-      continue;
-    }
-
-    if (count >= 1) {
-      activeWeeks += 1;
-    } else {
-      break;
-    }
-  }
-
-  for (const weekStart of allWeekStartsDesc) {
-    const weekKey = getWeekKey(weekStart);
-    const count = weekCounts.get(weekKey) ?? 0;
-    const isCurrentWeek = weekStart.getTime() === currentWeekStart.getTime();
-
-    if (isCurrentWeek) {
-      if (count >= weeklyGoal) {
-        perfectWeeks += 1;
-      }
-      continue;
-    }
-
-    if (count >= weeklyGoal) {
-      perfectWeeks += 1;
-    } else {
-      break;
-    }
-  }
-
-  const workoutsThisWeek = weekCounts.get(currentWeekKey) ?? 0;
-
   return {
-    activeWeeks,
-    perfectWeeks,
-    workoutsThisWeek,
+    activeWeeks: weekStreak(weekCounts, currentWeekKey, 1),
+    perfectWeeks: weekStreak(weekCounts, currentWeekKey, weeklyGoal),
+    workoutsThisWeek: weekCounts.get(currentWeekKey) ?? 0,
   };
 }
 
-function isSeasonActive(season: {
-  startDate: Date;
-  endDate: Date | null;
-} | null) {
+function isSeasonActive(season: { startDate: Date; endDate: Date | null } | null, tz: string) {
   if (!season) return false;
-
-  const now = new Date();
-  const start = new Date(season.startDate);
-  const end = season.endDate ? new Date(season.endDate) : null;
-
-  if (now < start) return false;
-  if (end && now > end) return false;
-
+  const today = localDateOf(new Date(), tz);
+  if (today < dbDateToLocalDate(season.startDate)) return false;
+  if (season.endDate && today > dbDateToLocalDate(season.endDate)) return false;
   return true;
 }
 
@@ -161,11 +90,7 @@ function getGroupCardClasses(hasActiveSeason: boolean) {
 }
 
 export default async function HomePage() {
-  const user = await getCurrentUser();
-
-  if (!user) {
-    redirect("/login");
-  }
+  const user = await requirePageUser();
 
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
@@ -250,14 +175,12 @@ export default async function HomePage() {
     prisma.activity.findMany({
       where: {
         userId: user.id,
-        isDeleted: false,
       },
       orderBy: {
         startedAt: "desc",
       },
       select: {
         startedAt: true,
-        endedAt: true,
         durationMinutes: true,
       },
     }),
@@ -272,7 +195,7 @@ export default async function HomePage() {
       ? dbUser.weeklyGoal
       : 3;
 
-  const stats = computeHomeStats(activities, weeklyGoal);
+  const stats = computeHomeStats(activities, weeklyGoal, user.timezone);
 
   const totalDots = Math.min(
     Math.max(weeklyGoal, stats.workoutsThisWeek, 1),
@@ -455,7 +378,7 @@ export default async function HomePage() {
               <div className="space-y-3">
                 {memberships.map((membership) => {
                   const season = membership.group.seasons?.[0] ?? null;
-                  const activeSeason = isSeasonActive(season);
+                  const activeSeason = isSeasonActive(season, user.timezone);
 
                   return (
                     <a

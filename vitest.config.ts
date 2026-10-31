@@ -20,7 +20,7 @@ export default defineConfig({
         resolve: { alias },
         test: {
           name: "integration",
-          include: ["src/**/*.int.test.ts", "tests/**/*.int.test.ts"],
+          include: ["src/**/*.int.test.ts", "tests/**/*.int.test.ts", "scripts/**/*.int.test.ts"],
           environment: "node",
           globalSetup: ["tests/setup/global-setup.ts"],
           setupFiles: ["tests/setup/env.ts"],

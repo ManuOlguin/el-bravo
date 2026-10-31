@@ -36,7 +36,7 @@ export async function GET(
         name: true,
         startDate: true,
         endDate: true,
-        isActive: true,
+        finalizedAt: true,
       },
     });
 
