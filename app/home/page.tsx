@@ -15,6 +15,8 @@ import { getHomeGroupStandings, getQuickRoutines } from "@/src/features/home/que
 import { greetingMessage } from "@/src/features/home/logic";
 import { HomeFeed } from "@/src/features/notifications/HomeFeed";
 import { HomeFooter } from "@/src/features/home/HomeFooter";
+import { PushPromptCard } from "@/src/features/notifications/PushPromptCard";
+import { isPushEnabled } from "@/src/server/notifications/push";
 import { pickQuote } from "@/src/features/home/quotes";
 
 export const metadata: Metadata = { title: "Inicio" };
@@ -62,6 +64,8 @@ export default async function HomePage() {
       />
 
       <QuickStart routines={routines.top} />
+
+      <PushPromptCard vapidPublicKey={isPushEnabled() ? (process.env.VAPID_PUBLIC_KEY ?? null) : null} />
 
       {isNew ? (
         <HomeEmptyState hasGroup={standings.groupCount > 0} hasRoutine={routines.total > 0} />

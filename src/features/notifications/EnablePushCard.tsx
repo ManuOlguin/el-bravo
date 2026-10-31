@@ -34,10 +34,11 @@ function deviceLabel() {
 }
 
 /**
- * Activa Web Push en este dispositivo. Pide permiso SOLO después de que el usuario toca el botón.
+ * Estado y acciones de Web Push en este dispositivo (lo usan Ajustes y la tarjeta de la home).
+ * Pide permiso SOLO dentro de `enable`, que tiene que llamarse desde un toque del usuario.
  * En iPhone el push funciona solo con la app instalada (Compartir → Agregar a inicio, iOS 16.4+).
  */
-export function EnablePushCard({ vapidPublicKey }: { vapidPublicKey: string | null }) {
+export function usePushSubscription(vapidPublicKey: string | null) {
   const router = useRouter();
   const [state, setState] = useState<Support>("checking");
   const [pending, startTransition] = useTransition();
@@ -111,6 +112,12 @@ export function EnablePushCard({ vapidPublicKey }: { vapidPublicKey: string | nu
     });
   }
 
+  return { state, pending, enable, disable };
+}
+
+/** Ajustes → Notificaciones: activar o desactivar push en este dispositivo. */
+export function EnablePushCard({ vapidPublicKey }: { vapidPublicKey: string | null }) {
+  const { state, pending, enable, disable } = usePushSubscription(vapidPublicKey);
   return (
     <Card className="space-y-3">
       <div>
