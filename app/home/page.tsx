@@ -14,8 +14,13 @@ import { FriendsFeed } from "@/src/features/home/FriendsFeed";
 import { getHomeGroupStandings, getQuickRoutines } from "@/src/features/home/queries";
 import { greetingMessage } from "@/src/features/home/logic";
 import { HomeFeed } from "@/src/features/notifications/HomeFeed";
+import { HomeFooter } from "@/src/features/home/HomeFooter";
+import { pickQuote } from "@/src/features/home/quotes";
 
 export const metadata: Metadata = { title: "Inicio" };
+
+/** Una frase distinta en cada visita (la página es dinámica: se elige en cada request). */
+const randomQuote = () => pickQuote(Math.random());
 
 export default async function HomePage() {
   const user = await requirePageUser();
@@ -72,6 +77,8 @@ export default async function HomePage() {
       <FriendsFeed feed={feed} photos={photos} followingCount={following.length} suggestions={suggestions} viewer={viewer} viewerTz={user.timezone} />
 
       <HomeFeed userId={user.id} tz={user.timezone} />
+
+      <HomeFooter quote={randomQuote()} />
     </div>
   );
 }
