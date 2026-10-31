@@ -95,6 +95,12 @@ enum MediaStatus {
   ready
 }
 
+enum DevicePlatform {
+  web
+  android
+  ios
+}
+
 enum NotificationType {
   first_workout_of_week
   weekly_goal_met
@@ -106,6 +112,8 @@ enum NotificationType {
   new_follower
   member_joined
   weekly_digest // registro técnico de envío del resumen semanal; no se muestra en el feed
+  friend_workout
+  reaction_received
 }
 
 ////////////////////
@@ -145,6 +153,26 @@ model User {
   notificationPrefs  NotificationPreference[]
   passwordResets     PasswordResetToken[]
   createdExercises   Exercise[]
+  reactions          Reaction[]
+  devices            Device[]
+}
+
+// Dispositivos para push (web o nativo) y para el widget nativo (D12)
+model Device {
+  id               String         @id @default(cuid())
+  userId           String
+  platform         DevicePlatform
+  pushEndpointHash String?        @unique @db.VarChar(64)  // sha256 del endpoint Web Push (para dedupe)
+  pushSubscription Json?          // { endpoint, keys: { p256dh, auth } } de Web Push
+  fcmToken         String?        @unique @db.VarChar(255) // push nativo (Android/iOS vía Firebase)
+  widgetTokenHash  String?        @unique @db.VarChar(64)  // sha256 del token que usa el widget nativo
+  label            String?        @db.VarChar(80)          // "Pixel 8 de Manu"
+  lastSeenAt       DateTime       @default(now())
+  createdAt        DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Follow {
@@ -231,14 +259,15 @@ model Season {
   endDate   DateTime @db.Date // fecha local (zona del grupo), inclusiva
 
   // Reglas (D1). Defaults = reglas estándar.
-  weeklyGoal        Int @default(3)
-  minWorkoutMinutes Int @default(20)
-  pointsPerWorkout  Int @default(10)
-  longSessionMinutes Int @default(60)
-  longSessionBonus  Int @default(5)
-  weeklyGoalBonus   Int @default(20)
-  streakBonusStep   Int @default(5)
-  streakBonusCap    Int @default(25)
+  weeklyGoal       Int @default(3)   // días entrenados por semana
+  minDailyMinutes  Int @default(20)  // minutos efectivos mínimos para que un día cuente
+  dayBasePoints    Int @default(10)  // puntos por presentarte
+  timePointsFactor Int @default(10)  // factor de la curva de tiempo
+  timeCurveMinutes Int @default(30)  // escala de la curva: 10 × log2(1 + min/30)
+  maxDailyMinutes  Int @default(240) // tope de minutos por día
+  weeklyGoalBonus  Int @default(20)
+  streakBonusStep  Int @default(5)
+  streakBonusCap   Int @default(25)
 
   // Ciclo de vida (D3)
   resultsReveal      ResultsReveal @default(auto)
@@ -339,7 +368,8 @@ model SeasonStanding {
   userId        String
   rank          Int
   points        Int
-  workouts      Int
+  daysTrained   Int
+  activities    Int
   minutes       Int
   weeksGoalMet  Int
   currentStreak Int
@@ -498,11 +528,27 @@ model Activity {
   media            ActivityMedia[]
   scoreEntries     ScoreEntry[]
   notifications    Notification[]
+  reactions        Reaction[]
 
   @@index([userId, startedAt])
   @@index([startedAt])
   @@index([activityCategoryId])
   @@index([routineId])
+}
+
+// Reacciones a entrenamientos (D5). Set fijo de emojis validado en código.
+model Reaction {
+  id         String   @id @default(cuid())
+  activityId String
+  userId     String
+  emoji      String   @db.VarChar(16)
+  createdAt  DateTime @default(now())
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([activityId, userId, emoji])
+  @@index([activityId])
 }
 
 model ActivityExercise {
@@ -547,6 +593,7 @@ model ActivityMedia {
   width      Int?
   height     Int?
   position   Int         @default(0)
+  thumbUrl   String?     @db.VarChar(2048) // miniatura 400 px (feeds, widget, push)
   status     MediaStatus @default(ready)
   uploadedAt DateTime    @default(now())
 
@@ -615,6 +662,7 @@ model Notification {
   dedupeKey   String           @unique @db.VarChar(191)
   readAt      DateTime?
   emailedAt   DateTime?
+  pushedAt    DateTime?
   createdAt   DateTime         @default(now())
 
   recipient User      @relation("NotifRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
@@ -631,6 +679,7 @@ model NotificationPreference {
   type   NotificationType
   inApp  Boolean          @default(true)
   email  Boolean          @default(false)
+  push   Boolean          @default(true)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -798,6 +847,8 @@ expect((await prisma.exercise.findMany()).every((e) => !e.slug.startsWith("tmp-"
 
 Run: `npm run test:int -- scripts/migrate-v2-data`
 Expected: PASS.
+
+> **Nota D13:** si la DB de producción ya no existe, esta migración de datos solo se usa con datos locales de desarrollo, y W3 arranca producción vacía. Igual se mantiene, porque es barata, deja probado el camino y sirve si aparecen datos en el servicio `el-bravo-prod` de Aiven.
 
 - [ ] **Step 4: Aplicar en la DB del worktree y en la principal**
 

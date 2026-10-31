@@ -53,7 +53,7 @@ Reglas (solo para actividades **nuevas**, no al editar ni al borrar). Cada una t
 
 | Tipo | Cuándo | A quién | dedupeKey |
 |---|---|---|---|
-| `first_workout_of_week` | El actor registra su primer entrenamiento puntuable de la semana del grupo y ningún otro miembro tiene uno esa semana | Otros miembros del grupo | `first_week:<groupId>:<weekKey>:<recipient>` |
+| `first_workout_of_week` | El actor registra su primer día entrenado de la semana (en la zona del grupo) y ningún otro miembro tiene uno esa semana | Otros miembros del grupo | `first_week:<groupId>:<weekKey>:<recipient>` |
 | `weekly_goal_met` | `actorWorkoutsThisWeek` pasa a ser igual a `weeklyGoal` | Otros miembros del grupo | `goal:<groupId>:<weekKey>:<actorId>:<recipient>` |
 | `streak_milestone` | La racha del actor en una temporada llega a 3, 5 o 10 (de los efectos/standings) | Otros miembros | `streak:<seasonId>:<actorId>:<n>:<recipient>` |
 | `rank_overtaken` | Por cada miembro con `rank` antes < `rank` del actor antes y `rank` después > `rank` del actor después (fue pasado) | Esos miembros | `overtaken:<seasonId>:<actorId>:<recipient>:<weekKey>` (como máximo 1 por semana por par) |
@@ -156,6 +156,52 @@ git commit -m "feat(notifications): preferences, instant emails and weekly diges
 
 ---
 
+### Task 4: Notificaciones de amigos y Web Push
+
+**Files:**
+- Modify: `src/server/notifications/rules.ts` (reglas `friend_workout` y `reaction_received`)
+- Create: `src/server/notifications/push.ts` (envío Web Push con `web-push` y VAPID; interfaz preparada para FCM, que agrega W4)
+- Create: `src/server/actions/devices.ts`: `registerWebPushAction(subscription)` y `unregisterDeviceAction(deviceId)`
+- Modify: `public/sw.js` (lo crea W0-B; agregar el evento `push` → `showNotification(title, { body, icon, image: thumbUrl, data: { href } })`; `notificationclick` → abre o enfoca `href`)
+- Create: `src/features/notifications/EnablePushCard.tsx` (pide permiso **solo** después de un gesto del usuario; explica que en iPhone hay que instalar la app primero, con "Compartir → Agregar a inicio")
+- Modify: `app/settings/notifications/page.tsx` (columna "Push" por tipo + lista de dispositivos con "Quitar")
+- Modify: `app/api/cron/notifications/route.ts` (también envía push pendientes)
+- Modify: `.env.example` (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT="mailto:<email del admin>"`)
+- Test: `src/server/notifications/rules.test.ts` (casos nuevos), `src/server/notifications/push.int.test.ts` (`web-push` mockeado)
+
+**Reglas nuevas:**
+
+| Tipo | Cuándo | A quién | dedupeKey |
+|---|---|---|---|
+| `friend_workout` | Un usuario registra una actividad **nueva** | Sus seguidores **que son amigos** (seguimiento mutuo) y no comparten un grupo con él. Los compañeros de grupo ya reciben las reglas de grupo; así se evita la doble notificación | `friend_workout:<activityId>:<recipient>` |
+| `reaction_received` | Ver W1-4 Task 5 | Dueño de la actividad | `reaction:<activityId>:<actor>:<emoji>:<recipient>` |
+
+- **Agrupación de reacciones:** si hay más de 3 reacciones no leídas sobre la misma actividad, `renderNotification` las muestra agrupadas: "💪 Lucio y 3 más reaccionaron a tu entrenamiento". La agrupación es solo de presentación: la query de la UI agrupa por `activityId` y `type`.
+- **Envío push:**
+  - Se envía cada notificación nueva con `push=true` en las preferencias (por defecto sí) a todos los `Device` del destinatario que tengan `pushSubscription`.
+  - El push se dispara **inmediatamente** después de `notify` (fire-and-forget con `void`, con try/catch) y el cron reintenta los que tienen `pushedAt = null`.
+  - Si Web Push devuelve 404/410, el `Device` se borra (suscripción vencida).
+  - La imagen es el `thumbUrl` de la primera foto de la actividad, si hay.
+- **Throttle de `friend_workout`:** máximo 1 cada 2 horas por par actor-destinatario. Se resuelve con el dedupeKey de la ventana de 2 horas: `friend_workout:<actorId>:<recipient>:<YYYY-MM-DDTHH redondeado a 2 h>`.
+
+- [ ] **Step 1:** `npm install web-push && npm install -D @types/web-push`. Generar las claves VAPID con `npx web-push generate-vapid-keys` y guardarlas en `.env.local` (no commitear).
+- [ ] **Step 2:** tests:
+  - las reglas nuevas, incluido que un compañero de grupo no recibe `friend_workout` y el throttle;
+  - el envío push con 410 borra el device;
+  - que `push=false` no envía.
+- [ ] **Step 3:** implementar.
+- [ ] **Step 4: Verificación manual**
+  - En Chrome de escritorio y en Android (abriendo la URL del dev server expuesta por la red local, por ejemplo `http://<ip-local>:3023`; Web Push en Android requiere HTTPS, así que usar `npx localtunnel --port 3023` o un deploy preview): activar push, que otro usuario amigo registre un entrenamiento y verificar que llega la notificación con la miniatura y que al tocarla abre el entrenamiento.
+  - Reaccionar y verificar que le llega al dueño.
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/server/notifications src/server/actions/devices.ts public/sw.js src/features/notifications app/settings app/api/cron/notifications .env.example package.json package-lock.json
+git commit -m "feat(notifications): friend workout and reaction notifications with Web Push"
+```
+
+---
+
 ### Verificación final de W2-3
-- [ ] Ítems cubiertos: 5 y 20.
+- [ ] Ítems cubiertos: 5, 20, 37 (notificación), 40 (push web).
 - [ ] Gates verdes. Pedir review y merge (es el último de la Ola 2).

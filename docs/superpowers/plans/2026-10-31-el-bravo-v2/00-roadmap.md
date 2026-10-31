@@ -117,6 +117,11 @@ Repositorio `ManuOlguin/el-bravo`, último commit funcional `ab1df60` (2-abr-202
 | 34 | Hora +3 h; endedAt y minutos redundantes | BUG (de display) | **W0-A** (`src/lib/time`) + **W0-C** (se elimina `endedAt`) |
 | 35 | Editar entrenamiento | FALTA | **W0-C** (servicio) + **W2-1** (UI) |
 | 36 | Migrar imágenes de Vercel a Cloudflare | No hay código en el repo; puede haber URLs en la DB de prod | **W1-5** (script de migración de URLs) |
+| 37 | Reacciones a entrenamientos | FALTA | **W0-C** (`Reaction`) + **W1-4** (acciones) + **W2-1/W2-4** (UI) + **W2-3** (notificación) |
+| 38 | Feed de amigos e invitar amigos a grupos | FALTA | **W1-4** (queries/acciones) + **W2-4** (home) + **W2-2** (invitar) |
+| 39 | Instalable como app (Android/iOS) | FALTA | **W0-B** (PWA) + **W4** (Capacitor) |
+| 40 | Notificaciones push | FALTA | **W0-C** (`Device`) + **W2-3** (Web Push) + **W4** (push nativo) |
+| 41 | Widget tipo Locket con entrenamientos de amigos | FALTA | **W1-5** (miniaturas) + **W4** (API del widget + widget Android; iOS opcional) |
 
 Además, el diagnóstico encontró trabajo que no estaba en la lista y es necesario para "estable y consistente": build verde, tests, auth central, seguridad de grupos, sistema de diseño y navegación mobile. Eso se reparte en **W0-A**, **W0-B**, **W1-4** y **W3**.
 
@@ -126,29 +131,39 @@ Además, el diagnóstico encontró trabajo que no estaba en la lista y es necesa
 
 Cada decisión trae una recomendación. Las marcadas con **⚠️ confirmar** necesitan el OK del dueño del producto antes de arrancar la ola que las usa.
 
-### D1. Puntos v2: reglas simples, deterministas y recalculables ⚠️ confirmar
+### D1. Puntos v2: la constancia manda y el tiempo suma con rendimiento decreciente ✅ aprobada (31-oct)
+
+**Principio del producto:** la competencia de temporada mide **constancia** (cuántos días entrenás) y **tiempo** entrenado. No mide esfuerzo, peso ni intensidad. El objetivo es motivar a ir más veces, sin importar qué hacés en cada entrenamiento. Las insignias de grupos musculares, volumen, etc. son logros personales y divertidos que **no** afectan la temporada (D2).
 
 Los puntos se **derivan** siempre de los datos fuente con una función pura. Nunca se acumulan incrementalmente. Cualquier cambio dispara `recomputeSeason(seasonId)`: crear, editar o borrar una actividad, editar la temporada, unirse o salir. Esa función reescribe en una transacción las tablas `ScoreEntry` y `SeasonStanding` de esa temporada.
 
 Reglas, con valores por defecto configurables por temporada:
 
-1. **Entrenamiento válido:**
-   - Su fecha local (zona horaria del grupo) cae entre `startDate` y `endDate` inclusive.
-   - Su categoría está habilitada en la temporada (peso > 0).
-   - Dura al menos `minWorkoutMinutes` (20).
-2. **Un entrenamiento puntuable por día:** si hay varios el mismo día local, puntúa el de más puntos. Ante empate, el primero. Los demás quedan registrados con 0 puntos y el motivo "ya sumaste un entrenamiento hoy".
-3. **Puntos por entrenamiento:** `round((pointsPerWorkout + (duración ≥ longSessionMinutes ? longSessionBonus : 0)) × peso de la categoría)`, con valores por defecto 10, 60 min y +5. El peso de la categoría es el **slider** de la temporada, de 0 a 2 en pasos de 0,25 (por defecto 1).
-4. **Objetivo semanal:** `+weeklyGoalBonus` (20) por cada semana (lunes a domingo, zona del grupo) con al menos `weeklyGoal` entrenamientos puntuables. Si la temporada empieza o termina a mitad de semana, el objetivo de esa semana es `min(weeklyGoal, días de la semana dentro de la temporada)`.
-5. **Racha:** cada semana cumplida consecutiva suma `+min((racha − 1) × streakBonusStep, streakBonusCap)`, con valores por defecto +5 y +25. La semana en curso no corta la racha mientras no haya terminado.
-6. **Premios de temporada:** el admin los elige al crear la temporada (ver D3). Cada premio puede dar `bonusPoints` (0 por defecto) y se calcula al finalizar.
-7. **Ranking:** puntos desc → semanas cumplidas desc → entrenamientos desc. Los empates comparten puesto (1, 1, 3).
+1. **Actividad que cuenta:** su fecha local (zona horaria del grupo) cae entre `startDate` y `endDate` inclusive, y su categoría está habilitada (peso > 0).
+2. **Día entrenado:** todas las actividades que cuentan en un mismo día local **se suman** en minutos efectivos (`duración × peso de la categoría`; el peso es el **slider** de la temporada, de 0 a 2 en pasos de 0,25). El día cuenta si suma ≥ `minDailyMinutes` (20).
+3. **Puntos del día:** `dayBasePoints + round(timePointsFactor × log2(1 + min(minutos, maxDailyMinutes) / timeCurveMinutes))`, con valores por defecto 10, 10, tope de 240 min y curva de 30 min. Esto da 20 min = 17, 30 min = 20, 45 min = 23, 1 h = 26, 1 h 30 = 30, 2 h = 33, 3 h = 38 y 4 h = 42. Entrenar más siempre suma, pero cada vez menos (3 h ≈ 1,46× lo de 1 h), y dos días de 30 min (40) valen más que un día de 3 h (38).
+4. **Puntos por actividad** (para mostrar "+N pts" en cada entrenamiento): reparto marginal dentro del día, en orden de `startedAt`. Cada actividad recibe `P(minutos acumulados con ella) − P(minutos acumulados antes)`, así que la suma de las actividades da exactamente los puntos del día.
+5. **Objetivo semanal:** `+weeklyGoalBonus` (20) por cada semana (lunes a domingo, zona del grupo) con al menos `weeklyGoal` **días entrenados**. Si la temporada empieza o termina a mitad de semana, el objetivo es `min(weeklyGoal, días de la semana dentro de la temporada)`.
+6. **Racha:** cada semana cumplida consecutiva suma `+min((racha − 1) × streakBonusStep, streakBonusCap)`, con valores por defecto +5 y +25. La semana en curso no corta la racha mientras no haya terminado.
+7. **Premios de temporada:** el admin los elige al crear la temporada (ver D3). Cada premio puede dar `bonusPoints` (0 por defecto) y se calcula al finalizar.
+8. **Ranking:** puntos desc → semanas cumplidas desc → días entrenados desc. Los empates comparten puesto (1, 1, 3).
 
-Explicación para el usuario: *"10 pts por entrenamiento (1 por día, mínimo 20 min), +5 si dura 60 min o más, multiplicado por el peso de la actividad. +20 por cumplir tu objetivo semanal. +5 extra por cada semana seguida de racha (hasta +25)."*
+Explicación para el usuario: *"Cada día que entrenás suma 10 pts por presentarte, más puntos por el tiempo, que crecen cada vez más despacio (30 min = 20 pts, 1 h = 26, 2 h = 33). Varias actividades el mismo día se suman al tiempo del día. +20 por cumplir tus días de la semana y +5 extra por cada semana seguida de racha (hasta +25)."*
+
+Comparación con v1, en una semana con objetivo de 3 días:
+
+| Escenario | v1 | v2 |
+|---|---|---|
+| 4 días × 45 min | 50 | 112 |
+| 2 días × 2 h | 26 | 66 |
+| 3 días de 1 h, uno con 30 min extra | 47 | 102 |
+| 1 solo día con 3 actividades de 45 min | 40 | 35 |
 
 Se eliminan:
 - el multiplicador por duración y el de consistencia;
-- el bonus de regreso;
+- el bonus de regreso, que premiaba haber faltado;
 - el pozo de "racha más larga" y el pozo de "sesión más larga";
+- la posibilidad de cumplir el objetivo semanal con varias actividades en un día;
 - `SeasonWeekProgress` y `ScoreEvent`.
 
 ### D2. Insignias v2: una insignia con niveles, guardada y recalculable
@@ -175,7 +190,7 @@ Se eliminan:
   - `auto`: un cron diario y, como respaldo, la primera visita después del fin finalizan la temporada de forma idempotente (lock de fila + chequeo de `finalizedAt` dentro de la transacción).
   - `manual`: el admin ve "Publicar resultados" y los miembros ven "Esperando resultados".
 - **Premios:** el admin los elige al crear o editar la temporada, de un catálogo en código.
-  - `most_workouts`, `most_minutes`, `best_streak`, `longest_session`, `most_categories`, `perfect_attendance`.
+  - `most_days`, `most_minutes`, `best_streak`, `longest_session`, `most_categories`, `perfect_attendance`.
   - Los empates ganan todos.
 - **Pantalla final** (`/group/[id]/season/[seasonId]`): podio, tabla de ranking final, premios con ganadores, stats de la temporada (entrenamientos, minutos, mejor racha, categoría más usada) y "tus números".
 
@@ -186,13 +201,19 @@ Se eliminan:
 - **Pantalla:** se formatea siempre con `timeZone` explícita: la del grupo para todo lo que es competencia, la del usuario para su perfil y sus stats.
 - **Implementación:** sin dependencias nuevas, con `Intl.DateTimeFormat`.
 
-### D5. Social: seguir (asimétrico) + "amigos" = seguimiento mutuo ⚠️ confirmar
+### D5. Social: seguir + reacciones ✅ aprobada (31-oct)
 
-- **Modelo:** `Follow(followerId, followingId)`. No hace falta aceptar solicitudes. Es más simple, y "amigos" es simplemente el seguimiento mutuo.
+- **Modelo:** `Follow(followerId, followingId)`, sin solicitudes. "Amigos" = seguimiento mutuo.
+- **Qué habilita:**
+  - un feed de actividad de amigos en la home (con foto);
+  - notificaciones cuando un amigo entrena o sube de nivel una insignia, que se pueden apagar;
+  - invitar amigos a un grupo eligiéndolos de una lista, sin código;
+  - ver sus perfiles e insignias;
+  - sugerencias de gente de tus grupos para seguir.
+- **Reacciones:** `Reaction(activityId, userId, emoji)` con un set fijo (💪 🔥 👏 😂 🫡). Una por emoji por usuario; tocar de nuevo la quita. Notifican al dueño del entrenamiento (`reaction_received`), agrupadas.
 - **Perfil:** el perfil ajeno `/u/[id]` es público para usuarios logueados.
-- **Alternativa descartada:** amistad con solicitud y aceptación. Duplica estados y UI sin beneficio claro para grupos de amigos.
 
-### D6. Medios del catálogo de ejercicios: dataset abierto, no IA ⚠️ confirmar
+### D6. Medios del catálogo de ejercicios: dataset abierto, no IA ✅ aprobada (31-oct)
 
 - **Por qué no IA:** los videos o GIFs generados con IA hoy cometen errores de técnica y de anatomía, un riesgo para indicaciones de forma.
 - **Imágenes:** se usa [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (dominio público / Unlicense; **verificar licencia en la tarea**) para los ejercicios que coincidan. El resto queda con un ícono SVG por grupo muscular.
@@ -202,7 +223,7 @@ Se eliminan:
 
 Como todo es recalculable, borrar es `DELETE` real. Se elimina `isDeleted`/`deletedAt`, que hoy causa bugs: las métricas no filtran por ese campo y los hijos se borran igual.
 
-### D8. Imágenes: Cloudflare R2 con subida directa ⚠️ confirmar cuenta
+### D8. Imágenes: Cloudflare R2 con subida directa ⚠️ falta crear la cuenta (gratis)
 
 - **Subida:**
   1. El cliente comprime a WebP (máx. 1600 px).
@@ -210,13 +231,16 @@ Como todo es recalculable, borrar es `DELETE` real. Se elimina `isDeleted`/`dele
   3. Hace `PUT` directo a R2.
   4. Confirma (Server Action), y recién ahí se crea `ActivityMedia` o se actualiza `photoUrl`.
 - **Lectura:** desde el dominio público del bucket (`R2_PUBLIC_BASE_URL`).
-- **Datos existentes:** un script migra las URLs viejas de la DB de producción, si existen (Vercel Blob u otras), descargando y resubiendo cada imagen.
+- **Miniaturas:** el cliente genera también una miniatura de 400 px (`thumbUrl`) para feeds, el widget del celular y las notificaciones.
+- **Datos existentes:** probablemente no hay (ver D13). El script de migración de URLs queda por si aparecen imágenes viejas.
+- **Desarrollo sin cuenta:** se usa MinIO local, que es compatible con S3.
 
-### D9. Email: Resend + outbox ⚠️ confirmar dominio
+### D9. Email: Resend + outbox ⏸️ postergado hasta tener dominio propio
 
 - **Outbox:** las notificaciones se guardan siempre en la tabla `Notification` (el feed in-app).
 - **Envío:** un cron (`/api/cron/notifications`, protegido con `CRON_SECRET`) envía por email lo pendiente según las preferencias del usuario.
 - **Por defecto:** el email llega desactivado, salvo un resumen semanal opcional.
+- **Estado:** sin dominio propio no se puede mandar email confiable. Se construye el canal y queda apagado si falta `RESEND_API_KEY`. Las notificaciones in-app y **push** (D12) no dependen de esto.
 
 ### D10. Mutaciones: Server Actions con resultado uniforme
 
@@ -231,6 +255,42 @@ Como todo es recalculable, borrar es `DELETE` real. Se elimina `isDeleted`/`dele
 - **Servicios con DB:** Vitest de integración contra `elbravo_test` (MySQL local), usando el helper `resetDb()`.
 - **E2E:** en W3, con Playwright (smoke de flujos críticos).
 - **UI:** se verifica a mano con el dev server en cada tarea de UI, en viewport de 375 px.
+
+### D12. Web primero, instalable como app (PWA), después app nativa con widget ✅ dirección aprobada (31-oct)
+
+El objetivo es una web que también se instale como app en Android e iOS, con notificaciones push y un **widget tipo Locket** en la pantalla de inicio que muestre los últimos entrenamientos de tus amigos con foto. Por ahora es para uso interno del grupo de amigos, así que una instalación rudimentaria está bien.
+
+Hay una sola base de código web. El orden es este:
+
+1. **PWA (Olas 0 y 2):** manifest, íconos, pantalla completa sin barra del navegador, safe areas y **Web Push**.
+   - Se instala desde el navegador con "Agregar a pantalla de inicio".
+   - En Android funciona todo.
+   - En iOS el push funciona solo con la app instalada en la pantalla de inicio, desde iOS 16.4.
+   - **No permite widgets.**
+2. **App nativa con Capacitor (Ola 4):** un "envoltorio" nativo que carga la web deployada.
+   - En Android da un **APK** que se pasa por link o WhatsApp y se instala aceptando "orígenes desconocidos".
+   - Suma push nativo (Firebase Cloud Messaging), cámara nativa y, sobre todo, el **widget de pantalla de inicio**, que se escribe en código nativo (Kotlin con Jetpack Glance en Android).
+   - Lo que **no** se reescribe: casi nada. La app es la misma web.
+3. **iOS nativo (Ola 4, opcional):** el mismo proyecto Capacitor y un widget en Swift (WidgetKit).
+   - Hace falta una Mac con Xcode.
+   - Para instalarla en los iPhones de los amigos hace falta la cuenta Apple Developer (USD 99 por año, vía TestFlight). Sin esa cuenta, se puede instalar desde Xcode en tu propio iPhone, pero vence cada 7 días.
+
+**Cómo se prepara la web para esto, desde ya:**
+- **Modelo `Device`** en el schema (W0-C): token de push web o nativo y token propio para el widget.
+- **Notificaciones con canal push** (W2-3), además de in-app y email.
+- **Miniaturas de fotos** (W1-5), para el widget.
+- **API JSON mínima** para el widget (`/api/widget/feed`): las Server Actions no sirven fuera del navegador.
+- **UI mobile-first** con safe areas (W0-B).
+
+**Alternativa descartada:** React Native o Expo, que implicaría reescribir toda la UI.
+
+### D13. Base de datos de producción: empezar de cero ⚠️ confirmar
+
+Los mails de Aiven muestran que el servicio `el-bravo-prod-sql` estuvo apagado más de 90 días y estaba programado para borrarse el 1 de octubre de 2026. Muy probablemente ya no existe. En el proyecto de Aiven de Leo (`leojmelman-6905`) aparece también un servicio `el-bravo-prod`, con mantenimiento el 5 de octubre: hay que confirmar en la consola qué es y si tiene datos.
+
+- **Si no hay datos:** v2 arranca con una DB nueva. W3 no migra producción; solo deploya y siembra.
+- **Si hay datos:** se usa el camino de migración de W0-C y W3, con backup previo.
+- **Hosting de la DB:** hay que elegir uno que **no se borre por inactividad**. Recomendación: un MySQL serverless con plan gratis (por ejemplo TiDB Cloud Starter, que es compatible con MySQL; verificar las condiciones vigentes al elegir), o Aiven con un plan pago chico. Se decide en W3.
 
 ---
 
@@ -340,7 +400,7 @@ export async function finalizeSeason(seasonId: string, opts: { publish: boolean 
 // src/server/scoring/queries.ts
 export async function getSeasonStandings(seasonId: string): Promise<StandingRow[]>;
 export async function getActivityPoints(activityIds: string[]): Promise<Map<string, { seasonId: string; points: number; reason: string | null }[]>>;
-export type StandingRow = { userId: string; name: string | null; photoUrl: string | null; rank: number; points: number; workouts: number; weeksGoalMet: number; currentStreak: number; bestStreak: number; minutes: number };
+export type StandingRow = { userId: string; name: string | null; photoUrl: string | null; rank: number; points: number; daysTrained: number; activities: number; weeksGoalMet: number; currentStreak: number; bestStreak: number; minutes: number };
 ```
 
 ### 5.6 Insignias — `src/server/badges/*` (dueño W1-2; stub en W0-C)
@@ -388,7 +448,8 @@ Ola 1 (en paralelo, después de W0-C):
        W1-1 Motor de puntos/temporadas │ W1-2 Insignias │ W1-3 Catálogo de ejercicios │ W1-4 Cuentas y social │ W1-5 Medios R2
 Ola 2 (en paralelo, después de la Ola 1):
        W2-1 Entrenamientos y rutinas (Strong) │ W2-2 Temporadas y grupo │ W2-3 Notificaciones │ W2-4 Home, perfil y stats
-Ola 3: W3 Endurecimiento, E2E, migración de datos de prod y release
+Ola 3: W3 Endurecimiento, E2E, deploy y release (web + PWA)
+Ola 4 (después del release web): W4 App nativa con Capacitor (APK Android + push nativo + widget de amigos; iOS opcional)
 ```
 
 - **Máximo paralelismo:** 2 agentes en Ola 0 (más 1 secuencial), 5 en Ola 1 y 4 en Ola 2.
@@ -409,7 +470,7 @@ Ola 3: W3 Endurecimiento, E2E, migración de datos de prod y release
 | Workstream | Es dueño de (crea/modifica libremente) |
 |---|---|
 | W0-A | `package.json` (scripts/devDeps), `vitest.config.ts`, `tests/setup/*`, `scripts/*` (de infraestructura), `src/lib/time/**`, `src/server/auth/**`, `src/server/http/**`, `proxy.ts`, `next.config.ts`, `eslint.config.mjs`, fixes puntuales para que el build compile |
-| W0-B | `app/globals.css`, `app/layout.tsx`, `app/loading.tsx`, `app/error.tsx`, `app/not-found.tsx`, `src/components/ui/**`, `src/components/shell/**` |
+| W0-B | `app/globals.css`, `app/layout.tsx`, `app/loading.tsx`, `app/error.tsx`, `app/not-found.tsx`, `app/manifest.ts`, `public/icons/**`, `public/sw.js` (versión base; W2-3 agrega push), `scripts/pwa/**`, `src/components/ui/**`, `src/components/shell/**` |
 | W0-C | `prisma/schema.prisma`, `prisma/migrations/**`, `prisma/seed/**`, `scripts/migrate-v2-data.ts`, `src/schemas/workout.ts`, `src/server/activities/**`, stubs en `src/server/{scoring,badges,notifications}/index.ts` |
 | W1-1 | `src/server/scoring/**`, `src/server/seasons/**`, `src/server/actions/seasons.ts`, `app/api/cron/seasons/**` |
 | W1-2 | `src/server/badges/**`, `prisma/seed/badges.ts`, `src/features/badges/**` |
@@ -421,6 +482,7 @@ Ola 3: W3 Endurecimiento, E2E, migración de datos de prod y release
 | W2-3 | `src/server/notifications/**`, `src/server/actions/notifications.ts`, `src/features/notifications/**`, `app/notifications/**`, `app/api/cron/notifications/**`, `src/emails/**` |
 | W2-4 | `app/home/**`, `app/profile/**`, `app/stats/**`, `src/features/profile/**`, `src/features/stats/**`, `src/server/stats/**` |
 | W3 | `e2e/**`, `playwright.config.ts`, `README.md`, `docs/**`, `vercel.json` |
+| W4 | `mobile/**` (proyecto Capacitor y código nativo), `capacitor.config.ts`, `app/api/widget/**`, `app/api/devices/**`, `src/server/devices/**` |
 
 **Archivos compartidos de bajo riesgo:** se editan solo para **agregar** entradas y el orquestador resuelve los conflictos triviales. Son `next.config.ts` (redirects), `src/components/shell/nav-items.ts`, `.env.example` y `package.json` (dependencias).
 
@@ -439,6 +501,7 @@ Ola 3: W3 Endurecimiento, E2E, migración de datos de prod y release
 | `/settings`, `/settings/password`, `/settings/notifications` | W1-4 (+ W2-3 la de notificaciones) | `/profile/edit` |
 | `/stats` | W2-4 | — |
 | `/notifications` | W2-3 | — |
+| `/api/widget/feed`, `/api/devices` | W4 | — |
 
 **Navegación inferior** (W0-B la crea; cada workstream activa su ítem en `nav-items.ts`): Inicio · Grupos · **＋ Registrar** (botón central) · Stats · Perfil. La **barra superior** tiene el logo y una campana (W2-3).
 
@@ -460,13 +523,19 @@ Ola 3: W3 Endurecimiento, E2E, migración de datos de prod y release
 | `W2-2-temporadas-grupo.md` | Página de grupo, wizard de temporada, sliders, final | 2 | W1-1, W1-4 |
 | `W2-3-notificaciones.md` | Feed, campana, email | 2 | W1-1, W1-2, W1-4 |
 | `W2-4-home-perfil-stats.md` | Home, perfil, stats | 2 | W1-1, W1-2, W1-4 |
-| `W3-release.md` | E2E, migración de prod, deploy | 3 | todo |
+| `W3-release.md` | E2E, DB de producción, deploy | 3 | todo |
+| `W4-app-movil.md` | Capacitor Android, push nativo, widget de amigos, iOS opcional | 4 | W3 |
 
-## 8. Decisiones abiertas (bloquean la ola indicada)
+## 8. Decisiones (estado al 31-oct)
 
-1. **D1 Reglas de puntos.** ¿Aprobadas tal como están? → bloquea W1-1.
-2. **D5 Seguir vs amistad con aceptación.** → bloquea W1-4.
-3. **D6 Imágenes de ejercicios desde un dataset abierto (sin IA).** → bloquea W1-3 (tarea de medios).
-4. **D8 Cuenta de Cloudflare R2** (bucket + dominio público) → bloquea W1-5 en su verificación real; se puede desarrollar contra un mock S3 local (MinIO) o con stub.
-5. **D9 Dominio para enviar email con Resend.** → bloquea la parte de email de W2-3; el feed in-app no se bloquea.
-6. **Producción:** ¿hay un deploy (Vercel) con usuarios y datos reales? Define si W3 ejecuta `scripts/migrate-v2-data.ts` y `scripts/migrate-images-to-r2.ts` sobre la DB de prod (con backup previo) o si v2 arranca con DB nueva.
+Ya resueltas:
+- **D1 puntos:** aprobada, con la curva decreciente y los días fusionados.
+- **D5 seguir + reacciones:** aprobada.
+- **D6 dataset abierto de imágenes:** aprobada.
+- **D12 web → PWA → Capacitor:** dirección aprobada.
+
+Pendientes:
+1. **D8 Cloudflare R2:** crear la cuenta (gratis). Bloquea solo la verificación real de W1-5; se desarrolla con MinIO.
+2. **D9 Dominio para email:** postergado. No bloquea nada: el email queda apagado.
+3. **D13 DB de producción:** confirmar en la consola de Aiven si `el-bravo-prod` tiene datos y elegir hosting nuevo. Bloquea W3.
+4. **D12 iOS:** decidir si se paga Apple Developer (USD 99 por año) para distribuir por TestFlight. Bloquea solo la parte iOS de W4.

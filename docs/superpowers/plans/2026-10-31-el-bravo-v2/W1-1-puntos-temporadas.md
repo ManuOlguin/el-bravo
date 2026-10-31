@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Leé primero `00-roadmap.md` (§3 D1 y D3, §4, §5.4–5.5, §6.2).
 
-**Goal:** reemplazar el sistema de puntos dependiente del orden por un motor puro y determinista que recalcula una temporada completa ante cualquier cambio. Además cubre premios de temporada, finalización idempotente (automática o manual) y acciones de temporada (crear/editar/unirse/salir/finalizar/publicar) que siempre recalculan.
+**Goal:** reemplazar el sistema de puntos dependiente del orden por un motor puro y determinista, basado en **días entrenados** y una curva de tiempo con rendimiento decreciente (D1), que recalcula una temporada completa ante cualquier cambio. Además cubre premios de temporada, finalización idempotente (automática o manual) y acciones de temporada (crear/editar/unirse/salir/finalizar/publicar) que siempre recalculan.
 
 **Architecture:**
 - `computeSeasonScores` (puro, sin I/O) recibe la temporada, los miembros y las actividades, y devuelve las entradas de puntaje y las posiciones.
@@ -31,119 +31,185 @@ Ver `00-roadmap.md` §4. No tocar `prisma/schema.prisma`. Reemplazar los stubs d
 ```ts
 export type SeasonRules = {
   startDate: string; endDate: string; timezone: string;      // LocalDate y tz del grupo
-  weeklyGoal: number; minWorkoutMinutes: number; pointsPerWorkout: number;
-  longSessionMinutes: number; longSessionBonus: number; weeklyGoalBonus: number;
-  streakBonusStep: number; streakBonusCap: number;
+  weeklyGoal: number;        // días entrenados por semana
+  minDailyMinutes: number;   // 20
+  dayBasePoints: number;     // 10
+  timePointsFactor: number;  // 10
+  timeCurveMinutes: number;  // 30
+  maxDailyMinutes: number;   // 240
+  weeklyGoalBonus: number; streakBonusStep: number; streakBonusCap: number;
   categoryWeights: Record<string, number>;                   // activityCategoryId → 0..2 (ausente = no cuenta)
 };
 export type ScoringActivity = { id: string; userId: string; activityCategoryId: string; startedAt: Date; durationMinutes: number };
 export type ScoreLine = { userId: string; activityId: string | null; kind: "workout" | "weekly_goal" | "streak" | "award"; weekKey: string | null; points: number; reason: string | null; detail?: Record<string, unknown> };
-export type UserWeek = { weekKey: string; workouts: number; target: number; goalMet: boolean; streak: number; finished: boolean };
-export type UserTotals = { userId: string; points: number; workouts: number; minutes: number; weeksGoalMet: number; currentStreak: number; bestStreak: number; weeks: UserWeek[] };
+export type UserWeek = { weekKey: string; days: number; target: number; goalMet: boolean; streak: number; finished: boolean };
+export type UserTotals = { userId: string; points: number; daysTrained: number; activities: number; minutes: number; weeksGoalMet: number; currentStreak: number; bestStreak: number; longestActivityMinutes: number; categories: number; weeks: UserWeek[] };
 export type SeasonScores = { lines: ScoreLine[]; totals: UserTotals[]; ranked: (UserTotals & { rank: number })[] };
+export function dayPoints(rules: SeasonRules, effectiveMinutes: number): number;
 export function computeSeasonScores(rules: SeasonRules, memberIds: string[], activities: ScoringActivity[], now: Date): SeasonScores;
 export function rankTotals(totals: UserTotals[]): (UserTotals & { rank: number })[];
 ```
 
+Reglas: exactamente D1 de `00-roadmap.md`. Resumen operativo:
+- Minutos efectivos de una actividad = `durationMinutes × peso`.
+- Actividades del mismo día local se suman. El día cuenta si su total es ≥ `minDailyMinutes`.
+- `dayPoints(m) = m < min ? 0 : base + round(factor × log2(1 + min(m, max) / curve))`.
+- Cada actividad recibe el **marginal** `P(acumulado con ella) − P(acumulado antes)`, en orden de `startedAt` (desempate por `id`).
+- Motivos de 0 puntos:
+  - `"Esta actividad no cuenta en la temporada"` (categoría sin peso);
+  - `"El día sumó menos de 20 min"`;
+  - `"Sumó al tiempo del día"` (marginal 0 en un día que sí cuenta).
+- Las semanas cuentan **días entrenados**. Bonus semanal y racha según D1.
+
 - [ ] **Step 1: Tests (cada regla de D1 tiene al menos un caso)**
+
+`src/server/scoring/test-helpers.ts`:
+
+```ts
+import { zonedToUtc } from "@/src/lib/time";
+import type { SeasonRules, ScoringActivity } from "./types";
+
+export const TZ = "America/Argentina/Buenos_Aires";
+export const rules = (o: Partial<SeasonRules> = {}): SeasonRules => ({
+  startDate: "2026-11-02", endDate: "2026-11-29", timezone: TZ, // 4 semanas: lun 2/11 → dom 29/11
+  weeklyGoal: 3, minDailyMinutes: 20, dayBasePoints: 10, timePointsFactor: 10, timeCurveMinutes: 30, maxDailyMinutes: 240,
+  weeklyGoalBonus: 20, streakBonusStep: 5, streakBonusCap: 25,
+  categoryWeights: { gym: 1, run: 2, yoga: 0.5 }, ...o,
+});
+let n = 0;
+export const act = (userId: string, date: string, time = "18:00", minutes = 45, cat = "gym"): ScoringActivity =>
+  ({ id: `a${String(++n).padStart(4, "0")}`, userId, activityCategoryId: cat, startedAt: zonedToUtc(date, time, TZ), durationMinutes: minutes });
+export const addD = (d: string, i: number) => { const t = new Date(d + "T12:00:00Z"); t.setUTCDate(t.getUTCDate() + i); return t.toISOString().slice(0, 10); };
+export const week = (u: string, monday: string, k = 3, minutes = 45) => Array.from({ length: k }, (_, i) => act(u, addD(monday, i), "18:00", minutes));
+export const AFTER = new Date("2026-12-15T12:00:00Z");
+```
 
 `src/server/scoring/compute.test.ts`:
 
 ```ts
 import { describe, it, expect } from "vitest";
-import { computeSeasonScores, type SeasonRules, type ScoringActivity } from "./compute";
+import { computeSeasonScores, dayPoints } from "./compute";
+import { rules, act, week, addD, AFTER, TZ } from "./test-helpers";
 import { zonedToUtc } from "@/src/lib/time";
 
-const TZ = "America/Argentina/Buenos_Aires";
-const rules = (o: Partial<SeasonRules> = {}): SeasonRules => ({
-  startDate: "2026-11-02", endDate: "2026-11-29", timezone: TZ, // 4 semanas lun 2/11 → dom 29/11
-  weeklyGoal: 3, minWorkoutMinutes: 20, pointsPerWorkout: 10, longSessionMinutes: 60, longSessionBonus: 5,
-  weeklyGoalBonus: 20, streakBonusStep: 5, streakBonusCap: 25,
-  categoryWeights: { gym: 1, run: 1, yoga: 0.5 }, ...o,
-});
-let n = 0;
-const act = (userId: string, date: string, time = "18:00", minutes = 45, cat = "gym"): ScoringActivity =>
-  ({ id: `a${String(++n).padStart(4, "0")}`, userId, activityCategoryId: cat, startedAt: zonedToUtc(date, time, TZ), durationMinutes: minutes });
-const AFTER = new Date("2026-12-15T12:00:00Z");
-const sumFor = (r: ReturnType<typeof computeSeasonScores>, u: string) => r.totals.find((t) => t.userId === u)!.points;
+const workoutPts = (r: ReturnType<typeof computeSeasonScores>) => r.lines.filter((l) => l.kind === "workout").map((l) => l.points);
+const total = (r: ReturnType<typeof computeSeasonScores>, u: string) => r.totals.find((t) => t.userId === u)!;
 
-describe("puntos por entrenamiento", () => {
-  it("10 pts base; +5 si dura 60+; × peso de categoría", () => {
-    const r = computeSeasonScores(rules(), ["u"], [act("u", "2026-11-02", "18:00", 45), act("u", "2026-11-03", "18:00", 60), act("u", "2026-11-04", "18:00", 60, "yoga")], AFTER);
-    const w = r.lines.filter((l) => l.kind === "workout").map((l) => l.points);
-    expect(w).toEqual([10, 15, 8]); // round(15*0.5)=8
+describe("curva de puntos del día", () => {
+  it("valores de referencia de D1 (con tope de 4 h)", () => {
+    expect([19, 20, 30, 45, 60, 90, 120, 180, 240, 300].map((m) => dayPoints(rules(), m)))
+      .toEqual([0, 17, 20, 23, 26, 30, 33, 38, 42, 42]);
   });
-  it("no puntúa si dura menos del mínimo, si la categoría no está o si está fuera de fechas", () => {
+  it("una actividad por día: puntos según su duración", () => {
+    const mins = [20, 30, 45, 60, 120, 180, 300];
+    const r = computeSeasonScores(rules(), ["u"], mins.map((m, i) => act("u", addD("2026-11-02", i), "18:00", m)), AFTER);
+    expect(workoutPts(r)).toEqual([17, 20, 23, 26, 33, 38, 42]);
+  });
+  it("el peso de la categoría multiplica los minutos (slider)", () => {
+    const r = computeSeasonScores(rules(), ["u"], [act("u", "2026-11-02", "18:00", 30, "run"), act("u", "2026-11-03", "18:00", 60, "yoga")], AFTER);
+    expect(workoutPts(r)).toEqual([26, 20]); // 30×2=60 → 26 ; 60×0,5=30 → 20
+  });
+});
+
+describe("qué no cuenta", () => {
+  it("día corto, categoría fuera de temporada y fechas fuera de rango", () => {
     const r = computeSeasonScores(rules(), ["u"], [
       act("u", "2026-11-02", "18:00", 19), act("u", "2026-11-03", "18:00", 45, "swim"), act("u", "2026-11-30", "10:00", 45),
     ], AFTER);
     const w = r.lines.filter((l) => l.kind === "workout");
-    expect(w.map((l) => l.points)).toEqual([0, 0]); // fuera de fechas no genera línea
-    expect(w.map((l) => l.reason)).toEqual(["Duró menos de 20 min", "Esta actividad no cuenta en la temporada"]);
+    expect(w.map((l) => [l.points, l.reason])).toEqual([[0, "El día sumó menos de 20 min"], [0, "Esta actividad no cuenta en la temporada"]]);
+    expect(total(r, "u").daysTrained).toBe(0);
   });
-  it("un solo entrenamiento puntuable por día local: el de más puntos", () => {
-    const r = computeSeasonScores(rules(), ["u"], [act("u", "2026-11-02", "07:00", 30), act("u", "2026-11-02", "19:00", 70)], AFTER);
-    const w = r.lines.filter((l) => l.kind === "workout");
-    expect(w.map((l) => [l.points, l.reason])).toEqual([[0, "Ya sumaste un entrenamiento este día"], [15, null]]);
+});
+
+describe("varias actividades el mismo día", () => {
+  it("se suman al tiempo del día y cada una recibe su marginal", () => {
+    const r = computeSeasonScores(rules(), ["u"], [act("u", "2026-11-02", "07:00", 60), act("u", "2026-11-02", "19:00", 30)], AFTER);
+    expect(workoutPts(r)).toEqual([26, 4]); // P(60)=26, P(90)=30
+    expect(total(r, "u")).toMatchObject({ points: 30, daysTrained: 1, activities: 2, minutes: 90 });
+  });
+  it("dos actividades cortas que juntas superan el mínimo", () => {
+    const r = computeSeasonScores(rules(), ["u"], [act("u", "2026-11-02", "07:00", 10), act("u", "2026-11-02", "19:00", 10)], AFTER);
+    expect(r.lines.filter((l) => l.kind === "workout").map((l) => [l.points, l.reason])).toEqual([[0, "Sumó al tiempo del día"], [17, null]]);
+    expect(total(r, "u").daysTrained).toBe(1);
+  });
+  it("3 actividades en un día no cumplen el objetivo semanal (cuenta días)", () => {
+    const r = computeSeasonScores(rules(), ["u"], [act("u", "2026-11-02", "07:00"), act("u", "2026-11-02", "12:00"), act("u", "2026-11-02", "19:00")], AFTER);
+    expect(workoutPts(r)).toEqual([23, 7, 5]); // P(45)=23, P(90)=30, P(135)=35
+    expect(r.lines.some((l) => l.kind === "weekly_goal")).toBe(false);
   });
   it("el día se calcula en la zona del grupo (domingo 23:30 AR no es lunes)", () => {
     const r = computeSeasonScores(rules(), ["u"], [act("u", "2026-11-08", "23:30"), act("u", "2026-11-09", "00:30")], AFTER);
-    expect(r.lines.filter((l) => l.kind === "workout" && l.points > 0)).toHaveLength(2);
+    expect(workoutPts(r)).toEqual([23, 23]);
+    expect(total(r, "u").daysTrained).toBe(2);
   });
 });
 
 describe("objetivo semanal y racha", () => {
-  const week = (u: string, monday: string, k = 3) => Array.from({ length: k }, (_, i) => act(u, addD(monday, i)));
-  function addD(d: string, i: number) { const t = new Date(d + "T12:00:00Z"); t.setUTCDate(t.getUTCDate() + i); return t.toISOString().slice(0, 10); }
-
-  it("+20 por semana cumplida y racha +5, +10, +15 (tope 25)", () => {
+  it("+20 por semana cumplida y racha +5, +10, +15", () => {
     const acts = [...week("u", "2026-11-02"), ...week("u", "2026-11-09"), ...week("u", "2026-11-16"), ...week("u", "2026-11-23")];
     const r = computeSeasonScores(rules(), ["u"], acts, AFTER);
     expect(r.lines.filter((l) => l.kind === "weekly_goal").map((l) => l.points)).toEqual([20, 20, 20, 20]);
     expect(r.lines.filter((l) => l.kind === "streak").map((l) => l.points)).toEqual([5, 10, 15]);
-    expect(sumFor(r, "u")).toBe(12 * 10 + 80 + 30);
-    expect(r.totals[0]).toMatchObject({ weeksGoalMet: 4, bestStreak: 4, currentStreak: 4, workouts: 12 });
+    expect(total(r, "u")).toMatchObject({ points: 12 * 23 + 80 + 30, weeksGoalMet: 4, bestStreak: 4, currentStreak: 4, daysTrained: 12 });
+  });
+  it("el tope de racha es +25", () => {
+    const r = computeSeasonScores(rules({ endDate: "2026-12-27" }), ["u"],
+      Array.from({ length: 8 }, (_, i) => week("u", addD("2026-11-02", i * 7))).flat(), new Date("2027-01-15T12:00:00Z"));
+    expect(r.lines.filter((l) => l.kind === "streak").map((l) => l.points)).toEqual([5, 10, 15, 20, 25, 25, 25]);
   });
   it("una semana sin cumplir corta la racha", () => {
     const acts = [...week("u", "2026-11-02"), ...week("u", "2026-11-09", 2), ...week("u", "2026-11-16"), ...week("u", "2026-11-23")];
     const r = computeSeasonScores(rules(), ["u"], acts, AFTER);
     expect(r.lines.filter((l) => l.kind === "streak").map((l) => l.points)).toEqual([5]);
-    expect(r.totals[0]).toMatchObject({ bestStreak: 2, currentStreak: 2 });
+    expect(total(r, "u")).toMatchObject({ bestStreak: 2, currentStreak: 2 });
   });
   it("semana parcial: objetivo = días de la semana dentro de la temporada", () => {
     const r = computeSeasonScores(rules({ startDate: "2026-11-07" }), ["u"], [act("u", "2026-11-07"), act("u", "2026-11-08")], AFTER);
-    expect(r.totals[0].weeks[0]).toMatchObject({ weekKey: "2026-11-02", target: 2, goalMet: true });
+    expect(total(r, "u").weeks[0]).toMatchObject({ weekKey: "2026-11-02", target: 2, goalMet: true });
   });
-  it("la semana en curso no corta la racha", () => {
-    const now = zonedToUtc("2026-11-17", "12:00", TZ); // martes de la 3ª semana
-    const acts = [...week("u", "2026-11-02"), ...week("u", "2026-11-09"), act("u", "2026-11-16")];
-    const r = computeSeasonScores(rules(), ["u"], acts, now);
-    expect(r.totals[0].currentStreak).toBe(2);
-    expect(r.totals[0].weeks.at(-1)).toMatchObject({ finished: false, goalMet: false });
-    expect(r.totals[0].weeks).toHaveLength(3); // no inventa semanas futuras
+  it("la semana en curso no corta la racha ni se inventan semanas futuras", () => {
+    const now = zonedToUtc("2026-11-17", "12:00", TZ);
+    const r = computeSeasonScores(rules(), ["u"], [...week("u", "2026-11-02"), ...week("u", "2026-11-09"), act("u", "2026-11-16")], now);
+    expect(total(r, "u").currentStreak).toBe(2);
+    expect(total(r, "u").weeks).toHaveLength(3);
+    expect(total(r, "u").weeks.at(-1)).toMatchObject({ finished: false, goalMet: false });
+  });
+});
+
+describe("la constancia gana (escenarios de D1)", () => {
+  it("2 días × 2 h supera a 1 día con 3 actividades de 45 min", () => {
+    const r = computeSeasonScores(rules(), ["b", "d"], [
+      act("b", "2026-11-02", "18:00", 120), act("b", "2026-11-04", "18:00", 120),
+      act("d", "2026-11-03", "07:00"), act("d", "2026-11-03", "12:00"), act("d", "2026-11-03", "19:00"),
+    ], AFTER);
+    expect(total(r, "b").points).toBe(66);
+    expect(total(r, "d").points).toBe(35);
+  });
+  it("4 días × 45 min = 112 en la semana", () => {
+    const r = computeSeasonScores(rules({ endDate: "2026-11-08" }), ["a"], week("a", "2026-11-02", 4), AFTER);
+    expect(total(r, "a").points).toBe(4 * 23 + 20);
   });
 });
 
 describe("miembros y ranking", () => {
-  it("ignora actividades de no-miembros e incluye miembros sin actividad con 0", () => {
+  it("ignora no-miembros e incluye miembros sin actividad con 0", () => {
     const r = computeSeasonScores(rules(), ["u", "v"], [act("x", "2026-11-02")], AFTER);
     expect(r.totals.map((t) => [t.userId, t.points])).toEqual([["u", 0], ["v", 0]]);
   });
-  it("ranking por puntos → semanas cumplidas → entrenamientos, empates comparten puesto", () => {
+  it("puntos → semanas cumplidas → días; empates comparten puesto", () => {
     const r = computeSeasonScores(rules(), ["a", "b", "c"], [act("a", "2026-11-02"), act("b", "2026-11-02")], AFTER);
     expect(r.ranked.map((t) => [t.userId, t.rank])).toEqual([["a", 1], ["b", 1], ["c", 3]]);
   });
   it("es determinista: el orden de entrada no cambia el resultado", () => {
     const acts = [act("u", "2026-11-02", "07:00", 30), act("u", "2026-11-02", "19:00", 70), act("u", "2026-11-03")];
-    const a = computeSeasonScores(rules(), ["u"], acts, AFTER);
-    const b = computeSeasonScores(rules(), ["u"], [...acts].reverse(), AFTER);
-    expect(b).toEqual(a);
+    expect(computeSeasonScores(rules(), ["u"], [...acts].reverse(), AFTER)).toEqual(computeSeasonScores(rules(), ["u"], acts, AFTER));
   });
 });
 ```
 
 Run: `npx vitest run src/server/scoring/compute`
-Expected: FAIL.
+Expected: FAIL (no existe `./compute`).
 
 - [ ] **Step 2: Implementación `src/server/scoring/compute.ts`**
 
@@ -153,69 +219,73 @@ import type { SeasonRules, ScoringActivity, ScoreLine, UserTotals, UserWeek, Sea
 export type { SeasonRules, ScoringActivity } from "./types";
 
 const REASON = {
-  short: (m: number) => `Duró menos de ${m} min`,
   category: "Esta actividad no cuenta en la temporada",
-  sameDay: "Ya sumaste un entrenamiento este día",
+  shortDay: (m: number) => `El día sumó menos de ${m} min`,
+  merged: "Sumó al tiempo del día",
 };
 
-function workoutPoints(r: SeasonRules, a: ScoringActivity, weight: number) {
-  const base = r.pointsPerWorkout + (a.durationMinutes >= r.longSessionMinutes ? r.longSessionBonus : 0);
-  return Math.round(base * weight);
+export function dayPoints(r: SeasonRules, minutes: number): number {
+  if (minutes < r.minDailyMinutes) return 0;
+  const m = Math.min(minutes, r.maxDailyMinutes);
+  return r.dayBasePoints + Math.round(r.timePointsFactor * Math.log2(1 + m / r.timeCurveMinutes));
 }
 
 export function computeSeasonScores(r: SeasonRules, memberIds: string[], activities: ScoringActivity[], now: Date): SeasonScores {
   const members = [...new Set(memberIds)].sort();
-  const memberSet = new Set(members);
   const today = localDateOf(now, r.timezone);
   const lastDay = today < r.endDate ? today : r.endDate;
   const sorted = [...activities].sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime() || a.id.localeCompare(b.id));
-
   const lines: ScoreLine[] = [];
   const totals: UserTotals[] = [];
 
   for (const userId of members) {
-    const mine = sorted.filter((a) => a.userId === userId && memberSet.has(a.userId));
-    const byDay = new Map<string, { a: ScoringActivity; pts: number }[]>();
     const userLines: ScoreLine[] = [];
-    let minutes = 0;
+    const byDay = new Map<string, { a: ScoringActivity; eff: number }[]>();
 
-    for (const a of mine) {
+    for (const a of sorted) {
+      if (a.userId !== userId) continue;
       const day = localDateOf(a.startedAt, r.timezone);
       if (day < r.startDate || day > r.endDate) continue;
       const weight = r.categoryWeights[a.activityCategoryId];
-      const weekKey = weekKeyOfLocalDate(day);
       if (weight === undefined || weight <= 0) {
-        userLines.push({ userId, activityId: a.id, kind: "workout", weekKey, points: 0, reason: REASON.category });
-        continue;
-      }
-      if (a.durationMinutes < r.minWorkoutMinutes) {
-        userLines.push({ userId, activityId: a.id, kind: "workout", weekKey, points: 0, reason: REASON.short(r.minWorkoutMinutes) });
+        userLines.push({ userId, activityId: a.id, kind: "workout", weekKey: weekKeyOfLocalDate(day), points: 0, reason: REASON.category });
         continue;
       }
       const list = byDay.get(day) ?? [];
-      list.push({ a, pts: workoutPoints(r, a, weight) });
+      list.push({ a, eff: a.durationMinutes * weight });
       byDay.set(day, list);
     }
 
-    const countedByWeek = new Map<string, number>();
+    const daysByWeek = new Map<string, number>();
+    let minutes = 0, activitiesCount = 0, longest = 0;
+    const categories = new Set<string>();
     for (const [day, list] of byDay) {
-      const best = list.reduce((x, y) => (y.pts > x.pts ? y : x)); // empate → el primero (orden por startedAt)
       const weekKey = weekKeyOfLocalDate(day);
-      for (const it of list) {
-        const counted = it === best;
-        userLines.push({ userId, activityId: it.a.id, kind: "workout", weekKey, points: counted ? it.pts : 0, reason: counted ? null : REASON.sameDay, detail: { durationMinutes: it.a.durationMinutes } });
+      const dayTotal = list.reduce((s, x) => s + x.eff, 0);
+      const counts = dayTotal >= r.minDailyMinutes;
+      let cum = 0, prev = 0;
+      for (const { a, eff } of list) {
+        cum += eff;
+        const pts = dayPoints(r, cum);
+        const marginal = pts - prev;
+        prev = pts;
+        const reason = !counts ? REASON.shortDay(r.minDailyMinutes) : marginal === 0 ? REASON.merged : null;
+        userLines.push({ userId, activityId: a.id, kind: "workout", weekKey, points: marginal, reason, detail: { effectiveMinutes: Math.round(eff), dayMinutes: Math.round(dayTotal) } });
       }
-      countedByWeek.set(weekKey, (countedByWeek.get(weekKey) ?? 0) + 1);
-      minutes += best.a.durationMinutes;
+      if (counts) {
+        daysByWeek.set(weekKey, (daysByWeek.get(weekKey) ?? 0) + 1);
+        activitiesCount += list.length;
+        for (const { a } of list) { minutes += a.durationMinutes; longest = Math.max(longest, a.durationMinutes); categories.add(a.activityCategoryId); }
+      }
     }
 
     const weeks: UserWeek[] = [];
     let streak = 0, best = 0, weeksGoalMet = 0;
     for (const weekKey of lastDay >= r.startDate ? weekKeysBetween(r.startDate, lastDay) : []) {
       const target = Math.min(r.weeklyGoal, daysInWeekWithin(weekKey, r.startDate, r.endDate));
-      const workouts = countedByWeek.get(weekKey) ?? 0;
-      const goalMet = target > 0 && workouts >= target;
-      const finished = addDays(weekKey, 6) < today || today > r.endDate; // domingo ya pasó, o la temporada terminó
+      const days = daysByWeek.get(weekKey) ?? 0;
+      const goalMet = target > 0 && days >= target;
+      const finished = addDays(weekKey, 6) < today || today > r.endDate;
       if (goalMet) {
         streak += 1; weeksGoalMet += 1; best = Math.max(best, streak);
         userLines.push({ userId, activityId: null, kind: "weekly_goal", weekKey, points: r.weeklyGoalBonus, reason: null });
@@ -224,45 +294,45 @@ export function computeSeasonScores(r: SeasonRules, memberIds: string[], activit
       } else if (finished) {
         streak = 0;
       }
-      weeks.push({ weekKey, workouts, target, goalMet, streak, finished });
+      weeks.push({ weekKey, days, target, goalMet, streak, finished });
     }
 
-    userLines.sort((x, y) => (x.weekKey ?? "").localeCompare(y.weekKey ?? "") || (x.kind === "workout" ? 0 : 1) - (y.kind === "workout" ? 0 : 1) || (x.activityId ?? "").localeCompare(y.activityId ?? ""));
+    const kindOrder = { workout: 0, weekly_goal: 1, streak: 2, award: 3 } as const;
+    userLines.sort((x, y) => (x.weekKey ?? "").localeCompare(y.weekKey ?? "") || kindOrder[x.kind] - kindOrder[y.kind] || (x.activityId ?? "").localeCompare(y.activityId ?? ""));
     lines.push(...userLines);
     totals.push({
-      userId, points: userLines.reduce((s, l) => s + l.points, 0), workouts: [...countedByWeek.values()].reduce((s, v) => s + v, 0),
-      minutes, weeksGoalMet, currentStreak: streak, bestStreak: best, weeks,
+      userId, points: userLines.reduce((s, l) => s + l.points, 0),
+      daysTrained: [...daysByWeek.values()].reduce((s, v) => s + v, 0), activities: activitiesCount, minutes,
+      weeksGoalMet, currentStreak: streak, bestStreak: best, longestActivityMinutes: longest, categories: categories.size, weeks,
     });
   }
   return { lines, totals, ranked: rankTotals(totals) };
 }
 
 export function rankTotals(totals: UserTotals[]) {
-  const sorted = [...totals].sort((a, b) => b.points - a.points || b.weeksGoalMet - a.weeksGoalMet || b.workouts - a.workouts || a.userId.localeCompare(b.userId));
+  const sorted = [...totals].sort((a, b) => b.points - a.points || b.weeksGoalMet - a.weeksGoalMet || b.daysTrained - a.daysTrained || a.userId.localeCompare(b.userId));
   let rank = 0;
   return sorted.map((t, i) => {
     const prev = sorted[i - 1];
-    const tie = prev && prev.points === t.points && prev.weeksGoalMet === t.weeksGoalMet && prev.workouts === t.workouts;
+    const tie = prev && prev.points === t.points && prev.weeksGoalMet === t.weeksGoalMet && prev.daysTrained === t.daysTrained;
     if (!tie) rank = i + 1; // competición estándar: 1, 1, 3
     return { ...t, rank };
   });
 }
 ```
 
-Mover los tipos de §Interfaces a `types.ts`. **Ojo:** en el test de "la semana en curso" la última semana no está terminada, así que no corta la racha: `currentStreak` queda en 2 aunque la semana tenga 1 entrenamiento.
-
-Si algún caso falla, **corregir la implementación, no el test**, salvo que el test contradiga D1.
+Mover los tipos de §Interfaces a `types.ts`. Si algún caso falla, **corregir la implementación, no el test**, salvo que el test contradiga D1. Los valores esperados de los tests salen de la tabla de D1.
 
 - [ ] **Step 3: Correr los tests**
 
 Run: `npx vitest run src/server/scoring/compute`
-Expected: PASS (12 tests).
+Expected: PASS.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/server/scoring/compute.ts src/server/scoring/compute.test.ts src/server/scoring/types.ts
-git commit -m "feat(scoring): deterministic pure season scoring engine"
+git add src/server/scoring/compute.ts src/server/scoring/compute.test.ts src/server/scoring/types.ts src/server/scoring/test-helpers.ts
+git commit -m "feat(scoring): deterministic day-based scoring with diminishing time curve"
 ```
 
 ---
@@ -277,19 +347,19 @@ git commit -m "feat(scoring): deterministic pure season scoring engine"
 - Produce:
 
 ```ts
-export const SEASON_AWARD_TYPES = ["most_workouts", "most_minutes", "best_streak", "longest_session", "most_categories", "perfect_attendance"] as const;
+export const SEASON_AWARD_TYPES = ["most_days", "most_minutes", "best_streak", "longest_session", "most_categories", "perfect_attendance"] as const;
 export type SeasonAwardType = (typeof SEASON_AWARD_TYPES)[number];
 export const SEASON_AWARD_INFO: Record<SeasonAwardType, { name: string; description: string; icon: string; unit: string }>;
-// name/description es-AR, por ej. most_workouts → { name: "El más constante", description: "Más entrenamientos puntuables", icon: "🏋️", unit: "entrenamientos" }
+// name/description es-AR, por ej. most_days → { name: "El más constante", description: "Más días entrenados", icon: "📅", unit: "días" }
 export function computeAwardWinners(type: SeasonAwardType, scores: SeasonScores, activities: ScoringActivity[], rules: SeasonRules): { userId: string; value: number }[];
 ```
 
 Reglas:
-- `most_workouts`: máximo de `totals.workouts`.
-- `most_minutes`: máximo de `totals.minutes` (solo entrenamientos puntuables).
+- `most_days`: máximo de `totals.daysTrained`.
+- `most_minutes`: máximo de `totals.minutes` (minutos reales de los días que cuentan).
 - `best_streak`: máximo de `bestStreak`.
-- `longest_session`: la `durationMinutes` más alta entre los entrenamientos **puntuables**.
-- `most_categories`: la mayor cantidad de categorías distintas entre los puntuables.
+- `longest_session`: máximo de `totals.longestActivityMinutes` (actividad más larga en un día que cuenta).
+- `most_categories`: máximo de `totals.categories`.
 - `perfect_attendance`: todos los que tienen `weeksGoalMet` igual a la cantidad de semanas con objetivo > 0. Su `value` es esa cantidad.
 
 En todos los casos ganan todos los empatados con el máximo. Si el máximo es 0, no hay ganadores.
@@ -346,7 +416,7 @@ El test cubre los 4 estados y los bordes (`today === startDate` da `active`, `to
    - La racha de la semana 3 pasa de +10 a 0, porque la racha se reinicia.
    - Confirma el ítem "que reprocese bien los puntos viejos cuando borro".
 4. **Editar la temporada recalcula:**
-   - Cambiar `weeklyGoal` de 3 a 2 + `recomputeSeason` hace que las semanas con 2 entrenamientos pasen a contar el bonus.
+   - Cambiar `weeklyGoal` de 3 a 2 + `recomputeSeason` hace que las semanas con 2 días entrenados pasen a contar el bonus.
    - Cambiar el peso de una categoría a 0 deja sus actividades con 0 pts y la razón "no cuenta".
 5. `recomputeSeasonsForChange` con una actividad `after` cuyo día cae en 2 temporadas de grupos distintos (el usuario es miembro de ambas):
    - Recalcula las dos.
@@ -387,8 +457,8 @@ async function loadSeasonInput(tx: typeof prisma | Parameters<Parameters<typeof 
   });
   const rules = {
     startDate: dbDateToLocalDate(s.startDate), endDate: dbDateToLocalDate(s.endDate), timezone: s.group.timezone,
-    weeklyGoal: s.weeklyGoal, minWorkoutMinutes: s.minWorkoutMinutes, pointsPerWorkout: s.pointsPerWorkout,
-    longSessionMinutes: s.longSessionMinutes, longSessionBonus: s.longSessionBonus, weeklyGoalBonus: s.weeklyGoalBonus,
+    weeklyGoal: s.weeklyGoal, minDailyMinutes: s.minDailyMinutes, dayBasePoints: s.dayBasePoints,
+    timePointsFactor: s.timePointsFactor, timeCurveMinutes: s.timeCurveMinutes, maxDailyMinutes: s.maxDailyMinutes, weeklyGoalBonus: s.weeklyGoalBonus,
     streakBonusStep: s.streakBonusStep, streakBonusCap: s.streakBonusCap,
     categoryWeights: Object.fromEntries(s.categories.map((c) => [c.activityCategoryId, Number(c.weight)])),
   };
@@ -461,10 +531,10 @@ git commit -m "feat(scoring): transactional recompute, finalize and publish"
 ```ts
 // src/schemas/season.ts
 export const seasonInputSchema; // { groupId, name, description?, startDate: LocalDate, endDate: LocalDate (≥ start, ≤ start+365d),
-                                //   weeklyGoal 1..7, minWorkoutMinutes 5..180, resultsReveal: "auto"|"manual",
+                                //   weeklyGoal 1..7 (días), minDailyMinutes 5..180, resultsReveal: "auto"|"manual",
                                 //   categories: { activityCategoryId, weight 0..2 step .25 }[] (≥1 con weight>0),
                                 //   awards: { awardType: SeasonAwardType, bonusPoints 0..200 }[],
-                                //   rules?: { pointsPerWorkout, longSessionMinutes, longSessionBonus, weeklyGoalBonus, streakBonusStep, streakBonusCap } (opcional, avanzado) }
+                                //   rules?: { dayBasePoints, timePointsFactor, timeCurveMinutes, maxDailyMinutes, weeklyGoalBonus, streakBonusStep, streakBonusCap } (opcional, avanzado) }
 export type SeasonInput = z.infer<typeof seasonInputSchema>;
 
 // src/server/actions/seasons.ts  ("use server")
@@ -511,9 +581,10 @@ git commit -m "feat(seasons): season server actions with recompute, finalize/pub
 
 - [ ] **Step 1:** implementar el cableado mínimo. Sin rediseño (W2-2).
 - [ ] **Step 2: Verificación manual (puerto 3011)**
-  - Con 2 usuarios en una temporada, cargar 3 entrenamientos en una semana para uno: el ranking muestra 30 + 20 = 50.
-  - Borrar uno: vuelve a 20 y la semana deja de estar cumplida.
-  - Editar la temporada a objetivo 2: vuelve a 40.
+  - Con 2 usuarios en una temporada, cargar 3 días de 45 min en una semana para uno: el ranking muestra 3 × 23 + 20 = 89.
+  - Borrar uno: baja a 46 y la semana deja de estar cumplida.
+  - Editar la temporada a objetivo 2: sube a 66.
+  - Cargar una segunda actividad de 30 min en uno de esos días: ese día pasa de 23 a 29 (75 min), sin sumar un día más.
 - [ ] **Step 3: Commit**
 
 ```bash

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Leé primero `00-roadmap.md` (§4 Restricciones globales, §5.9 contrato de UI, §6.2 propiedad, §6.3 rutas).
 
-**Goal:** que la app tenga un sistema visual coherente en modo oscuro (tokens, tipografía Montserrat), primitivas reutilizables con feedback claro (botón con estado *pending*, toasts, diálogos de confirmación, bottom sheets) y un shell mobile-first con navegación inferior. Además se corrige el cambio de colores en el modo oscuro del celular.
+**Goal:** que la app sea instalable como app (PWA) y tenga un sistema visual coherente en modo oscuro (tokens, tipografía Montserrat), primitivas reutilizables con feedback claro (botón con estado *pending*, toasts, diálogos de confirmación, bottom sheets) y un shell mobile-first con navegación inferior. Además se corrige el cambio de colores en el modo oscuro del celular.
 
 **Architecture:** los tokens se definen en `app/globals.css` (`@theme` de Tailwind 4). Las primitivas viven en `src/components/ui/*` y son componentes cliente chicos y sin estado global, salvo el Toaster (`sonner`) y el proveedor de confirmación. El shell (`src/components/shell/*`) se monta en `app/layout.tsx`. Una página de catálogo, `/dev/ui`, que solo existe en desarrollo, sirve para verificar todo a ojo.
 
@@ -615,6 +615,59 @@ En 375 px:
 ```bash
 git add -A src/components/shell src/components/Navbar.tsx src/components/AppNavbarShell.tsx app/loading.tsx app/error.tsx app/not-found.tsx app/layout.tsx
 git commit -m "feat(ui): app shell with top bar, mobile bottom nav and status pages"
+```
+
+---
+
+### Task 6: Instalable como app (PWA básica)
+
+**Files:**
+- Create: `app/manifest.ts` (manifest de Next 16)
+- Create: `public/icons/icon.svg` (logo simple: "EB" en `on-primary` sobre un círculo lima, con margen seguro para la versión maskable)
+- Create: `scripts/pwa/generate-icons.mjs` (con `sharp`, devDependency: genera `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` y `apple-touch-icon.png` (180 px) en `public/icons/`)
+- Create: `public/sw.js` (service worker mínimo: `install` → `skipWaiting`, `activate` → `clients.claim`; **sin** cache offline, por YAGNI. W2-3 le agrega los handlers de push)
+- Create: `src/components/shell/RegisterServiceWorker.tsx` (cliente: registra `/sw.js` en producción y cuando `NEXT_PUBLIC_ENABLE_SW=1`)
+- Create: `src/components/shell/InstallPrompt.tsx`
+- Modify: `app/layout.tsx` (`metadata.appleWebApp = { capable: true, statusBarStyle: "black-translucent", title: "El Bravo" }`, `metadata.icons`, montar `RegisterServiceWorker` e `InstallPrompt`)
+- Modify: `src/components/shell/TopBar.tsx` y `BottomNav.tsx` (respetar safe areas: `padding-top: env(safe-area-inset-top)` en la top bar; `pb-safe` ya existe)
+
+**`app/manifest.ts`:**
+
+```ts
+import type { MetadataRoute } from "next";
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: "El Bravo", short_name: "El Bravo",
+    description: "Entrená con tus amigos, sumá puntos y competí por temporadas.",
+    start_url: "/home", scope: "/", display: "standalone", orientation: "portrait",
+    background_color: "#08142d", theme_color: "#08142d", lang: "es-AR",
+    icons: [
+      { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      { src: "/icons/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+    ],
+  };
+}
+```
+
+(Los hex del manifest son la única otra excepción a la regla de colores: agregar el archivo a la baseline con `--update`.)
+
+**`InstallPrompt`:**
+- **Android/Chrome:** captura `beforeinstallprompt` y muestra una tarjeta descartable "Instalá El Bravo en tu celular" con el botón "Instalar".
+- **iOS Safari** (detectar `navigator.standalone === false` y un user agent de iPhone/iPad): muestra la misma tarjeta con la instrucción "Tocá Compartir → Agregar a inicio".
+- Si se descarta, no vuelve a aparecer por 30 días (`localStorage` con try/catch). Nunca se muestra si ya corre instalada (`display-mode: standalone`).
+
+- [ ] **Step 1:** generar los íconos con `node scripts/pwa/generate-icons.mjs` y commitear los PNG.
+- [ ] **Step 2:** implementar el manifest, el service worker, el registro, el prompt y las safe areas.
+- [ ] **Step 3: Verificación**
+  - En Chrome de escritorio, DevTools → Application → Manifest no muestra errores y ofrece "Install".
+  - En el emulador de Android, o en un celular con un deploy preview, la app se instala, abre en pantalla completa sin barra del navegador, y la top bar no queda debajo de la barra de estado.
+  - En el simulador de iOS (Safari), con "Agregar a inicio", el ícono y el nombre son correctos.
+- [ ] **Step 4: Commit**
+
+```bash
+git add app/manifest.ts public/icons public/sw.js scripts/pwa src/components/shell app/layout.tsx package.json package-lock.json scripts/color-baseline.json
+git commit -m "feat(pwa): installable web app with manifest, icons, service worker and install prompt"
 ```
 
 ---

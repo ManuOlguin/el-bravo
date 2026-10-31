@@ -5,8 +5,8 @@
 **Goal:** subir fotos de actividades (hasta 4 por entrenamiento), de perfil y de grupo a Cloudflare R2, con compresión en el cliente y subida directa mediante URL prefirmada. También incluye un script para migrar a R2 las imágenes existentes que estén en otros hosts (Vercel Blob u otros).
 
 **Architecture:**
-1. El cliente comprime la imagen a WebP con `<canvas>` (máximo 1600 px de lado, calidad 0,82).
-2. `createUploadAction` valida el permiso y el tipo, y devuelve `{ uploadUrl, key, publicUrl }`.
+1. El cliente comprime la imagen a WebP con `<canvas>` (máximo 1600 px de lado, calidad 0,82) y genera **también una miniatura** de 400 px (calidad 0,7), que se usa en feeds, en el widget del celular y en las notificaciones push (D12).
+2. `createUploadAction` valida el permiso y el tipo, y devuelve dos URLs prefirmadas (original y miniatura): `{ uploadUrl, key, publicUrl, thumbUploadUrl, thumbKey, thumbPublicUrl }`.
 3. El navegador hace `PUT` directo a R2.
 4. `confirmUploadAction` verifica con `HeadObject` que el objeto exista y no supere el límite, y recién entonces escribe en la DB (`ActivityMedia` o `photoUrl`).
 5. Borrar una foto borra también el objeto en R2.
@@ -40,6 +40,8 @@ export const ALLOWED_MIME = ["image/webp", "image/jpeg", "image/png"] as const;
 export const MAX_BYTES = 5 * 1024 * 1024;
 export function mediaKey(target: UploadTarget, ext: "webp" | "jpg" | "png", rand: string): string;
 // activity → `activities/<activityId>/<rand>.webp`; avatar → `avatars/<userId>/<rand>.webp`; group → `groups/<groupId>/<rand>.webp`
+// miniatura: misma key con sufijo `-thumb` antes de la extensión (`<rand>-thumb.webp`)
+export function thumbKeyFor(key: string): string;
 export function publicUrlFor(key: string, base: string): string;
 export function keyFromPublicUrl(url: string, base: string): string | null;
 
@@ -85,7 +87,7 @@ git commit -m "feat(media): R2 storage client and key helpers"
 - Produce:
 
 ```ts
-export async function createUploadAction(target: UploadTarget, file: { contentType: string; size: number }): Promise<ActionResult<{ uploadUrl: string; key: string; publicUrl: string }>>;
+export async function createUploadAction(target: UploadTarget, file: { contentType: string; size: number }): Promise<ActionResult<{ uploadUrl: string; key: string; publicUrl: string; thumbUploadUrl: string; thumbKey: string; thumbPublicUrl: string }>>;
 export async function confirmUploadAction(target: UploadTarget, key: string, meta: { width: number; height: number }): Promise<ActionResult<{ id?: string; url: string }>>;
 export async function deleteActivityMediaAction(mediaId: string): Promise<ActionResult<void>>;
 export async function reorderActivityMediaAction(activityId: string, mediaIds: string[]): Promise<ActionResult<void>>;
@@ -100,7 +102,7 @@ Reglas, cada una con test:
 - **Validación de la key:** la key de confirmación tiene que empezar con el prefijo esperado para ese destino, para que no se puedan confirmar keys de otro usuario.
 - **Confirmación:**
   - `headObject` tiene que existir, con un tamaño de hasta `MAX_BYTES`.
-  - Para `activity`, crea `ActivityMedia` con `position` = cantidad actual de fotos.
+  - Para `activity`, crea `ActivityMedia` con `position` = cantidad actual de fotos y `thumbUrl` (si la miniatura existe en el bucket; si no, `null` y la UI usa la original).
   - Para `avatar`/`group`, actualiza `photoUrl` y borra el objeto anterior si estaba en el bucket propio.
 - **Borrado:** si se borra la actividad (servicio de W0-C), las fotos se borran del bucket. Para eso, agregar en `src/server/activities/service.ts → deleteActivity` una llamada a `deleteActivityObjects(activityId)` **antes** del `delete`, exportada desde `src/server/media`. Es una **excepción de propiedad acordada**: es una sola línea, y el orquestador la revisa en el merge.
 
@@ -119,7 +121,7 @@ git commit -m "feat(media): presigned upload, confirm and delete actions"
 ### Task 3: Componentes cliente
 
 **Files:**
-- Create: `src/features/media/compress.ts` (Canvas → WebP; lógica de tamaño pura en `fitWithin`)
+- Create: `src/features/media/compress.ts` (Canvas → WebP en dos tamaños, 1600 px y 400 px de miniatura; lógica de tamaño pura en `fitWithin`)
 - Test: `src/features/media/compress.test.ts` (solo `fitWithin(w, h, max)`)
 - Create: `src/features/media/upload.ts` (`uploadFile(target, file)`, que encadena crear → PUT → confirmar; y `uploadPendingPhotos(activityId, files)`)
 - Create: `src/features/media/PhotoUploader.tsx`

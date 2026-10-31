@@ -32,8 +32,10 @@ Esta es una guía para el orquestador: la sesión principal de Claude Code que c
 | 1 | W1-1, W1-2, W1-3, W1-4, W1-5 | 5 agentes |
 | 2 | W2-1, W2-2, W2-3, W2-4 | 4 agentes |
 | 3 | W3 | 1 agente + el dueño del producto para producción |
+| 4 | W4 | 1 agente (Android); iOS opcional después. Necesita Android Studio y una cuenta de Firebase en la máquina |
 
 ## Señales para frenar y consultar al dueño del producto
 - Un test de D1 contradice la intuición del producto: por ejemplo, que los puntos de un caso real "se sientan" injustos.
 - La licencia del dataset de imágenes no es compatible (W1-3).
 - Cualquier operación contra la base de producción.
+- Crear cuentas en servicios externos (Cloudflare, Firebase, hosting de la DB, Apple): las crea el dueño del producto; el agente solo guía.

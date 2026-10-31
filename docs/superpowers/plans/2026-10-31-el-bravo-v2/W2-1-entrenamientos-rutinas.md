@@ -178,7 +178,7 @@ git commit -m "feat(workout): Strong-like set table, exercise block and rest tim
 
 **Files:**
 - Create: `app/workout/new/page.tsx` (`?routine=<id>` opcional) + `src/features/workout/LogWorkoutScreen.tsx`
-- Create: `app/workout/[id]/page.tsx` (detalle: categoría, fecha/hora local, duración, ejercicios y series, fotos (`PhotoGrid`), puntos por temporada (`getActivityPoints`), botones Editar y Borrar)
+- Create: `app/workout/[id]/page.tsx` (detalle: categoría, fecha/hora local, duración, ejercicios y series, fotos (`PhotoGrid`), puntos por temporada (`getActivityPoints`), **`ReactionBar`** (W1-4) y botones Editar y Borrar para el dueño. Los amigos y compañeros de grupo pueden ver el detalle (sin notas) y reaccionar; el permiso es el mismo que el de las reacciones)
 - Create: `app/workout/[id]/edit/page.tsx` (reusa `LogWorkoutScreen` con `getActivityForEdit`)
 - Create: `app/routines/page.tsx`, `app/routines/new/page.tsx`, `app/routines/[id]/edit/page.tsx`, `app/routines/[id]/live/page.tsx`
 - Create: `src/features/workout/LiveWorkoutScreen.tsx`
@@ -222,9 +222,9 @@ Todo está en una sola página con secciones colapsables, no en un wizard de var
 - [ ] **Step 1:** implementar las pantallas.
 - [ ] **Step 2: Redirects y nav.** Agregar los redirects y cambiar `nav-items.ts`.
 - [ ] **Step 3: Verificación manual (375 px), contra la DB del worktree con temporada e insignias**
-  1. Registrar running de 40 min sin ejercicios: el resultado muestra "+10 pts" y el avance de Corre Forrest.
+  1. Registrar running de 40 min sin ejercicios: el resultado muestra "+22 pts" y el avance de Corre Forrest.
   2. Registrar fuerza con 2 ejercicios y pesos distintos por serie, más 2 fotos: el detalle muestra las series y las fotos.
-  3. Registrar otro entrenamiento el mismo día: el resultado dice 0 pts con el motivo "Ya sumaste un entrenamiento este día".
+  3. Registrar otro entrenamiento de 30 min el mismo día: el resultado muestra los puntos marginales (+5, porque el día pasa de 40 a 70 min: 22 → 27) y la aclaración "Se sumó al tiempo de tu día".
   4. Editar el entrenamiento 2 pasándolo a ayer: los puntos se recalculan.
   5. Borrar: confirmar y que los puntos y las insignias bajen.
   6. Crear una rutina con Plancha (tiempo) y Press banca 3 series (40/45/50 kg), empezarla en vivo, tildar 2 series, recargar la página, retomar, terminar y actualizar la rutina.

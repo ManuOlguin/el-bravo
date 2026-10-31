@@ -38,7 +38,7 @@ export type GroupPageData = {
   upcoming: SeasonSummary | null;
   past: SeasonSummary[];            // finalized, más recientes primero
   standings: StandingRow[];         // de `current` (vacío si no hay)
-  myWeek: { weekKey: string; workouts: number; target: number; days: { date: string; count: number }[] } | null; // en tz del grupo
+  myWeek: { weekKey: string; daysTrained: number; target: number; days: { date: string; count: number }[] } | null; // en tz del grupo
   feed: { id: string; user: { id: string; name: string | null; photoUrl: string | null }; categoryName: string; startedAt: Date; durationMinutes: number; points: number | null; photoUrl: string | null }[]; // últimas 20 de miembros, paginable con cursor
 };
 export type SeasonSummary = { id: string; name: string; startDate: string; endDate: string; status: SeasonStatus; resultsReveal: "auto" | "manual"; resultsPublished: boolean; joined: boolean; memberCount: number; weeklyGoal: number; categories: { id: string; name: string; weight: number }[]; awards: { awardType: SeasonAwardType; bonusPoints: number }[] };
@@ -119,21 +119,21 @@ git commit -m "feat(group): rebuilt group page with leaderboard, feed and settin
    - objetivo semanal (1–7) y duración mínima (por defecto 20 min);
    - **"Resultados al terminar"**: un segmentado *Automático* / *Lo decide el admin*.
 2. **Actividades** (cubre "sliders por tipo de actividad"):
-   - una lista de todas las categorías, cada una con un `Switch` (cuenta / no cuenta) y, si cuenta, un `Slider` de 0,25 a 2 en pasos de 0,25, con la etiqueta "×1,5 → 15 pts por entrenamiento";
+   - una lista de todas las categorías, cada una con un `Switch` (cuenta / no cuenta) y, si cuenta, un `Slider` de 0,25 a 2 en pasos de 0,25, con la etiqueta "×1,5 → 30 min cuentan como 45 min";
    - presets arriba: "Todo vale igual", "Solo gimnasio" y "Más puntos al cardio".
 3. **Premios** (cubre "el admin decide qué premios hay"):
    - `SEASON_AWARD_INFO` como tarjetas seleccionables (ícono, nombre y descripción), cada una con un `NumberInput` opcional de "puntos extra" (por defecto 0);
    - preseleccionados: "El más constante" y "Racha más larga".
 4. **Reglas (avanzado, colapsado):** puntos por entrenamiento, umbral y bonus de sesión larga, bonus semanal y paso y tope de racha, con los valores de D1 por defecto y el texto "Si no sabés, dejalo así".
 
-El resumen fijo al pie dice: "Un entrenamiento de 45 min de Fuerza = 10 pts · Semana cumplida = +20". Se recalcula en vivo con `computeSeasonScores` sobre un ejemplo, importando la función pura.
+El resumen fijo al pie dice: "Un día de 45 min = 23 pts · 1 h = 26 · 2 h = 33 · Semana cumplida = +20". Se recalcula en vivo con `dayPoints`, importando la función pura de `src/server/scoring/compute.ts`. Debajo, una mini tabla "Tu día → puntos" para 30 min, 1 h, 2 h y 3 h que cambia al mover los parámetros avanzados.
 
 Al editar una temporada activa se muestra el aviso "Al guardar se recalculan los puntos de todos". Las temporadas `finalized` no se editan: se ofrece "Reabrir temporada" (admin, con `useConfirm danger`).
 
 - [ ] **Step 1:** test del estado puro: presets, validación y conversión a `SeasonInput`.
 - [ ] **Step 2:** implementar.
 - [ ] **Step 3:** verificar:
-  - crear una temporada con running ×2 y fuerza ×1: un running de 30 min suma 20 pts;
+  - crear una temporada con running ×2 y fuerza ×1: un running de 30 min suma 26 pts (cuenta como 60 min);
   - editar el objetivo de 3 a 2: el ranking cambia;
   - intentar superponer fechas: el error aparece en el campo.
 - [ ] **Step 4: Commit**
@@ -164,9 +164,9 @@ git commit -m "feat(season): season wizard with category weight sliders, awards 
 - **`ended` sin publicar (`resultsReveal: manual`):** los miembros ven `ResultsPendingCard` ("La temporada terminó. Esperando que <admin> publique los resultados 🥁"). El admin ve una vista previa de los resultados y el botón **"Publicar resultados"** (`publishSeasonResultsAction`), que dispara la notificación `season_results_published` (W2-3).
 - **`finalized` + publicada:** `SeasonResults` (cubre "pantalla de finalización" y "tabla de ranking final"):
   1. **Podio** animado, con los 3 primeros sobre pedestales 1/2/3 en oro, plata y bronce, cada uno con avatar, nombre y puntos.
-  2. **Premios:** `AwardsShowcase` muestra una tarjeta por premio con ícono, ganador(es), valor ("14 entrenamientos") y "+N pts" si corresponde.
-  3. **Tabla final:** `FinalStandingsTable` lista a todos con puesto, puntos, entrenamientos, semanas cumplidas, mejor racha y minutos. Se ordena por columna y la fila del viewer va resaltada.
-  4. **Stats de la temporada:** entrenamientos totales del grupo, horas totales, actividad más popular, día de la semana más activo y mejor semana del grupo.
+  2. **Premios:** `AwardsShowcase` muestra una tarjeta por premio con ícono, ganador(es), valor ("14 días") y "+N pts" si corresponde.
+  3. **Tabla final:** `FinalStandingsTable` lista a todos con puesto, puntos, días entrenados, semanas cumplidas, mejor racha y minutos. Se ordena por columna y la fila del viewer va resaltada.
+  4. **Stats de la temporada:** días entrenados y actividades totales del grupo, horas totales, actividad más popular, día de la semana más activo y mejor semana del grupo.
   5. **"Tus números":** tu puesto, tus puntos, tu mejor racha y comparación con el promedio.
 - **Primera vez que el usuario abre una temporada recién publicada:** se muestra la vista "reveal". Primero se revelan los premios uno por uno al tocar y después el podio. Se recuerda en `localStorage` (`season-revealed:<id>`) y se puede saltear.
 

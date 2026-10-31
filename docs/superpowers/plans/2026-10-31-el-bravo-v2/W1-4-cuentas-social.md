@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Leé primero `00-roadmap.md` (§3 D5, §4, §5.2–5.3, §6.2–6.3).
 
-**Goal:** que los usuarios puedan seguirse ("amigos" = seguimiento mutuo), ver el perfil de otros, cambiar su contraseña y editar su cuenta en `/settings`. Además se cierran los agujeros de seguridad de sesiones y grupos.
+**Goal:** que los usuarios puedan seguirse ("amigos" = seguimiento mutuo), reaccionar a entrenamientos, ver un feed de sus amigos, invitarlos a grupos sin código, ver el perfil de otros, cambiar su contraseña y editar su cuenta en `/settings`. Además se cierran los agujeros de seguridad de sesiones y grupos.
 
 **Architecture:**
 - Lógica en `src/server/{social,account,groups}`.
@@ -213,6 +213,72 @@ Reglas, cada una con test:
 ```bash
 git add -A src/server/groups src/server/actions/groups.ts app/api/groups app/group app/create-group src/components
 git commit -m "feat(groups): secure invites, roles, kick and leave rules"
+```
+
+---
+
+### Task 5: Reacciones, feed de amigos e invitar amigos a grupos
+
+**Files:**
+- Create: `src/server/social/reactions.ts`
+- Create: `src/server/social/feed.ts`
+- Modify: `src/server/actions/social.ts` (nuevas acciones)
+- Modify: `src/server/actions/groups.ts` (`inviteFriendsToGroupAction`)
+- Create: `src/features/social/ReactionBar.tsx`
+- Create: `src/features/social/FriendActivityCard.tsx` (tarjeta de feed: avatar, nombre, actividad, duración, foto `thumbUrl`, puntos si comparten temporada y `ReactionBar`)
+- Create: `src/features/social/InviteFriendsSheet.tsx`
+- Test: `src/server/social/reactions.int.test.ts`, `src/server/social/feed.int.test.ts`
+
+**Interfaces:**
+- Produce (las consumen W2-1, W2-2, W2-3 y W2-4):
+
+```ts
+export const REACTION_EMOJIS = ["💪", "🔥", "👏", "😂", "🫡"] as const;
+export type ReactionEmoji = (typeof REACTION_EMOJIS)[number];
+export type ReactionSummary = { emoji: ReactionEmoji; count: number; mine: boolean; users: { id: string; name: string | null }[] }[];
+export async function toggleReactionAction(activityId: string, emoji: ReactionEmoji): Promise<ActionResult<{ summary: ReactionSummary }>>;
+export async function getReactionSummaries(activityIds: string[], viewerId: string): Promise<Map<string, ReactionSummary>>;
+export type FeedItem = { activityId: string; user: { id: string; name: string | null; photoUrl: string | null }; categoryName: string; startedAt: Date; durationMinutes: number; thumbUrl: string | null; photoUrl: string | null; reactions: ReactionSummary };
+export async function getFriendsFeed(viewerId: string, opts: { cursor?: string; limit?: number }): Promise<{ items: FeedItem[]; nextCursor: string | null }>;
+export async function getFriendsLatestWithPhoto(viewerId: string, limit: number): Promise<FeedItem[]>; // para el widget (W4)
+export async function inviteFriendsToGroupAction(groupId: string, userIds: string[]): Promise<ActionResult<{ invited: number }>>;
+export async function listFriendsAction(): Promise<ActionResult<{ id: string; name: string | null; photoUrl: string | null }[]>>;
+```
+
+**Reglas** (cada una con su test):
+- **Quién puede reaccionar:** el viewer puede ver la actividad si es suya, si sigue al dueño o si comparten un grupo. Si no, responde `FORBIDDEN`.
+- **`toggleReactionAction`:** si la reacción ya existe la borra, y si no la crea. Solo se aceptan emojis de `REACTION_EMOJIS`.
+- **Notificación:** al crear una reacción se llama a `notify` con `type: "reaction_received"`, el dueño como destinatario, `actorId`, `activityId`, `data: { emoji }` y dedupeKey `reaction:<activityId>:<actorId>:<emoji>:<recipientId>`. No se notifica si el que reacciona es el dueño.
+- **Feed de amigos:**
+  - Muestra actividades de la gente que el viewer **sigue**, más las propias.
+  - Va en orden descendente por `startedAt` y pagina con cursor (`startedAt|id`).
+  - **No** expone las notas.
+  - Cada item trae las reacciones resumidas con una query agrupada, sin N+1.
+- **Invitar amigos a un grupo:**
+  - Solo puede invitar un admin, y solo a amigos (seguimiento mutuo).
+  - La invitación se entrega como notificación `member_joined` con `data: { kind: "invite", groupId, inviterId }`. Se renderiza como "<inviter> te invitó a <grupo>" y tiene un `href` a `/groups/join?token=<token>`. Así no hace falta un tipo nuevo en el schema.
+  - El token es un JWT corto (7 días) firmado con `JWT_SECRET`, con `{ groupId, userId }`. Lo acepta `joinGroupByInviteTokenAction(token)` (agregarla también), que solo funciona para ese usuario.
+
+**UI:**
+- **`ReactionBar`:**
+  - Muestra chips con emoji y conteo. Los que ya puso el viewer se ven resaltados con `bg-surface-3` y `ring-primary`.
+  - Un botón "+" abre el selector de los 5 emojis.
+  - Al tocar, la actualización es **optimista** (`useOptimistic`) y, si falla, se revierte con `toast.error`.
+  - Con un long-press sobre un chip se ve quiénes reaccionaron.
+- **`InviteFriendsSheet`:** lista de amigos con checkbox, buscador y el botón "Invitar (N)". Los que ya son miembros aparecen deshabilitados con el texto "Ya está en el grupo".
+
+- [ ] **Step 1:** tests de integración:
+  - toggle de reacción (crear/quitar) y permisos (un desconocido recibe `FORBIDDEN`);
+  - que el resumen agrupa bien;
+  - que el feed solo muestra seguidos y propios, pagina sin duplicados y no expone notas;
+  - invitar a alguien que no es amigo da error, y el token solo sirve para su destinatario.
+- [ ] **Step 2:** implementar.
+- [ ] **Step 3:** sección en `/dev/ui` (`app/dev/ui/sections/social.tsx`) con `ReactionBar` y `FriendActivityCard` usando datos de ejemplo.
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/server/social src/server/actions/social.ts src/server/actions/groups.ts src/features/social app/dev/ui/sections
+git commit -m "feat(social): reactions, friends feed and invite friends to groups"
 ```
 
 ---

@@ -83,7 +83,12 @@ git commit -m "feat(stats): timezone-correct personal stats (fixes active weeks 
 - Monta `HomeFeed` (W2-3) como sección "Novedades".
 - Modify: `src/components/shell/nav-items.ts` (`stats.enabled = true` en Task 4).
 
-Orden: `Greeting` → `QuickStart` → `WeekProgress` + `StreakCard` (lado a lado desde `sm:`) → `GroupStandingsStrip` → `HomeFeed`.
+- Create: `src/features/home/FriendsFeed.tsx`: sección **"Tus amigos"**.
+  - Arriba, un carrusel horizontal tipo historias con las últimas actividades **con foto** de amigos (`thumbUrl`). Al tocar una se abre el detalle con `ReactionBar`.
+  - Debajo, la lista con `FriendActivityCard` (W1-4) y "Ver más", que pagina con `getFriendsFeed`.
+  - Estado vacío: "Seguí a tus amigos para ver sus entrenamientos", con un botón que abre `UserSearch` y sugerencias de gente de tus grupos.
+
+Orden: `Greeting` → `QuickStart` → `WeekProgress` + `StreakCard` (lado a lado desde `sm:`) → `GroupStandingsStrip` → `FriendsFeed` → `HomeFeed` (novedades de grupo).
 
 - [ ] **Step 1:** implementar.
 - [ ] **Step 2:** verificar en 375 px con el usuario demo y con un usuario nuevo. Los números tienen que coincidir con `/stats` y con el grupo.
@@ -154,6 +159,6 @@ git commit -m "feat(stats): stats page with weekly chart, categories, weekday, m
 ---
 
 ### Verificación final de W2-4
-- [ ] Ítems cubiertos: 13 (diseño), 23, 24 y 31.
+- [ ] Ítems cubiertos: 13 (diseño), 23, 24, 31, 37 (reacciones en feed) y 38 (feed de amigos).
 - [ ] `grep -rn "getWeekStart\|getWeekKey" app src` devuelve vacío (todas las copias viejas borradas).
 - [ ] Gates verdes. Pedir review y merge.
