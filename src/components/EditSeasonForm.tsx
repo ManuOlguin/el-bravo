@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button, toastResult } from "@/src/components/ui";
+import { updateSeasonAction } from "@/src/server/actions/seasons";
 
 type ActivityCategoryOption = {
   id: string;
@@ -18,6 +20,13 @@ type EditSeasonFormProps = {
   initialEndDate: string;
   initialWeeklyGoal: number;
   initialAllowedActivityCategoryIds: string[];
+  /** Configuración actual que este formulario (puente) no edita y hay que conservar al guardar. */
+  initialConfig?: {
+    minDailyMinutes: number;
+    resultsReveal: "auto" | "manual";
+    weights: Record<string, number>;
+    awards: { awardType: string; bonusPoints: number }[];
+  };
 };
 
 export default function EditSeasonForm({
@@ -29,6 +38,7 @@ export default function EditSeasonForm({
   initialEndDate,
   initialWeeklyGoal,
   initialAllowedActivityCategoryIds,
+  initialConfig,
 }: EditSeasonFormProps) {
   const router = useRouter();
 
@@ -129,28 +139,24 @@ export default function EditSeasonForm({
     setLoading(true);
 
     try {
-      const res = await fetch("/api/seasons/update", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          groupId,
-          seasonId,
-          name: name.trim(),
-          description: description.trim(),
-          startDate,
-          endDate,
-          minPerWeek,
-          allowedActivityCategoryIds,
-        }),
+      const result = await updateSeasonAction(seasonId, {
+        groupId,
+        name: name.trim(),
+        description: description.trim(),
+        startDate,
+        endDate,
+        weeklyGoal: minPerWeek,
+        minDailyMinutes: initialConfig?.minDailyMinutes ?? 20,
+        resultsReveal: initialConfig?.resultsReveal ?? "auto",
+        categories: allowedActivityCategoryIds.map((activityCategoryId) => ({
+          activityCategoryId,
+          weight: initialConfig?.weights[activityCategoryId] ?? 1,
+        })),
+        awards: (initialConfig?.awards ?? []) as Parameters<typeof updateSeasonAction>[1]["awards"],
       });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
+      if (!toastResult(result)) {
         setLoading(false);
-        setError(data?.error || "No se pudo actualizar la temporada");
+        setError(result.ok ? null : result.error);
         return;
       }
 
@@ -159,7 +165,7 @@ export default function EditSeasonForm({
     } catch (err) {
       console.error("/season edit submit error:", err);
       setLoading(false);
-      setError("Error de red al actualizar la temporada");
+      toastResult({ ok: false, error: "Error de red al actualizar la temporada" });
     }
   }
 
@@ -294,13 +300,9 @@ export default function EditSeasonForm({
           Cancelar
         </button>
 
-        <button
-          type="submit"
-          disabled={loading || loadingCategories}
-          className="rounded-lg bg-gradient-to-b from-lime-600 to-lime-800 px-4 py-2 text-sm font-medium text-white hover:from-lime-500 hover:to-lime-700 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {loading ? "Guardando..." : "Guardar cambios"}
-        </button>
+        <Button type="submit" size="sm" pending={loading} disabled={loadingCategories}>
+          Guardar cambios
+        </Button>
       </div>
     </form>
   );

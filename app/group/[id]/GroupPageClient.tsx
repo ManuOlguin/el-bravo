@@ -8,6 +8,8 @@ import InviteGroupButton from "@/src/components/InviteGroupButton";
 import GroupInviteCodePanel from "@/src/components/GroupInviteCodePanel";
 import GroupSettingsPopup from "@/src/components/GroupSettingsPopup";
 import { formatDate as formatInstant } from "@/src/lib/time";
+import { Button, toastResult, useConfirm } from "@/src/components/ui";
+import { joinSeasonAction, deleteSeasonAction, finalizeSeasonAction } from "@/src/server/actions/seasons";
 
 type MemberBadge = {
   id: string;
@@ -140,6 +142,7 @@ export default function GroupPageClient({
   timezone,
 }: GroupPageClientProps) {
   const router = useRouter();
+  const confirm = useConfirm();
 
   const [invitePopupOpen, setInvitePopupOpen] = useState(false);
   const [settingsPopupOpen, setSettingsPopupOpen] = useState(false);
@@ -192,86 +195,32 @@ export default function GroupPageClient({
     [activities, me]
   );
 
-  async function joinSeason(seasonId: string) {
-    setLoadingAction(`join-${seasonId}`);
-
+  async function runSeasonAction(key: string, action: () => ReturnType<typeof joinSeasonAction>) {
+    setLoadingAction(key);
     try {
-      const res = await fetch("/api/seasons/join", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ groupId: group.id, seasonId }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        alert(data?.error || "No se pudo unir a la temporada.");
-        return;
-      }
-
-      router.refresh();
+      if (toastResult(await action())) router.refresh();
     } catch {
-      alert("Error de red al unirte a la temporada.");
+      toastResult({ ok: false, error: "Error de red. Probá de nuevo." });
     } finally {
       setLoadingAction(null);
     }
+  }
+
+  async function joinSeason(seasonId: string) {
+    await runSeasonAction(`join-${seasonId}`, () => joinSeasonAction(seasonId));
   }
 
   async function deleteSeason(seasonId: string) {
-    const confirmed = window.confirm("¿Eliminar esta temporada?");
+    const confirmed = await confirm({ title: "¿Eliminar esta temporada?", description: "Se borran sus puntos y su ranking.", confirmLabel: "Eliminar", danger: true });
     if (!confirmed) return;
-
-    setLoadingAction(`delete-${seasonId}`);
-
-    try {
-      const res = await fetch("/api/seasons/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ groupId: group.id, seasonId }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        alert(data?.error || "No se pudo eliminar la temporada.");
-        return;
-      }
-
-      router.refresh();
-    } catch {
-      alert("Error de red al eliminar la temporada.");
-    } finally {
-      setLoadingAction(null);
-    }
+    await runSeasonAction(`delete-${seasonId}`, () => deleteSeasonAction(seasonId));
   }
 
   async function finalizeSeason(seasonId: string) {
-  const confirmed = window.confirm("¿Finalizar esta temporada?");
-  if (!confirmed) return;
-
-  setLoadingAction(`finalize-${seasonId}`);
-
-  try {
-    const res = await fetch("/api/seasons/finalize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ groupId: group.id, seasonId }),
-    });
-
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      alert(data?.error || "No se pudo finalizar la temporada.");
-      return;
-    }
-
-    router.refresh();
-  } catch {
-    alert("Error de red al finalizar la temporada.");
-  } finally {
-    setLoadingAction(null);
+    const confirmed = await confirm({ title: "¿Finalizar esta temporada?", description: "Se congelan los resultados y se entregan los premios.", confirmLabel: "Finalizar" });
+    if (!confirmed) return;
+    await runSeasonAction(`finalize-${seasonId}`, () => finalizeSeasonAction(seasonId));
   }
-}
 
   return (
     <>
@@ -711,29 +660,26 @@ export default function GroupPageClient({
 
                       <div className="flex flex-wrap items-center gap-2">
                         {!season.joined && !season.isPast ? (
-                          <button
-                            type="button"
+                          <Button
+                            variant="secondary"
+                            size="sm"
                             onClick={() => joinSeason(season.id)}
-                            disabled={loadingAction === `join-${season.id}`}
-                            className="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-600 disabled:opacity-60"
+                            pending={loadingAction === `join-${season.id}`}
                           >
-                            {loadingAction === `join-${season.id}` ? "Uniéndote..." : "Unirme"}
-                          </button>
+                            Unirme
+                          </Button>
                         ) : null}
 
                         {isAdmin ? (
                           <>
                             {season.isActive ? (
-                              <button
-                                type="button"
+                              <Button
+                                size="sm"
                                 onClick={() => finalizeSeason(season.id)}
-                                disabled={loadingAction === `finalize-${season.id}`}
-                                className="rounded-lg bg-gradient-to-b from-lime-600 to-lime-800 px-4 py-2 text-sm font-medium text-white shadow-md hover:from-lime-500 hover:to-lime-700 disabled:opacity-60"
+                                pending={loadingAction === `finalize-${season.id}`}
                               >
-                                {loadingAction === `finalize-${season.id}`
-                                  ? "Finalizando..."
-                                  : "Finalizar"}
-                              </button>
+                                Finalizar
+                              </Button>
                             ) : null}
 
                             <a
@@ -743,16 +689,14 @@ export default function GroupPageClient({
                               Editar
                             </a>
 
-                            <button
-                              type="button"
+                            <Button
+                              variant="danger"
+                              size="sm"
                               onClick={() => deleteSeason(season.id)}
-                              disabled={loadingAction === `delete-${season.id}`}
-                              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-60"
+                              pending={loadingAction === `delete-${season.id}`}
                             >
-                              {loadingAction === `delete-${season.id}`
-                                ? "Eliminando..."
-                                : "Borrar"}
-                            </button>
+                              Borrar
+                            </Button>
                           </>
                         ) : null}
                       </div>

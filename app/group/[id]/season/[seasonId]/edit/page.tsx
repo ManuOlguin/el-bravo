@@ -41,9 +41,13 @@ export default async function EditSeasonPage({
       startDate: true,
       endDate: true,
       weeklyGoal: true,
+      minDailyMinutes: true,
+      resultsReveal: true,
+      awards: { select: { awardType: true, bonusPoints: true } },
       categories: {
         select: {
           activityCategoryId: true,
+          weight: true,
         },
       },
     },
@@ -84,6 +88,12 @@ export default async function EditSeasonPage({
             initialAllowedActivityCategoryIds={season.categories.map(
               (item: { activityCategoryId: string }) => item.activityCategoryId
             )}
+            initialConfig={{
+              minDailyMinutes: season.minDailyMinutes,
+              resultsReveal: season.resultsReveal,
+              weights: Object.fromEntries(season.categories.map((c) => [c.activityCategoryId, Number(c.weight)])),
+              awards: season.awards,
+            }}
           />
         </section>
       </div>
