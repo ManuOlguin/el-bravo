@@ -14,7 +14,7 @@ export type ShellUser = { id: string; name: string | null; photoUrl: string | nu
 export function TopBar({ user, rightSlot }: { user: ShellUser | null; rightSlot?: React.ReactNode }) {
   const pathname = usePathname();
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-bg/90 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-border bg-bg/90 pt-safe backdrop-blur">
       <div className="mx-auto flex h-14 w-full max-w-screen-md items-center gap-3 px-4">
         <Link
           href="/home"

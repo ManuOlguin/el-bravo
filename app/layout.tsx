@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Montserrat } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/src/components/shell/AppShell";
+import { InstallPrompt } from "@/src/components/shell/InstallPrompt";
+import { RegisterServiceWorker } from "@/src/components/shell/RegisterServiceWorker";
 import { Providers } from "@/src/components/ui/Providers";
 import { getSession } from "@/src/server/auth/dal";
 
@@ -10,6 +12,16 @@ const montserrat = Montserrat({ subsets: ["latin"], variable: "--font-montserrat
 export const metadata: Metadata = {
   title: { default: "El Bravo", template: "%s · El Bravo" },
   description: "Entrená con tus amigos, sumá puntos y competí por temporadas.",
+  applicationName: "El Bravo",
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "El Bravo" },
+  icons: {
+    icon: [
+      { url: "/icons/icon.svg", type: "image/svg+xml" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
@@ -29,7 +41,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <AppShell user={session ? { id: session.id, name: session.name, photoUrl: session.photoUrl } : null}>
             {children}
           </AppShell>
+          <InstallPrompt />
         </Providers>
+        <RegisterServiceWorker />
       </body>
     </html>
   );
