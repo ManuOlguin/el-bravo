@@ -322,7 +322,9 @@ FROM (
   UNION ALL SELECT 'yoga_pilates', 'Yoga / Pilates', 8, false
   UNION ALL SELECT 'hiit_functional', 'HIIT / Funcional', 9, true
 ) m
-WHERE NOT EXISTS (SELECT 1 FROM `ActivityCategory` c WHERE c.`slug` = m.slug)
+-- COLLATE explícito: los literales toman la collation de la conexión (en TiDB, utf8mb4_general_ci) y
+-- compararlos con una columna utf8mb4_unicode_ci da "Illegal mix of collations".
+WHERE NOT EXISTS (SELECT 1 FROM `ActivityCategory` c WHERE c.`slug` = m.slug COLLATE utf8mb4_unicode_ci)
   AND EXISTS (SELECT 1 FROM `Activity` a WHERE a.`activityCategoryId` IS NULL);
 
 -- Actividades: categoría obligatoria. Si falta, se mapea el tipo legacy a una categoría.
