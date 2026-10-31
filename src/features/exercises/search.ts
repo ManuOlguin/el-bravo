@@ -33,21 +33,23 @@ export function levenshteinWithin1(a: string, b: string): boolean {
 
 type Indexed = {
   name: string;
-  /** nameEn + alias, normalizados. */
-  others: string[];
-  /** Palabras de nombre, nameEn y alias. */
-  words: string[];
+  nameEn: string | null;
+  aliases: string[];
+  nameWords: string[];
+  /** Palabras de nameEn y alias. */
+  otherWords: string[];
 };
 
 const cache = new WeakMap<CatalogEntry, Indexed>();
+const wordsOf = (list: string[]) => [...new Set(list.flatMap((s) => s.split(" ")).filter(Boolean))];
 
 function indexOf(entry: CatalogEntry): Indexed {
   let ix = cache.get(entry);
   if (!ix) {
     const name = normalize(entry.name);
-    const others = [entry.nameEn, ...entry.aliases].filter((x): x is string => !!x).map(normalize).filter(Boolean);
-    const words = [...new Set([name, ...others].flatMap((s) => s.split(" ")).filter(Boolean))];
-    ix = { name, others, words };
+    const nameEn = entry.nameEn ? normalize(entry.nameEn) || null : null;
+    const aliases = entry.aliases.map(normalize).filter(Boolean);
+    ix = { name, nameEn, aliases, nameWords: wordsOf([name]), otherWords: wordsOf([...(nameEn ? [nameEn] : []), ...aliases]) };
     cache.set(entry, ix);
   }
   return ix;
@@ -64,17 +66,24 @@ function fuzzyWordMatch(q: string, word: string): boolean {
   return false;
 }
 
-/** 0 = mejor. `null` = no coincide. */
+/**
+ * 0 = mejor. `null` = no coincide. Dentro de cada regla, coincidir con el nombre (o con `nameEn`) pesa más que con un alias:
+ * "bench" → Press de Banca (nameEn "Bench Press") antes que Fondos Tríceps (alias "bench dips").
+ */
 function rank(entry: CatalogEntry, q: string, qWords: string[]): number | null {
   const ix = indexOf(entry);
   if (ix.name === q) return 0;
   if (ix.name.startsWith(q)) return 1;
-  if (ix.others.some((o) => o.startsWith(q))) return 2;
-  if (qWords.every((w) => ix.words.some((x) => x.startsWith(w)))) return 3;
-  const fuzzy = qWords.every((w) =>
-    ix.words.some((x) => x.startsWith(w) || (w.length >= FUZZY_MIN_LEN && fuzzyWordMatch(w, x)))
-  );
-  return fuzzy ? 4 : null;
+  if (ix.nameEn?.startsWith(q)) return 2;
+  if (ix.aliases.some((a) => a.startsWith(q))) return 2.5;
+  const prefixIn = (words: string[]) => qWords.every((w) => words.some((x) => x.startsWith(w)));
+  if (prefixIn(ix.nameWords)) return 3;
+  const all = [...ix.nameWords, ...ix.otherWords];
+  if (prefixIn(all)) return 3.5;
+  const fuzzyIn = (words: string[]) =>
+    qWords.every((w) => words.some((x) => x.startsWith(w) || (w.length >= FUZZY_MIN_LEN && fuzzyWordMatch(w, x))));
+  if (fuzzyIn(ix.nameWords)) return 4;
+  return fuzzyIn(all) ? 4.5 : null;
 }
 
 const collator = new Intl.Collator("es", { sensitivity: "base", numeric: true });
@@ -87,8 +96,8 @@ function passesFilters(e: CatalogEntry, f?: SearchFilters) {
 }
 
 /**
- * Ranking: nombre exacto > nombre empieza con la query > alias/nameEn empieza con la query >
- * todas las palabras son prefijo (cualquier orden) > aproximado (1 error en palabras de ≥ 4 letras).
+ * Ranking: nombre exacto > nombre empieza con la query > nameEn / alias empieza con la query >
+ * todas las palabras son prefijo (cualquier orden; primero en el nombre) > aproximado (1 error en palabras de ≥ 4 letras).
  * Desempate: propios primero, después alfabético. Query vacía: todo lo filtrado, alfabético.
  */
 export function searchExercises(catalog: CatalogEntry[], query: string, filters?: SearchFilters): CatalogEntry[] {

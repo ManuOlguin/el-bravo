@@ -58,6 +58,14 @@ describe("searchExercises", () => {
   });
   it("query vacía devuelve todo en orden alfabético", () =>
     expect(names("   ")).toEqual(["Extensión de tríceps en polea", "Jalón al pecho", "Plancha", "Press banca", "Sentadilla"]));
+  it("nameEn pesa más que un alias en inglés", () => {
+    const c = [...catalog, e("Fondos en banco", { nameEn: "Bench Dips", aliases: [] }), e("Aaa", { aliases: ["bench row"] })];
+    expect(searchExercises(c, "bench").map((x) => x.name)).toEqual(["Fondos en banco", "Press banca", "Aaa"]);
+  });
+  it("con errores de tipeo, primero los que coinciden por nombre", () => {
+    const c = [...catalog, e("Bulgaras", { aliases: ["sentadilla bulgara"] }), e("Sentadilla frontal")];
+    expect(searchExercises(c, "sentadila").map((x) => x.name)).toEqual(["Sentadilla", "Sentadilla frontal", "Bulgaras"]);
+  });
   it("los propios primero", () => {
     const c = [...catalog, e("Press banca inclinado (mío)", { isMine: true })];
     expect(searchExercises(c, "press").map((x) => x.name)[0]).toBe("Press banca inclinado (mío)");

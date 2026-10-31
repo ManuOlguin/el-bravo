@@ -11,6 +11,9 @@ export type ModalProps = {
   variant?: "center" | "sheet";
 };
 
+let scrollLocks = 0;
+let savedOverflow = "";
+
 /**
  * Diálogo modal sobre `<dialog>` nativo: foco atrapado, Esc y tap afuera cierran.
  * `variant="sheet"` lo muestra como bottom sheet en mobile y centrado desde `sm:`.
@@ -27,13 +30,16 @@ export function Modal({ open, onClose, title, children, className, variant = "ce
   }, [open]);
 
   // Evita que la página de fondo scrollee mientras el diálogo está abierto (iOS).
+  // Con contador: si se cierran varios diálogos anidados a la vez, el orden de los cleanups no deja el lock pegado.
   useEffect(() => {
     if (!open) return;
     const root = document.documentElement;
-    const prev = root.style.overflow;
-    root.style.overflow = "hidden";
+    if (scrollLocks++ === 0) {
+      savedOverflow = root.style.overflow;
+      root.style.overflow = "hidden";
+    }
     return () => {
-      root.style.overflow = prev;
+      if (--scrollLocks === 0) root.style.overflow = savedOverflow;
     };
   }, [open]);
 
@@ -41,7 +47,11 @@ export function Modal({ open, onClose, title, children, className, variant = "ce
     <dialog
       ref={ref}
       aria-labelledby={title ? titleId : undefined}
-      onClose={onClose}
+      // React propaga `close` por el árbol de componentes: sin este chequeo, cerrar un diálogo anidado
+      // (p. ej. el "?" dentro del ExercisePicker) cierra también el de afuera.
+      onClose={(e) => {
+        if (e.target === ref.current) onClose();
+      }}
       onClick={(e) => {
         if (e.target === ref.current) onClose();
       }}

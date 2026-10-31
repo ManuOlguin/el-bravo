@@ -51,6 +51,9 @@ export type CatalogEntry = ExerciseSummary & {
   isMine: boolean;
 };
 
+/** Músculo del catálogo (para crear ejercicios propios). */
+export type CatalogMuscle = { id: string; slug: string; name: string; groupKey: string };
+
 export type ExerciseDetail = {
   id: string;
   name: string;

@@ -1,9 +1,9 @@
 import "server-only";
 import { prisma } from "@/src/lib/db";
-import type { CatalogEntry, Equipment, ExerciseDetail } from "@/src/features/exercises/types";
+import type { CatalogEntry, CatalogMuscle, Equipment, ExerciseDetail } from "@/src/features/exercises/types";
 import { parseInstructions } from "./instructions";
 
-export type CatalogMuscle = { id: string; slug: string; name: string; groupKey: string };
+export type { CatalogMuscle };
 
 /** Ejercicios oficiales (`createdByUserId = null`) o del usuario. Los privados de otros nunca se ven. */
 export const visibleTo = (userId: string) => ({ OR: [{ createdByUserId: null }, { createdByUserId: userId }] });
