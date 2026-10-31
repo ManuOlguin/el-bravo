@@ -1,100 +1,62 @@
-import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/src/lib/currentUser";
-import { prisma } from "@/src/lib/db";
-import EditSeasonForm from "@/src/components/EditSeasonForm";
-import { dbDateToLocalDate } from "@/src/lib/time";
+import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
+import { Card, CardHeader, LinkButton, PageHeader } from "@/src/components/ui";
+import { AuthError, requirePageUser } from "@/src/server/auth/dal";
+import { getSeasonFormData } from "@/src/features/season/form-data";
+import { SeasonForm } from "@/src/features/season/SeasonForm";
+import { seasonFormFromSummary } from "@/src/features/season/season-form-state";
+import { DeleteSeasonButton, ReopenSeasonButton } from "@/src/features/season/SeasonAdminActions";
 
-export default async function EditSeasonPage({
-  params,
-}: {
-  params: Promise<{ id: string; seasonId: string }>;
-}) {
-  const { id: groupId, seasonId } = await params;
+export const metadata: Metadata = { title: "Editar temporada" };
 
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
-
-  const membership = await prisma.groupMember.findFirst({
-    where: {
-      userId: user.id,
-      groupId,
-      leftAt: null,
-    },
-    select: {
-      role: true,
-    },
-  });
-
-  if (!membership) redirect(`/group/${groupId}`);
-  if (membership.role !== "admin") redirect(`/group/${groupId}`);
-
-  const season = await prisma.season.findFirst({
-    where: {
-      id: seasonId,
-      groupId,
-    },
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      startDate: true,
-      endDate: true,
-      weeklyGoal: true,
-      minDailyMinutes: true,
-      resultsReveal: true,
-      awards: { select: { awardType: true, bonusPoints: true } },
-      categories: {
-        select: {
-          activityCategoryId: true,
-          weight: true,
-        },
-      },
-    },
-  });
-
-  if (!season) redirect(`/group/${groupId}`);
+export default async function EditSeasonPage({ params }: { params: Promise<{ id: string; seasonId: string }> }) {
+  const user = await requirePageUser();
+  const { id, seasonId } = await params;
+  let data;
+  try {
+    data = await getSeasonFormData(id, user.id, seasonId);
+  } catch (e) {
+    if (e instanceof AuthError) notFound();
+    throw e;
+  }
+  const { group, season } = data;
+  if (!season) notFound();
+  const seasonHref = `/group/${group.id}/season/${season.id}`;
+  if (group.myRole !== "admin") redirect(seasonHref);
 
   return (
-    <main className="min-h-screen bg-[#08142d] p-6 text-white">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <a
-            href={`/group/${groupId}`}
-            className="inline-flex items-center rounded-lg bg-slate-600 px-4 py-2 text-sm font-medium text-white hover:bg-slate-500"
-          >
-            ← Volver al grupo
-          </a>
+    <div className="mx-auto max-w-screen-sm space-y-4">
+      <PageHeader title="Editar temporada" subtitle={season.name} back={seasonHref} />
 
-        </div>
-
-        <section className="rounded-[28px] bg-slate-800/85 p-6 shadow-2xl">
-          <div className="mb-6">
-            <h1 className="text-4xl font-bold text-white">Editar temporada</h1>
-            <p className="mt-2 text-sm text-slate-400">
-              Ajustá nombre, fechas, objetivo semanal y tipos de actividad que suman puntos.
-            </p>
-          </div>
-
-          <EditSeasonForm
-            groupId={groupId}
-            seasonId={season.id}
-            initialName={season.name}
-            initialDescription={season.description ?? ""}
-            initialStartDate={dbDateToLocalDate(season.startDate)}
-            initialEndDate={dbDateToLocalDate(season.endDate)}
-            initialWeeklyGoal={season.weeklyGoal}
-            initialAllowedActivityCategoryIds={season.categories.map(
-              (item: { activityCategoryId: string }) => item.activityCategoryId
-            )}
-            initialConfig={{
-              minDailyMinutes: season.minDailyMinutes,
-              resultsReveal: season.resultsReveal,
-              weights: Object.fromEntries(season.categories.map((c) => [c.activityCategoryId, Number(c.weight)])),
-              awards: season.awards,
-            }}
+      {season.status === "finalized" ? (
+        <Card className="space-y-3">
+          <CardHeader
+            title="La temporada está cerrada"
+            subtitle="Los resultados están congelados. Para cambiar algo, reabrila: se borran los premios entregados y se vuelve a calcular todo."
           />
-        </section>
-      </div>
-    </main>
+          <div className="flex flex-wrap gap-2">
+            <ReopenSeasonButton seasonId={season.id} />
+            <LinkButton href={seasonHref} variant="ghost">
+              Ver resultados
+            </LinkButton>
+          </div>
+        </Card>
+      ) : (
+        <SeasonForm
+          groupId={group.id}
+          seasonId={season.id}
+          categories={data.categories}
+          initial={seasonFormFromSummary(season, data.categories)}
+          today={data.today}
+          otherSeasons={data.otherSeasons}
+          active={season.status === "active"}
+        />
+      )}
+
+      <Card className="border-danger/40">
+        <CardHeader title="Zona de peligro" subtitle="Borrar la temporada elimina su ranking y premios para todos." />
+        <DeleteSeasonButton seasonId={season.id} groupId={group.id} />
+      </Card>
+    </div>
   );
 }
