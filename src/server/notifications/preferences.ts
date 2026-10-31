@@ -59,3 +59,26 @@ export async function loadPrefs(
   const map = new Map(rows.map((r) => [`${r.userId}:${r.type}`, { inApp: r.inApp, email: r.email, push: r.push }]));
   return (userId, type) => map.get(`${userId}:${type}`) ?? defaultPrefs(type);
 }
+
+export type PreferenceRow = { type: ConfigurableType; label: string; description: string } & ChannelPrefs;
+
+/** Preferencias efectivas de un usuario para la pantalla de ajustes + el interruptor del resumen semanal. */
+export async function getUserPreferences(userId: string): Promise<{ rows: PreferenceRow[]; weeklyDigest: boolean }> {
+  const prefs = await loadPrefs([userId], [...CONFIGURABLE_TYPES, "weekly_digest"]);
+  return {
+    rows: CONFIGURABLE_TYPES.map((type) => ({ type, ...TYPE_LABELS[type], ...prefs(userId, type) })),
+    weeklyDigest: prefs(userId, "weekly_digest").email,
+  };
+}
+
+/** Cambia un canal de un tipo; los otros canales conservan su valor efectivo (default o guardado). */
+export async function setPreference(userId: string, type: NotificationType, channel: Channel, value: boolean): Promise<ChannelPrefs> {
+  const current = (await loadPrefs([userId], [type]))(userId, type);
+  const next = { ...current, [channel]: value };
+  await prisma.notificationPreference.upsert({
+    where: { userId_type: { userId, type } },
+    create: { userId, type, ...next },
+    update: { [channel]: value },
+  });
+  return next;
+}

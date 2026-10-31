@@ -7,8 +7,15 @@ vi.mock("next/headers", async () => (await import("@/src/server/account/testing/
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 import { SESSION_COOKIE, signSessionToken } from "@/src/server/auth/session";
-import { listNotificationsAction, markAllReadAction, markReadAction, unreadCountAction } from "@/src/server/actions/notifications";
+import {
+  listNotificationsAction,
+  markAllReadAction,
+  markReadAction,
+  unreadCountAction,
+  updatePreferenceAction,
+} from "@/src/server/actions/notifications";
 import { notify } from "./notify";
+import { getUserPreferences } from "./preferences";
 
 async function user(name: string) {
   return prisma.user.create({ data: { email: `${name.toLowerCase()}@t.com`, passwordHash: "x", name } });
@@ -59,6 +66,25 @@ describe("acciones de notificaciones", () => {
     await as(manu);
     await markReadAction(n.id);
     expect((await prisma.notification.findFirstOrThrow()).readAt).toBeNull();
+  });
+
+  it("preferencias: defaults (D9), cambio de un canal conserva los otros, resumen semanal y validación", async () => {
+    const manu = await user("Manu");
+    await as(manu);
+    const { rows, weeklyDigest } = await getUserPreferences(manu.id);
+    expect(weeklyDigest).toBe(true);
+    expect(rows.find((r) => r.type === "new_follower")).toMatchObject({ inApp: true, email: true, push: true });
+    expect(rows.find((r) => r.type === "rank_overtaken")).toMatchObject({ inApp: true, email: false, push: true });
+    expect(rows.some((r) => (r.type as string) === "weekly_digest")).toBe(false);
+
+    expect(await updatePreferenceAction({ type: "new_follower", channel: "push", value: false })).toEqual({
+      ok: true,
+      data: { inApp: true, email: true, push: false },
+    });
+    expect((await updatePreferenceAction({ type: "weekly_digest", channel: "email", value: false })).ok).toBe(true);
+    expect((await getUserPreferences(manu.id)).weeklyDigest).toBe(false);
+    expect((await updatePreferenceAction({ type: "weekly_digest", channel: "inApp", value: true })).ok).toBe(false);
+    expect((await updatePreferenceAction({ type: "nope", channel: "email", value: true })).ok).toBe(false);
   });
 
   it("paginación por cursor", async () => {

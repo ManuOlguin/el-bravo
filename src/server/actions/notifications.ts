@@ -2,8 +2,9 @@
 
 import { z } from "zod";
 import { requireUser } from "@/src/server/auth/dal";
-import { ok, parseInput, runAction, type ActionResult } from "@/src/server/http/result";
+import { fail, ok, parseInput, runAction, type ActionResult } from "@/src/server/http/result";
 import { listNotifications, markAllRead, markRead, unreadCount, type NotificationView } from "@/src/server/notifications/queries";
+import { CONFIGURABLE_TYPES, setPreference } from "@/src/server/notifications/preferences";
 
 const idSchema = z.string({ error: "Notificación inválida." }).min(1, { error: "Notificación inválida." }).max(64);
 const cursorSchema = idSchema.nullish();
@@ -36,6 +37,28 @@ export async function markReadAction(id: string): Promise<ActionResult<{ unread:
     if (!parsed.ok) return parsed.result;
     await markRead(me.id, parsed.data);
     return ok({ unread: await unreadCount(me.id) });
+  });
+}
+
+const preferenceSchema = z.object({
+  type: z.enum([...CONFIGURABLE_TYPES, "weekly_digest"], { error: "Tipo de notificación inválido." }),
+  channel: z.enum(["inApp", "email", "push"], { error: "Canal inválido." }),
+  value: z.boolean({ error: "Valor inválido." }),
+});
+
+/** Prende o apaga un canal de un tipo. El resumen semanal es `{ type: "weekly_digest", channel: "email" }`. */
+export async function updatePreferenceAction(input: {
+  type: string;
+  channel: string;
+  value: boolean;
+}): Promise<ActionResult<{ inApp: boolean; email: boolean; push: boolean }>> {
+  return runAction(async () => {
+    const me = await requireUser();
+    const parsed = parseInput(preferenceSchema, input);
+    if (!parsed.ok) return parsed.result;
+    const { type, channel, value } = parsed.data;
+    if (type === "weekly_digest" && channel !== "email") return fail("El resumen semanal solo se configura por email.");
+    return ok(await setPreference(me.id, type, channel, value));
   });
 }
 
