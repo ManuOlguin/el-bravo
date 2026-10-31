@@ -3,6 +3,7 @@ import { useReducer, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Field, Input, PageHeader, Textarea, toast } from "@/src/components/ui";
 import type { RoutineForEditor } from "@/src/schemas/routine";
+import { useExerciseCatalog } from "@/src/features/exercises/useExerciseCatalog";
 import { referencedPending } from "@/src/features/routines-share/match";
 import type { NewExerciseDraft } from "@/src/features/routines-share/types";
 import { createRoutineAction, updateRoutineAction } from "@/src/server/actions/routines";
@@ -30,6 +31,7 @@ export function RoutineEditorScreen({
   onBack?: () => void;
 }) {
   const router = useRouter();
+  const { refresh: refreshCatalog } = useExerciseCatalog();
   const [pending, start] = useTransition();
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [draft, dispatch] = useReducer(workoutReducer, undefined, () => {
@@ -63,6 +65,8 @@ export function RoutineEditorScreen({
         toast.success(r.message ?? "Rutina guardada");
         router.push("/routines");
         router.refresh();
+        // Los ejercicios nuevos ya existen en el servidor: el catálogo en memoria tiene que enterarse.
+        if (newExercises.length) refreshCatalog();
       } catch {
         toast.error("No pudimos conectarnos. Revisá tu conexión y probá de nuevo.");
       }
