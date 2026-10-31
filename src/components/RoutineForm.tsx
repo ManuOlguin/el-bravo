@@ -389,6 +389,7 @@ export default function RoutineForm({
             id: exercise.id,
             name: exercise.name,
             muscles: (exercise.muscles ?? []).map((m) => ({
+              id: `${exercise.id}-${m.muscle.id}`,
               percentage: m.percentage,
               muscle: {
                 id: m.muscle.id,
@@ -400,14 +401,25 @@ export default function RoutineForm({
           },
         };
       })
-      .filter(Boolean) as Parameters<typeof calculateRoutineMuscleShare>[0];
+      .filter((x): x is NonNullable<typeof x> => x !== null);
 
     return calculateRoutineMuscleShare(normalizedExercises);
   }, [exercises, availableExercises]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
+    setLoading(true);
     setError(null);
+
+    try {
+      await submitRoutine();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function submitRoutine() {
 
     if (!name.trim()) {
       setError("El nombre de la rutina es requerido");
@@ -464,13 +476,16 @@ export default function RoutineForm({
           return;
         }
 
-        finalExercises[i] = {
+        const created = {
           ...current,
           exerciseId: data.id,
-          measureType: "reps",
+          measureType: "reps" as const,
           newExerciseName: undefined,
           newExerciseMuscles: undefined,
         };
+        finalExercises[i] = created;
+        // Guardar el id en el estado: si el guardado de la rutina falla, un reintento no vuelve a crear el ejercicio.
+        setExercises((prev) => prev.map((item, idx) => (idx === i ? created : item)));
 
         setAvailableExercises((prev) => [
           ...prev,
@@ -533,8 +548,6 @@ export default function RoutineForm({
       }
     }
 
-    setLoading(true);
-
     const endpoint = isEdit ? `/api/routine/${routineId}` : "/api/routine/create";
     const method = isEdit ? "PUT" : "POST";
 
@@ -577,8 +590,6 @@ export default function RoutineForm({
       router.push("/routine");
     } catch {
       setError("Error de red");
-    } finally {
-      setLoading(false);
     }
   }
 

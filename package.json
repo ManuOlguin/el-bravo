@@ -10,7 +10,7 @@
     "lint:colors": "node scripts/check-colors.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --project unit",
-    "test:int": "vitest run --project integration",
+    "test:int": "vitest run --project integration --passWithNoTests",
     "test:watch": "vitest --project unit",
     "seed": "tsx prisma/seed.ts",
     "db:worktree": "bash scripts/db-worktree.sh"

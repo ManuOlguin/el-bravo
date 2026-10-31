@@ -24,9 +24,11 @@ export default defineConfig({
           environment: "node",
           globalSetup: ["tests/setup/global-setup.ts"],
           setupFiles: ["tests/setup/env.ts"],
-          fileParallelism: false,
+          // Un solo proceso: los archivos comparten la DB de test y corren en serie.
+          // (`fileParallelism` no es válido por proyecto en Vitest 3.)
+          pool: "forks",
+          poolOptions: { forks: { singleFork: true } },
           testTimeout: 20000,
-          passWithNoTests: true,
         },
       },
     ],

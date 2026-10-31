@@ -3,10 +3,21 @@ import { prisma } from "@/src/lib/db";
 
 type DbClient = PrismaClient | Prisma.TransactionClient;
 
+export type SeasonLeaderboardEntry = {
+  userId: string;
+  name: string | null;
+  email: string | null;
+  photoUrl: string | null;
+  points: number;
+  rank: number;
+  activeWeeks: number;
+  perfectWeeks: number;
+};
+
 export async function getSeasonLeaderboard(
   seasonId: string,
   db: DbClient = prisma
-) {
+): Promise<SeasonLeaderboardEntry[]> {
   const grouped = await db.scoreEvent.groupBy({
     by: ["userId"],
     where: { seasonId },
@@ -36,6 +47,21 @@ export async function getSeasonLeaderboard(
 
   const userMap = new Map(users.map((user) => [user.id, user]));
 
+  const [activeWeekRows, perfectWeekRows] = await Promise.all([
+    db.seasonWeekProgress.groupBy({
+      by: ["userId"],
+      where: { seasonId, userId: { in: userIds }, activitiesCount: { gt: 0 } },
+      _count: { _all: true },
+    }),
+    db.seasonWeekProgress.groupBy({
+      by: ["userId"],
+      where: { seasonId, userId: { in: userIds }, goalReached: true },
+      _count: { _all: true },
+    }),
+  ]);
+  const activeWeeksByUser = new Map(activeWeekRows.map((r) => [r.userId, r._count._all]));
+  const perfectWeeksByUser = new Map(perfectWeekRows.map((r) => [r.userId, r._count._all]));
+
   let currentRank = 0;
   let previousPoints: number | null = null;
 
@@ -57,6 +83,8 @@ export async function getSeasonLeaderboard(
       photoUrl: user?.photoUrl ?? null,
       points,
       rank: currentRank,
+      activeWeeks: activeWeeksByUser.get(row.userId) ?? 0,
+      perfectWeeks: perfectWeeksByUser.get(row.userId) ?? 0,
     };
   });
 }
