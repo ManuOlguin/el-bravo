@@ -16,11 +16,16 @@ export default async function RoutinesPage() {
         title="Rutinas"
         subtitle="Armá tus rutinas y entrenalas en vivo, tachando series."
         actions={
-          routines.length > 0 ? (
-            <LinkButton href="/routines/new" size="sm">
-              + Nueva
+          <>
+            <LinkButton href="/routines/import" size="sm" variant="secondary">
+              Importar
             </LinkButton>
-          ) : null
+            {routines.length > 0 && (
+              <LinkButton href="/routines/new" size="sm">
+                + Nueva
+              </LinkButton>
+            )}
+          </>
         }
       />
       {routines.length === 0 ? (
@@ -28,7 +33,14 @@ export default async function RoutinesPage() {
           icon={<span className="text-xl">🏋️</span>}
           title="Todavía no tenés rutinas"
           description="Creá una con tus ejercicios, series y pesos, y después empezala en vivo en el gimnasio."
-          action={<LinkButton href="/routines/new">Crear rutina</LinkButton>}
+          action={
+            <div className="flex flex-wrap justify-center gap-2">
+              <LinkButton href="/routines/new">Crear rutina</LinkButton>
+              <LinkButton href="/routines/import" variant="secondary">
+                Importar
+              </LinkButton>
+            </div>
+          }
         />
       ) : (
         <ul className="space-y-3">
