@@ -33,6 +33,7 @@ import { BadgesSection } from "./sections/badges";
 import { MediaSection } from "./sections/media";
 import { ExercisesSection } from "./sections/exercises";
 import { SocialSection } from "./sections/social";
+import { WorkoutSection } from "./sections/workout";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -357,6 +358,7 @@ export function DevUiCatalog() {
       <MediaSection />
       <ExercisesSection />
       <SocialSection Section={Section} />
+      <WorkoutSection />
     </div>
   );
 }

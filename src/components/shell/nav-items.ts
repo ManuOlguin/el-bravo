@@ -13,7 +13,7 @@ export type NavItem = {
 export const NAV_ITEMS: NavItem[] = [
   { id: "home", label: "Inicio", href: "/home", icon: "home", enabled: true },
   { id: "groups", label: "Grupos", href: "/groups", icon: "users", enabled: true },
-  { id: "log", label: "Registrar", href: "/load", icon: "plus", enabled: true, primary: true }, // W2-1 lo cambia a /workout/new
+  { id: "log", label: "Registrar", href: "/workout/new", icon: "plus", enabled: true, primary: true },
   { id: "stats", label: "Stats", href: "/stats", icon: "chart", enabled: true },
   { id: "profile", label: "Perfil", href: "/profile", icon: "user", enabled: true },
 ];

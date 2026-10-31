@@ -14,6 +14,10 @@ const nextConfig: NextConfig = {
       { source: "/dashboard", destination: "/home", permanent: false }, // W2-2
       { source: "/group/:id/edit", destination: "/group/:id/settings", permanent: false }, // W2-2
       { source: "/group/:id/create-season", destination: "/group/:id/season/new", permanent: false }, // W2-2
+      { source: "/load", destination: "/workout/new", permanent: false }, // W2-1
+      { source: "/create-routine", destination: "/routines/new", permanent: false }, // W2-1
+      { source: "/routine", destination: "/routines", permanent: false }, // W2-1
+      { source: "/routine/:id/edit", destination: "/routines/:id/edit", permanent: false }, // W2-1
     ];
   },
 };
