@@ -33,6 +33,34 @@ ${newExercise} — 3×12`);
   await expect(card).toContainText("10 series");
 });
 
+test("la revisión avisa de líneas sin leer, deja cargar músculos y frena nombres que ya existen", async ({ page }) => {
+  await login(page, "sofi");
+  await page.goto("/routines/import");
+  await page.getByLabel("Rutina en texto").fill(`Rutina de prueba
+Press de banca — 4×8 @ 60 kg
+Remo Hammer review — 3×12
+Entreno 18:00`);
+  await page.getByRole("button", { name: "Leer rutina" }).click();
+
+  await expect(page.getByText("No pudimos leer estas líneas")).toBeVisible();
+  await expect(page.getByText("«Entreno 18:00»")).toBeVisible();
+
+  const cont = page.getByRole("button", { name: "Continuar" });
+  await page.getByRole("button", { name: /Músculos y equipo/ }).click();
+  await page.getByLabel(/^Equipo de/).selectOption("machine");
+  await page.getByLabel("Agregar músculo").selectOption({ index: 1 });
+  await expect(page.getByText("Suma: 100 %")).toBeVisible();
+  await expect(cont).toBeEnabled();
+
+  // Renombrar a un ejercicio que ya existe: se frena con un aviso.
+  const name = page.getByLabel(/^Nombre del ejercicio nuevo/);
+  await name.fill("Plancha");
+  await expect(page.getByText(/Ya existe «Plancha»/)).toBeVisible();
+  await expect(cont).toBeDisabled();
+  await name.fill("Remo Hammer review");
+  await expect(cont).toBeEnabled();
+});
+
 test("compartir una rutina muestra el texto El Bravo para copiar", async ({ page }) => {
   await login(page, "ana");
   await page.goto("/routines");

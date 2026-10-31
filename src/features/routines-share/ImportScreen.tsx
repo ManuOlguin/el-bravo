@@ -19,13 +19,13 @@ function pendingOf(draft: ImportDraft): NewExerciseDraft[] {
 
 /** Importar: pegar texto → revisar ejercicios (encontrados / nuevos) → editor. La IA se suma en la fase 3. */
 export function ImportScreen() {
-  const { catalog, loading, error } = useExerciseCatalog();
+  const { catalog, muscles, loading, error } = useExerciseCatalog();
   const [text, setText] = useState("");
   const [draft, setDraft] = useState<ImportDraft | null>(null);
   const [editing, setEditing] = useState(false);
 
   if (draft && editing) {
-    return <RoutineEditorScreen initial={importDraftToRoutine(draft)} pendingExercises={pendingOf(draft)} onBack={() => setEditing(false)} />;
+    return <RoutineEditorScreen initial={importDraftToRoutine(draft, muscles)} pendingExercises={pendingOf(draft)} onBack={() => setEditing(false)} />;
   }
   if (draft) {
     return <ImportReview draft={draft} onChange={setDraft} onBack={() => setDraft(null)} onContinue={() => setEditing(true)} />;
