@@ -5,13 +5,13 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  // Guardas de v2 (roadmap §4). `no-alert` pasa a "error" en W3.
+  // Guardas de v2 (roadmap §4), en modo estricto desde W3.
   {
     rules: {
-      "no-alert": "warn",
+      "no-alert": "error",
       "@next/next/no-html-link-for-pages": "error",
       "no-restricted-syntax": [
-        "warn",
+        "error",
         {
           selector: "CallExpression[callee.property.name='toLocaleString'][arguments.length<2]",
           message: "Usá src/lib/time (formatDate/formatDateTime) con timeZone explícita.",
@@ -23,6 +23,10 @@ const eslintConfig = defineConfig([
         {
           selector: "CallExpression[callee.property.name='toLocaleTimeString'][arguments.length<2]",
           message: "Usá src/lib/time (localTimeOf) con timeZone explícita.",
+        },
+        {
+          selector: "CallExpression[callee.property.name=/^(setHours|getDay|getDate)$/]",
+          message: "Fechas locales del servidor: usá src/lib/time (localDateOf, weekKeyOf, zonedToUtc…).",
         },
       ],
     },
