@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/src/components/ui";
 import { requirePageUser } from "@/src/server/auth/dal";
 import { SettingsMenu } from "@/src/features/account/SettingsMenu";
+import { ThemePicker } from "@/src/features/account/ThemePicker";
 
 export const metadata: Metadata = { title: "Ajustes" };
 
@@ -10,7 +11,10 @@ export default async function SettingsPage() {
   return (
     <div className="mx-auto max-w-screen-sm">
       <PageHeader title="Ajustes" subtitle={user.email} back="/profile" />
-      <SettingsMenu />
+      <div className="space-y-6">
+        <ThemePicker />
+        <SettingsMenu />
+      </div>
     </div>
   );
 }

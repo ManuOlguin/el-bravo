@@ -96,6 +96,30 @@
   }
 }
 
+/*
+ * Temas (src/lib/themes.ts, portados de el-bravo-prod). "manu" (negro) es el de @theme; "leo" es el azul
+ * marino original. Selector por atributo (no solo :root) para que la vista previa de cada tema en Ajustes
+ * se pinte con sus colores aunque el resto de la app use el otro.
+ */
+[data-theme="manu"] {
+  --color-bg: #0a0a0a;
+  --color-surface-1: #171717;
+  --color-surface-2: #212121;
+  --color-surface-3: #2c2c2c;
+  --color-border: #2a2a2a;
+  --color-fg-muted: #a3a3a3;
+  --color-fg-subtle: #6e6e6e;
+}
+[data-theme="leo"] {
+  --color-bg: #08142d;
+  --color-surface-1: #0f1d35;
+  --color-surface-2: #172742;
+  --color-surface-3: #22365a;
+  --color-border: #2c4268;
+  --color-fg-muted: #a3b3cc;
+  --color-fg-subtle: #6b7f9e;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

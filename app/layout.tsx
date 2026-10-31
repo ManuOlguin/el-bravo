@@ -7,6 +7,7 @@ import { RegisterServiceWorker } from "@/src/components/shell/RegisterServiceWor
 import { Providers } from "@/src/components/ui/Providers";
 import { getSession } from "@/src/server/auth/dal";
 import { unreadCount } from "@/src/server/notifications/queries";
+import { DEFAULT_THEME, THEME_BOOT_SCRIPT } from "@/src/lib/themes";
 
 const montserrat = Montserrat({ subsets: ["latin"], variable: "--font-montserrat", display: "swap" });
 
@@ -37,7 +38,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const session = await getSession();
   const unreadNotifications = session ? await unreadCount(session.id).catch(() => 0) : 0;
   return (
-    <html lang="es-AR" className={`${montserrat.variable} dark`} style={{ colorScheme: "dark" }}>
+    // `data-theme` lo cambia el script de abajo antes de pintar si el usuario eligió otro tema.
+    <html lang="es-AR" className={`${montserrat.variable} dark`} style={{ colorScheme: "dark" }} data-theme={DEFAULT_THEME} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
       <body className="min-h-dvh bg-bg font-sans text-fg">
         <Providers>
           <AppShell
