@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Montserrat } from "next/font/google";
 import "./globals.css";
-import AppNavbarShell from "@/src/components/AppNavbarShell";
+import { AppShell } from "@/src/components/shell/AppShell";
 import { Providers } from "@/src/components/ui/Providers";
 import { getSession } from "@/src/server/auth/dal";
 
@@ -26,10 +26,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="es-AR" className={`${montserrat.variable} dark`} style={{ colorScheme: "dark" }}>
       <body className="min-h-dvh bg-bg font-sans text-fg">
         <Providers>
-          {session ? (
-            <AppNavbarShell userName={session.name ?? session.email} photoUrl={session.photoUrl} />
-          ) : null}
-          {children}
+          <AppShell user={session ? { id: session.id, name: session.name, photoUrl: session.photoUrl } : null}>
+            {children}
+          </AppShell>
         </Providers>
       </body>
     </html>
