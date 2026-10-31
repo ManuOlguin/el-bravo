@@ -6,6 +6,7 @@ import { recomputeSeason } from "@/src/server/scoring";
 import { AuthError } from "@/src/server/auth/errors";
 import { membershipRole } from "@/src/server/auth/policies";
 import { generateInviteCode, inviteExpiresAt, isInviteCodeShape, normalizeInviteCode } from "./invite";
+import { signGroupInviteToken, verifyGroupInviteToken } from "./invite-token";
 
 /** Error de regla de negocio con mensaje para el usuario (es-AR). */
 export class GroupError extends Error {
@@ -213,4 +214,74 @@ export async function setMemberRole(groupId: string, targetId: string, role: Gro
     }
     await tx.groupMember.update({ where: { groupId_userId: { groupId, userId: targetId } }, data: { role } });
   });
+}
+
+/**
+ * Invitar amigos (seguimiento mutuo) a un grupo. Los que ya son miembros se saltean.
+ * La invitación viaja como notificación `member_joined` con `data.kind = "invite"` (no hace falta un
+ * tipo nuevo) y un `href` a `/groups/join?token=<JWT de 7 días>` que solo sirve para ese usuario.
+ */
+export async function inviteFriends(inviterId: string, groupId: string, userIds: string[]): Promise<{ invited: number }> {
+  const ids = [...new Set(userIds)].filter((id) => id !== inviterId);
+  if (ids.length === 0) return { invited: 0 };
+
+  const friends = await prisma.user.findMany({
+    where: {
+      id: { in: ids },
+      isActive: true,
+      followers: { some: { followerId: inviterId } },
+      following: { some: { followingId: inviterId } },
+    },
+    select: { id: true },
+  });
+  if (friends.length !== ids.length) throw new GroupError("Solo podés invitar a tus amigos.");
+
+  const members = await prisma.groupMember.findMany({
+    where: { groupId, userId: { in: ids }, leftAt: null, status: "accepted" },
+    select: { userId: true },
+  });
+  const already = new Set(members.map((m) => m.userId));
+  const targets = ids.filter((id) => !already.has(id));
+
+  const day = new Date().toISOString().slice(0, 10);
+  for (const userId of targets) {
+    const token = await signGroupInviteToken({ groupId, userId, inviterId });
+    await safeNotify({
+      recipientIds: [userId],
+      type: "member_joined",
+      actorId: inviterId,
+      groupId,
+      data: { kind: "invite", groupId, inviterId, href: `/groups/join?token=${encodeURIComponent(token)}` },
+      // una invitación por grupo/destinatario por día (reintentos o doble click no duplican)
+      dedupeKey: (recipientId) => `group_invite:${groupId}:${recipientId}:${day}`,
+    });
+  }
+  return { invited: targets.length };
+}
+
+/** Unirse con una invitación personal. Solo funciona para el destinatario; permite volver a un expulsado. */
+export async function joinGroupByInviteToken(userId: string, token: string): Promise<{ groupId: string; alreadyMember: boolean }> {
+  const payload = await verifyGroupInviteToken(token);
+  if (!payload) throw new GroupError("La invitación no es válida o ya venció.");
+  if (payload.userId !== userId) throw new GroupError("Esta invitación no es para vos.");
+  const group = await prisma.group.findUnique({ where: { id: payload.groupId }, select: { id: true } });
+  if (!group) throw new GroupError("El grupo ya no existe.");
+  return addMember(group.id, userId, { allowRemoved: true });
+}
+
+/** Datos mínimos para la pantalla "Te invitaron a…" (sin unirse todavía). */
+export async function previewInviteToken(
+  userId: string,
+  token: string
+): Promise<{ ok: true; groupId: string; groupName: string; inviterName: string | null; alreadyMember: boolean } | { ok: false; error: string }> {
+  const payload = await verifyGroupInviteToken(token);
+  if (!payload) return { ok: false, error: "La invitación no es válida o ya venció." };
+  if (payload.userId !== userId) return { ok: false, error: "Esta invitación no es para vos." };
+  const [group, inviter, role] = await Promise.all([
+    prisma.group.findUnique({ where: { id: payload.groupId }, select: { id: true, name: true } }),
+    prisma.user.findUnique({ where: { id: payload.inviterId }, select: { name: true } }),
+    activeRole(prisma, payload.groupId, userId),
+  ]);
+  if (!group) return { ok: false, error: "El grupo ya no existe." };
+  return { ok: true, groupId: group.id, groupName: group.name, inviterName: inviter?.name ?? null, alreadyMember: !!role };
 }
