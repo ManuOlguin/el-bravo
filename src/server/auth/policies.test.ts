@@ -26,6 +26,12 @@ describe("safeNextPath", () => {
     expect(safeNextPath("//evil.com")).toBe("/home");
     expect(safeNextPath("/\\evil.com")).toBe("/home");
   });
+  it("rechaza caracteres de control que el parser de URLs descarta (open redirect)", () => {
+    expect(safeNextPath("/\t/evil.com")).toBe("/home");
+    expect(safeNextPath("/\n/evil.com")).toBe("/home");
+    expect(safeNextPath("/\r/evil.com")).toBe("/home");
+    expect(safeNextPath("/%09/evil.com")).toBe("/%09/evil.com"); // codificado: es una ruta interna rara, no un host
+  });
   it("no vuelve a mandar al login", () => {
     expect(safeNextPath("/login?next=/x")).toBe("/home");
   });
