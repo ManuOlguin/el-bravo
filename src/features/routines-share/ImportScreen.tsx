@@ -82,7 +82,7 @@ export function ImportScreen({ aiEnabled = false }: { aiEnabled?: boolean }) {
           <p className="text-sm text-fg-muted">
             Podemos leerla con IA: entiende rutinas escritas de cualquier forma y propone los ejercicios que falten. Vas a poder revisar todo antes de guardar.
           </p>
-          <p className="text-xs text-fg-subtle">🔒 Para eso, el texto se envía a OpenAI. En El Bravo no lo guardamos.</p>
+          <p className="text-xs text-fg-subtle">🔒 Para leerla, enviamos el texto y los nombres de tus ejercicios a OpenAI. En El Bravo no guardamos el texto.</p>
           <Button fullWidth size="lg" pending={aiPending} disabled={loading} onClick={readWithAi}>
             Leer con IA
           </Button>

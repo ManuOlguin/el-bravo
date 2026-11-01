@@ -14,7 +14,7 @@ Los secretos viven en `.env.production.local` (ignorado por git, permisos solo p
   - `/api/cron/seasons` → 03:15 UTC (00:15 en Argentina): cierra temporadas terminadas.
   - `/api/cron/notifications` → 12:30 UTC (09:30 en Argentina).
 - **Email:** SMTP (por ejemplo Gmail con contraseña de aplicación), como usaba el-bravo-prod. Sirve para recuperar contraseña y para las notificaciones por mail, sin dominio propio. Resend queda como opción si algún día hay dominio.
-- **IA (opcional): OpenAI** (spec de rutinas, R1). Chat Completions con salida estructurada (JSON Schema estricto), sin SDK. Modelo por `OPENAI_MODEL` (por defecto `gpt-4o-mini`). Sin `OPENAI_API_KEY` la app anda igual: solo no aparece "Leer con IA". El texto que se importa se manda a OpenAI (con `store: false`) y no se guarda en la base. Límite: 20 importaciones con IA por usuario por día (en memoria por instancia, como los demás límites).
+- **IA (opcional): OpenAI** (spec de rutinas, R1). Chat Completions con salida estructurada (JSON Schema estricto), sin SDK. Modelo por `OPENAI_MODEL` (por defecto `gpt-4o-mini`). Sin `OPENAI_API_KEY` la app anda igual: solo no aparece "Leer con IA". El texto que se importa y los nombres de los ejercicios del usuario se mandan a OpenAI (con `store: false`); el texto no se guarda en la base. Límite: 20 importaciones con IA por usuario por día (en memoria por instancia, como los demás límites).
 
 ## 1. Base de datos — TiDB Cloud (vos)
 

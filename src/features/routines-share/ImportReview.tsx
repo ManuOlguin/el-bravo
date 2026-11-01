@@ -104,14 +104,11 @@ export function ImportReview({
           return (
             <li key={i.key}>
               <Card className="space-y-2 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="min-w-0 break-words text-xs text-fg-subtle">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="min-w-0 flex-1 break-words text-xs text-fg-subtle">
                     Decía: «{i.sourceName}» · {i.sets.length} {i.sets.length === 1 ? "serie" : "series"}
                   </span>
-                  <span className="flex shrink-0 flex-wrap justify-end gap-1">
-                    {match.kind === "new" && match.draft.source === "ai" && <Pill>Creado con IA</Pill>}
-                    {match.kind === "found" ? <Pill tone="primary">✓ Encontrado</Pill> : <Pill tone="gold">✨ Nuevo</Pill>}
-                  </span>
+                  {match.kind === "found" ? <Pill tone="primary">✓ Encontrado</Pill> : <Pill tone="gold">✨ Nuevo</Pill>}
                 </div>
                 {match.kind === "found" ? (
                   <p className="font-bold">{match.exercise.name}</p>
@@ -125,6 +122,11 @@ export function ImportReview({
                       maxLength={100}
                       onChange={(e) => updateNew(match.draft.tempId, { name: e.target.value })}
                     />
+                    {match.draft.source === "ai" && (
+                      <div>
+                        <Pill>Creado con IA</Pill>
+                      </div>
+                    )}
                     {invalidName(i) && (
                       <p id={`${i.key}-name-hint`} className="text-xs text-danger">
                         Poné un nombre de al menos 2 letras

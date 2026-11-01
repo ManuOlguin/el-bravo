@@ -85,5 +85,5 @@ Descansá bien entre series.`);
   await page.getByRole("button", { name: "Leer rutina" }).click();
   await expect(page.getByText(/No pudimos leer la rutina/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Leer con IA" })).toHaveCount(0);
-  await expect(page.getByText(/se envía a OpenAI/)).toHaveCount(0);
+  await expect(page.getByText(/enviamos el texto y los nombres de tus ejercicios a OpenAI/)).toHaveCount(0);
 });
