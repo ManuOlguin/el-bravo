@@ -58,6 +58,7 @@ export default defineConfig({
     reuseExistingServer: false,
     stdout: "ignore",
     stderr: "pipe",
-    env: { DATABASE_URL: E2E_DATABASE_URL, PORT: String(E2E_PORT) },
+    // La IA nunca se llama en E2E: con la key vacía no aparece "Leer con IA" (Next no pisa variables ya definidas con .env*).
+    env: { DATABASE_URL: E2E_DATABASE_URL, PORT: String(E2E_PORT), OPENAI_API_KEY: "" },
   },
 });

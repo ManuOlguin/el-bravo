@@ -76,3 +76,14 @@ test("compartir una rutina muestra el texto El Bravo para copiar", async ({ page
   await expect(text).toContainText("Sentadillas — ");
   await expect(sheet.getByRole("button", { name: "Copiar" })).toBeVisible();
 });
+
+test("sin OPENAI_API_KEY, un texto libre no ofrece leer con IA", async ({ page }) => {
+  await login(page, "sofi");
+  await page.goto("/routines/import");
+  await page.getByLabel("Rutina en texto").fill(`Día 1: hacé 4 series de banca pesada, después remo y terminá con abs.
+Descansá bien entre series.`);
+  await page.getByRole("button", { name: "Leer rutina" }).click();
+  await expect(page.getByText(/No pudimos leer la rutina/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Leer con IA" })).toHaveCount(0);
+  await expect(page.getByText(/se envía a OpenAI/)).toHaveCount(0);
+});
