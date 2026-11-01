@@ -24,7 +24,7 @@ const UNAVAILABLE = "No pudimos usar la IA en este momento. Probá más tarde o 
 const NOT_UNDERSTOOD = "La IA no pudo entender la rutina. Revisá el texto y probá de nuevo.";
 const NO_EXERCISES = "No encontramos ejercicios en ese texto. ¿Pegaste una rutina?";
 const AI_MESSAGES: Record<AiErrorCode, string> = {
-  timeout: "La IA tardó demasiado en responder. Probá de nuevo.",
+  timeout: "La IA tardó demasiado. Si la rutina es larga o tiene varios días, pegá un día por vez.",
   rate_limited: "La IA está con mucha demanda. Probá de nuevo en un rato.",
   quota_exceeded: UNAVAILABLE,
   auth: UNAVAILABLE,

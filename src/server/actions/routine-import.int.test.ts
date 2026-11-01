@@ -33,17 +33,18 @@ import { aiImportToDraft } from "@/src/features/routines-share/ai-draft";
 import { importDraftToRoutine, pendingExercises } from "@/src/features/routines-share/match";
 import type { RoutineInput } from "@/src/schemas/routine";
 
-const s = (reps: number | null, weightKg: number | null = null) => ({ kind: "normal", reps, durationSeconds: null, weightKg });
+const s = (count: number, reps: number | null, weightKg: number | null = null) => ({ count, kind: "normal", reps, durationSeconds: null, weightKg });
 const AI_JSON = JSON.stringify({
   name: "Espalda del profe",
   notes: "Bajar lento",
+  daysInText: 1,
   exercises: [
-    { name: "Banco plano", catalogName: "press de banca", measureType: "reps", restSeconds: 90, sets: [s(8, 60), s(8, 60)], newExercise: null },
+    { name: "Banco plano", sourceText: "banco plano", catalogName: "press de banca", measureType: "reps", restSeconds: 90, setGroups: [s(2, 8, 60)], newExercise: null },
     {
-      name: "Remo Hammer", catalogName: null, measureType: "reps", restSeconds: null, sets: [s(12), s(12), s(12)],
+      name: "Remo Hammer", sourceText: "remo hammer", catalogName: null, measureType: "reps", restSeconds: null, setGroups: [s(3, 12)],
       newExercise: { nameEn: "Hammer Row", equipment: "machine", muscles: [{ muscleSlug: "espalda", percentage: 70 }, { muscleSlug: "dorsal", percentage: 20 }, { muscleSlug: "biceps", percentage: 20 }] },
     },
-    { name: "Pullover Fantasma", catalogName: "Pullover Fantasma", measureType: "reps", restSeconds: null, sets: [s(10, 20)], newExercise: null },
+    { name: "Pullover Fantasma", sourceText: "pullover fantasma", catalogName: "Pullover Fantasma", measureType: "reps", restSeconds: null, setGroups: [s(1, 10, 20)], newExercise: null },
   ],
 });
 
@@ -163,7 +164,7 @@ describe("importRoutineWithAiAction", () => {
   it("errores de OpenAI o respuestas inválidas dan un mensaje claro", async () => {
     await fixtures();
     fakeAi(new AiError("timeout", "lento"));
-    expect(await importRoutineWithAiAction("banco plano 4x8")).toEqual({ ok: false, error: "La IA tardó demasiado en responder. Probá de nuevo." });
+    expect(await importRoutineWithAiAction("banco plano 4x8")).toEqual({ ok: false, error: "La IA tardó demasiado. Si la rutina es larga o tiene varios días, pegá un día por vez." });
     fakeAi("{ roto");
     expect(await importRoutineWithAiAction("banco plano 4x8")).toEqual({ ok: false, error: "La IA no pudo entender la rutina. Revisá el texto y probá de nuevo." });
     fakeAi(JSON.stringify({ name: "X", notes: null, exercises: [] }));
