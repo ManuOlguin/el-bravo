@@ -31,7 +31,9 @@ export function ImportReview({
 }) {
   const { catalog, muscles } = useExerciseCatalog();
   const [picking, setPicking] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(
+    () => new Set(draft.items.flatMap((i) => (i.match.kind === "new" && i.match.draft.source === "ai" ? [i.key] : [])))
+  );
   const toggleExpanded = (key: string) =>
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -50,10 +52,6 @@ export function ImportReview({
     });
   const invalidName = (i: ImportItem) => i.match.kind === "new" && i.match.draft.name.trim().length < 2;
   const duplicateOf = (i: ImportItem) => (i.match.kind === "new" && !invalidName(i) ? existingWithName(i.match.draft.name, catalog) : null);
-  // Sin músculos es válido (se puede completar después); con músculos, tienen que sumar 100.
-  const invalidMuscles = (i: ImportItem) =>
-    i.match.kind === "new" && i.match.draft.muscles.length > 0 && !isValidShare(i.match.draft.muscles.map((m) => m.percentage));
-  const hasInvalid = draft.items.some((i) => invalidName(i) || duplicateOf(i) !== null || invalidMuscles(i));
   const bySlug = new Map(muscles.map((m) => [m.slug, m]));
   const byId = new Map(muscles.map((m) => [m.id, m]));
   const toShares = (d: NewExerciseDraft): MuscleShare[] =>
@@ -66,6 +64,14 @@ export function ImportReview({
       const found = byId.get(s.muscleId);
       return found ? [{ muscleSlug: found.slug, percentage: s.percentage }] : [];
     });
+  // Sin músculos es válido (se puede completar después); con músculos, tienen que sumar 100. Solo cuentan los que
+  // existen en el catálogo (un slug desconocido de la IA no se ve en el editor ni se guarda): no pueden trabar el "Continuar".
+  const invalidMuscles = (i: ImportItem) => {
+    if (i.match.kind !== "new") return false;
+    const shares = toShares(i.match.draft);
+    return shares.length > 0 && !isValidShare(shares.map((m) => m.percentage));
+  };
+  const hasInvalid = draft.items.some((i) => invalidName(i) || duplicateOf(i) !== null || invalidMuscles(i));
   const news = new Set(draft.items.flatMap((i) => (i.match.kind === "new" ? [i.match.draft.tempId] : []))).size;
 
   return (
@@ -99,10 +105,13 @@ export function ImportReview({
             <li key={i.key}>
               <Card className="space-y-2 p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-fg-subtle">
+                  <span className="min-w-0 break-words text-xs text-fg-subtle">
                     Decía: «{i.sourceName}» · {i.sets.length} {i.sets.length === 1 ? "serie" : "series"}
                   </span>
-                  {match.kind === "found" ? <Pill tone="primary">✓ Encontrado</Pill> : <Pill tone="gold">✨ Nuevo</Pill>}
+                  <span className="flex shrink-0 flex-wrap justify-end gap-1">
+                    {match.kind === "new" && match.draft.source === "ai" && <Pill>Creado con IA</Pill>}
+                    {match.kind === "found" ? <Pill tone="primary">✓ Encontrado</Pill> : <Pill tone="gold">✨ Nuevo</Pill>}
+                  </span>
                 </div>
                 {match.kind === "found" ? (
                   <p className="font-bold">{match.exercise.name}</p>
@@ -141,6 +150,7 @@ export function ImportReview({
                     </Button>
                     {expanded.has(i.key) && (
                       <div id={`${i.key}-details`} className="space-y-2">
+                        {match.draft.source === "ai" && <p className="text-xs text-fg-muted">Equipo y músculos que propone la IA (podés cambiarlos)</p>}
                         <Select
                           aria-label={`Equipo de «${match.draft.name}»`}
                           value={match.draft.equipment}
