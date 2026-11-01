@@ -157,6 +157,29 @@ describe("routines service", () => {
       tempId: "t1", name: "Remo Hammer", nameEn: null, measureType: "reps", equipment: "machine", tracksWeight: true, muscles: [], source: "user", ...over,
     });
 
+    it("guarda el origen de los ejercicios nuevos (ai / user)", async () => {
+      const { user } = await fixtures();
+      await createRoutine(user.id, {
+        name: "Importada con IA",
+        newExercises: [
+          draft({ tempId: "t1", name: "Remo Hammer", nameEn: "Hammer Row", source: "ai" }),
+          draft({ tempId: "t2", name: "Wall sit", measureType: "duration", equipment: "bodyweight", tracksWeight: false, source: "user" }),
+        ],
+        exercises: [
+          { exerciseId: "new:t1", restSeconds: null, notes: null, sets: [oneSet] },
+          { exerciseId: "new:t2", restSeconds: null, notes: null, sets: [oneSet] },
+        ],
+      });
+      const mine = await prisma.exercise.findMany({ where: { createdByUserId: user.id }, select: { name: true, source: true }, orderBy: { name: "asc" } });
+      expect(mine).toEqual([{ name: "Remo Hammer", source: "ai" }, { name: "Wall sit", source: "user" }]);
+    });
+
+    it("un ejercicio creado sin source queda 'user'", async () => {
+      const { user } = await fixtures();
+      const e = await prisma.exercise.create({ data: { slug: "mio-x1", name: "Mío", createdByUserId: user.id } });
+      expect(e.source).toBe("user");
+    });
+
     it("crea los ejercicios nuevos en la misma transacción y los usa", async () => {
       const { user, bench } = await fixtures();
       const { routineId } = await createRoutine(user.id, {

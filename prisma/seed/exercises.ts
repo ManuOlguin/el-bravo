@@ -39,6 +39,7 @@ export async function seedExercises(): Promise<number> {
       equipment: e.equipment,
       measureType: e.measureType,
       tracksWeight: e.tracksWeight,
+      source: "catalog" as const,
       description: e.description.trim() || null,
       instructions: e.instructions.length ? { steps: e.instructions, reviewed: e.reviewed } : Prisma.DbNull,
       mediaUrl: mediaUrlFor(e.media),

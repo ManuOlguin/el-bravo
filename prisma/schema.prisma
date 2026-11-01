@@ -39,6 +39,13 @@ enum Equipment {
   other
 }
 
+/// De dónde salió un ejercicio. catalog = oficial (seed o promovido por un admin), user = creado a mano, ai = creado al importar con IA.
+enum ExerciseSource {
+  catalog
+  user
+  ai
+}
+
 enum SetKind {
   warmup
   normal
@@ -375,6 +382,7 @@ model Exercise {
   measureType     ExerciseMeasureType @default(reps)
   tracksWeight    Boolean             @default(true)
   createdByUserId String? // null = catálogo oficial
+  source          ExerciseSource      @default(user)
 
   createdBy  User?              @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
   aliases    ExerciseAlias[]

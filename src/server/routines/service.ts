@@ -128,7 +128,7 @@ async function resolvePendingExercises(tx: Tx, userId: string, input: RoutineInp
         equipment: def.equipment,
         tracksWeight: def.tracksWeight,
         createdByUserId: userId,
-        // `def.source` todavía no se guarda: no hay columna hasta la fase 3.
+        source: def.source,
         muscles: { create: muscles.map((m, i) => ({ muscleId: muscleId.get(m.muscleSlug)!, percentage: shares[i] })) },
       },
       select: { id: true },
