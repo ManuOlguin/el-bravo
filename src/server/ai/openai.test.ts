@@ -58,6 +58,7 @@ describe("createOpenAiClient.generateJson", () => {
     expect(await rejection(client(async () => errorResponse(500)).generateJson(REQ))).toMatchObject({ code: "unavailable", status: 500 });
     expect(await rejection(client(async () => new Response("<html>", { status: 503 })).generateJson(REQ))).toMatchObject({ code: "unavailable", status: 503 });
     expect(await rejection(client(async () => errorResponse(401, "invalid_api_key")).generateJson(REQ))).toMatchObject({ code: "auth" });
+    expect(await rejection(client(async () => errorResponse(403, "forbidden")).generateJson(REQ))).toMatchObject({ code: "auth", status: 403 });
     expect(await rejection(client(async () => errorResponse(400, "invalid_json_schema")).generateJson(REQ))).toMatchObject({ code: "bad_request" });
     expect(await rejection(client(async () => { throw new TypeError("fetch failed"); }).generateJson(REQ))).toMatchObject({ code: "unavailable", status: null });
   });
@@ -67,5 +68,17 @@ describe("createOpenAiClient.generateJson", () => {
     expect(await rejection(client(async () => completion({ content: '{"a":', refusal: null }, "length")).generateJson(REQ))).toMatchObject({ code: "truncated" });
     expect(await rejection(client(async () => completion({ content: "", refusal: null })).generateJson(REQ))).toMatchObject({ code: "invalid_output" });
     expect(await rejection(client(async () => new Response("<html>", { status: 200 })).generateJson(REQ))).toMatchObject({ code: "invalid_output" });
+  });
+
+  it("un fallo de fetch nunca filtra su texto (puede traer la key)", async () => {
+    const e = await rejection(client(async () => { throw new TypeError('bad "Bearer sk-test"'); }).generateJson(REQ));
+    expect(e).toBeInstanceOf(AiError);
+    expect(e).toMatchObject({ code: "unavailable", status: null });
+    expect((e as Error).message).not.toContain("sk-test");
+    expect((e as Error).message).not.toContain("Bearer");
+  });
+
+  it("finish_reason distinto de stop (content_filter) con contenido parcial es invalid_output", async () => {
+    expect(await rejection(client(async () => completion({ content: '{"a":1', refusal: null }, "content_filter")).generateJson(REQ))).toMatchObject({ code: "invalid_output" });
   });
 });

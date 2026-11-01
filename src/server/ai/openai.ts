@@ -113,13 +113,17 @@ export function createOpenAiClient(opts: { apiKey: string; model?: string; fetch
         const choice = data.choices?.[0];
         if (choice?.message?.refusal) throw new AiError("refused", "El modelo se negó a responder");
         if (choice?.finish_reason === "length") throw new AiError("truncated", "La respuesta quedó cortada (max_completion_tokens)");
+        if (choice?.finish_reason && choice.finish_reason !== "stop") {
+          throw new AiError("invalid_output", `La respuesta no terminó bien (${choice.finish_reason})`);
+        }
         const content = choice?.message?.content;
         if (!content) throw new AiError("invalid_output", "Respuesta vacía");
         return content;
       } catch (e) {
         if (e instanceof AiError) throw e;
         if (controller.signal.aborted) throw new AiError("timeout", `OpenAI no respondió en ${Math.round(timeoutMs / 1000)} s`);
-        throw new AiError("unavailable", `No se pudo conectar con OpenAI: ${(e as Error).message}`);
+        // Sin el texto del error original: un TypeError de cabecera inválida puede traer `Bearer sk-…`.
+        throw new AiError("unavailable", "No se pudo conectar con OpenAI");
       } finally {
         clearTimeout(timer);
       }
