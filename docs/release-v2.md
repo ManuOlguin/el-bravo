@@ -14,6 +14,7 @@ Los secretos viven en `.env.production.local` (ignorado por git, permisos solo p
   - `/api/cron/seasons` → 03:15 UTC (00:15 en Argentina): cierra temporadas terminadas.
   - `/api/cron/notifications` → 12:30 UTC (09:30 en Argentina).
 - **Email:** SMTP (por ejemplo Gmail con contraseña de aplicación), como usaba el-bravo-prod. Sirve para recuperar contraseña y para las notificaciones por mail, sin dominio propio. Resend queda como opción si algún día hay dominio.
+- **IA (opcional): OpenAI** (spec de rutinas, R1). Chat Completions con salida estructurada (JSON Schema estricto), sin SDK. Modelo por `OPENAI_MODEL` (por defecto `gpt-4o-mini`). Sin `OPENAI_API_KEY` la app anda igual: solo no aparece "Leer con IA". El texto que se importa se manda a OpenAI (con `store: false`) y no se guarda en la base. Límite: 20 importaciones con IA por usuario por día (en memoria por instancia, como los demás límites).
 
 ## 1. Base de datos — TiDB Cloud (vos)
 
@@ -32,6 +33,13 @@ Seguir [`r2-setup.md`](r2-setup.md) → "Cloudflare R2 (producción)": cuenta, b
 `node scripts/prod/set-r2.mjs` pide la URL de la app en Vercel (`APP_URL`), un mail de contacto para los push (`VAPID_SUBJECT`) y los datos de R2 (el secret, oculto). Antes de guardar prueba R2 como lo usa la app: CORS desde `APP_URL`, subida con URL prefirmada, lectura pública y borrado del archivo de prueba. Las demás (`JWT_SECRET`, `CRON_SECRET`, `VAPID_*`) ya están generadas.
 
 **Email (opcional, recomendado):** si en el Vercel de el-bravo-prod ya están `EMAIL_HOST`, `EMAIL_USER` y `EMAIL_PASSWORD` (los usaba la versión anterior), se pueden dejar como están. Si no, `node scripts/prod/set-email.mjs` pide los datos SMTP (la contraseña, oculta), manda un mail de prueba y recién ahí los guarda. Con Gmail hace falta una contraseña de aplicación (myaccount.google.com/apppasswords).
+
+**IA (opcional) — OpenAI (vos):**
+1. En <https://platform.openai.com> → **Projects** → crear un proyecto `El Bravo` (así el gasto queda separado).
+2. En el proyecto → **Limits** → poner un **límite mensual** de gasto (por ejemplo USD 5) y un aviso por mail antes de llegar.
+3. **API keys** → **Create new secret key** en ese proyecto (permisos "Restricted" alcanza si incluye *Model capabilities → Write*; "All" también sirve).
+4. Pegarla vos en `.env.production.local` como `OPENAI_API_KEY="sk-…"` (nunca en el chat). Opcional: `OPENAI_MODEL` para cambiar de modelo sin tocar código.
+5. `node scripts/prod/check-env.mjs --ping` → tiene que decir `✓ OpenAI: la key funciona…` (o el aviso de key restringida).
 
 ## 4. Verificar (script)
 
@@ -57,6 +65,7 @@ Hace falta acceso al proyecto de Vercel de el-bravo-prod (si es de la cuenta de 
    - Agregar todas las demás de `.env.production.local`.
    - `EMAIL_*`: dejar las que ya estén si funcionan, o cargar las del archivo.
    - `BLOB_READ_WRITE_TOKEN` (Vercel Blob de la versión anterior) ya no se usa: se puede borrar.
+   - `OPENAI_API_KEY` (marcarla **Sensitive**) y, si se usa, `OPENAI_MODEL`. Son opcionales: sin ellas no aparece "Leer con IA". Las variables nuevas se toman en el **próximo** deploy.
 3. **Settings → Functions → Function Region**: `Washington, D.C., USA (iad1)` (la misma zona que la base).
 
 ## 7. Publicar (Claude, con tu OK)
@@ -79,6 +88,7 @@ Hace falta acceso al proyecto de Vercel de el-bravo-prod (si es de la cuenta de 
 - **La app no anda:** en Vercel → **Deployments** → el deploy anterior → **Promote to Production**. No hay datos viejos que restaurar (la base es nueva).
 - **Falla una migración:** la base está vacía; se puede borrar y recrear (`DROP DATABASE elbravo; CREATE DATABASE elbravo;`) y volver a correr el paso 5. Si TiDB rechaza alguna migración vieja, el plan B es unificarlas en una sola migración base (`W3-release.md`, Task 4).
 - **Fotos no suben:** casi siempre es CORS del bucket (falta la URL de la app) o `R2_PUBLIC_BASE_URL` mal escrita.
+- **La IA falla o gasta de más:** borrar `OPENAI_API_KEY` en Vercel y redeployar: "Leer con IA" desaparece y el resto sigue igual. Los errores de OpenAI (key, saldo, caída) quedan en los logs de Vercel como `[ai-import]` (sin el texto del usuario).
 
 ## Pendientes conocidos
 

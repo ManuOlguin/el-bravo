@@ -1,7 +1,7 @@
 // Revisa .env.production.local antes del deploy: que no falte nada y que cada valor tenga la forma
 // esperada. Nunca imprime los valores (solo OK / qué falta).
 //   node scripts/prod/check-env.mjs           → revisa el archivo
-//   node scripts/prod/check-env.mjs --ping    → además se conecta a la base y a R2
+//   node scripts/prod/check-env.mjs --ping    → además se conecta a la base, a R2 y (si hay key) a OpenAI
 import { readFileSync, existsSync } from "node:fs";
 
 const FILE = ".env.production.local";
@@ -61,6 +61,16 @@ else if (smtp.length > 0 && smtp.length < 3) {
   failed++;
   console.log("✗ Email: faltan EMAIL_HOST, EMAIL_USER o EMAIL_PASSWORD (correr node scripts/prod/set-email.mjs)");
 } else console.log(`✓ Email (${env.RESEND_API_KEY ? "Resend" : "SMTP"})`);
+// IA (opcional, fases 3–4): sin key la app no muestra "Leer con IA". Si está, tiene que parecer una key de OpenAI.
+if (!env.OPENAI_API_KEY) console.log("· IA (OpenAI): sin configurar (opcional: sin esto no aparece «Leer con IA»)");
+else if (!/^sk-[A-Za-z0-9_-]{20,}$/.test(env.OPENAI_API_KEY)) {
+  failed++;
+  console.log("✗ OPENAI_API_KEY: no parece una key de OpenAI (empieza con sk-; platform.openai.com → API keys)");
+} else console.log(`✓ IA (OpenAI, modelo ${env.OPENAI_MODEL || "gpt-4o-mini, por defecto"})`);
+if (env.OPENAI_MODEL && !/^[A-Za-z0-9][A-Za-z0-9._:-]{1,79}$/.test(env.OPENAI_MODEL)) {
+  failed++;
+  console.log("✗ OPENAI_MODEL: nombre de modelo inválido (p. ej. gpt-4o-mini); o borrala para usar el de por defecto");
+}
 if (env.R2_ENDPOINT) {
   failed++;
   console.log("✗ R2_ENDPOINT: es solo para MinIO local; en producción tiene que no estar");
@@ -105,6 +115,24 @@ if (process.argv.includes("--ping")) {
   } catch (e) {
     failed++;
     console.log(`✗ R2: ${e.name ?? ""} ${e.message ?? ""}`);
+  }
+  if (env.OPENAI_API_KEY) {
+    const model = env.OPENAI_MODEL || "gpt-4o-mini";
+    try {
+      const res = await fetch(`https://api.openai.com/v1/models/${encodeURIComponent(model)}`, {
+        headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (res.ok) console.log(`✓ OpenAI: la key funciona y tiene acceso a ${model}`);
+      else if (res.status === 403) console.log("· OpenAI: key restringida sin permiso para listar modelos (403); se prueba al importar");
+      else {
+        failed++;
+        console.log(`✗ OpenAI: ${res.status === 401 ? "la key no es válida (401)" : res.status === 404 ? `el modelo ${model} no existe o la key no tiene acceso (404)` : `respondió ${res.status}`}`);
+      }
+    } catch (e) {
+      failed++;
+      console.log(`✗ OpenAI: ${e.name ?? ""} ${e.message ?? ""}`);
+    }
   }
   process.exit(failed > 0 ? 1 : 0);
 }
