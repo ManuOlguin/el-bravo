@@ -98,7 +98,7 @@ Toda lectura de rutina ajena pasa por `visibility = public`; las acciones de edi
 - `rateLimit` por usuario: 20 importaciones con IA por día; texto ≤ 8.000 caracteres; timeout 30 s.
 - Sin `OPENAI_API_KEY`: el botón de IA no aparece; solo se acepta formato El Bravo.
 - Error de OpenAI / respuesta inválida: mensaje claro, el texto pegado se conserva, se puede reintentar.
-- Privacidad: el texto pegado se envía a OpenAI (se aclara en la pantalla). No se guarda el texto en la DB.
+- Privacidad: el texto pegado y los nombres de los ejercicios del usuario se envían a OpenAI (se aclara en la pantalla). No se guarda el texto en la DB.
 
 ### Datos
 - `Exercise.source` enum `catalog | user | ai` (default `user`; seed → `catalog`).
