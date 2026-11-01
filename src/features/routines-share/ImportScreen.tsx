@@ -4,18 +4,11 @@ import { Button, Card, PageHeader, Textarea, toast } from "@/src/components/ui";
 import { useExerciseCatalog } from "@/src/features/exercises/useExerciseCatalog";
 import { RoutineEditorScreen } from "@/src/features/workout/RoutineEditorScreen";
 import { looksLikeBravoFormat, parseRoutineText } from "./format";
-import { importDraftToRoutine, matchImport } from "./match";
+import { importDraftToRoutine, matchImport, pendingExercises } from "./match";
 import { ImportReview } from "./ImportReview";
-import type { ImportDraft, NewExerciseDraft } from "./types";
+import type { ImportDraft } from "./types";
 
 const MAX_CHARS = 8000;
-
-/** Ejercicios nuevos del borrador, sin repetir (el mismo tempId puede estar en varios ítems). */
-function pendingOf(draft: ImportDraft): NewExerciseDraft[] {
-  const byId = new Map<string, NewExerciseDraft>();
-  for (const i of draft.items) if (i.match.kind === "new") byId.set(i.match.draft.tempId, i.match.draft);
-  return [...byId.values()];
-}
 
 /** Importar: pegar texto → revisar ejercicios (encontrados / nuevos) → editor. La IA se suma en la fase 3. */
 export function ImportScreen() {
@@ -25,7 +18,7 @@ export function ImportScreen() {
   const [editing, setEditing] = useState(false);
 
   if (draft && editing) {
-    return <RoutineEditorScreen initial={importDraftToRoutine(draft, muscles)} pendingExercises={pendingOf(draft)} onBack={() => setEditing(false)} />;
+    return <RoutineEditorScreen initial={importDraftToRoutine(draft, muscles)} pendingExercises={pendingExercises(draft)} onBack={() => setEditing(false)} />;
   }
   if (draft) {
     return <ImportReview draft={draft} onChange={setDraft} onBack={() => setDraft(null)} onContinue={() => setEditing(true)} />;

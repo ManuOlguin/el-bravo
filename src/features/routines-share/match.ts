@@ -110,3 +110,10 @@ export function referencedPending(pending: NewExerciseDraft[], usedExerciseIds: 
   const used = new Set(usedExerciseIds);
   return pending.filter((p) => used.has(`${PENDING_PREFIX}${p.tempId}`));
 }
+
+/** Ejercicios nuevos del borrador, sin repetir (el mismo tempId puede estar en varios ítems). */
+export function pendingExercises(draft: ImportDraft): NewExerciseDraft[] {
+  const byId = new Map<string, NewExerciseDraft>();
+  for (const i of draft.items) if (i.match.kind === "new") byId.set(i.match.draft.tempId, i.match.draft);
+  return [...byId.values()];
+}

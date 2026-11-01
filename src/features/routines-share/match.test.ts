@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CatalogEntry } from "@/src/features/exercises/types";
-import { importDraftToRoutine, isPendingExerciseId, matchImport, referencedPending } from "./match";
+import { importDraftToRoutine, isPendingExerciseId, matchImport, pendingExercises, referencedPending } from "./match";
 import { parseRoutineText } from "./format";
 
 const cat = (name: string, o: Partial<CatalogEntry> = {}): CatalogEntry => ({
@@ -110,5 +110,14 @@ describe("referencedPending", () => {
     expect(referencedPending(pending, ["x", "new:b"]).map((p) => p.tempId)).toEqual(["b"]);
     expect(referencedPending(pending, ["x"])).toEqual([]);
     expect(referencedPending([], ["new:a"])).toEqual([]);
+  });
+});
+
+describe("pendingExercises", () => {
+  it("devuelve los ejercicios nuevos del borrador sin repetir el mismo tempId", () => {
+    const d = matchImport(parseRoutineText(`X\nRemo Hammer — 3×12\nbanca — 3×8\nRemo Hammer — 2×10`), CATALOG);
+    const pending = pendingExercises(d);
+    expect(pending.map((p) => p.name)).toEqual(["Remo Hammer"]);
+    expect(new Set(pending.map((p) => p.tempId)).size).toBe(pending.length);
   });
 });
