@@ -39,7 +39,15 @@ export class AiError extends Error {
 }
 
 export type JsonSchema = Record<string, unknown>;
-export type AiJsonRequest = { system: string; user: string; schemaName: string; schema: JsonSchema; maxOutputTokens?: number };
+export type AiJsonRequest = {
+  system: string;
+  user: string;
+  schemaName: string;
+  schema: JsonSchema;
+  maxOutputTokens?: number;
+  /** Pisa el timeout del cliente para este pedido (importar varias rutinas o archivos tarda más). No viaja a OpenAI. */
+  timeoutMs?: number;
+};
 
 export interface AiClient {
   readonly model: string;
@@ -60,10 +68,14 @@ type ChatCompletion = {
   choices?: { finish_reason?: string; message?: { content?: string | null; refusal?: string | null } }[];
 };
 
+/** Solo identificadores cortos: un `code` raro podría repetir parte de lo que mandamos (texto o base64 del usuario). */
+const SAFE_CODE = /^[a-z0-9_.-]{1,64}$/i;
+
 function httpError(status: number, body: string): AiError {
   let code: string | undefined;
   try {
-    code = (JSON.parse(body) as { error?: { code?: string | null } }).error?.code ?? undefined;
+    const raw = (JSON.parse(body) as { error?: { code?: unknown } }).error?.code;
+    code = typeof raw === "string" && SAFE_CODE.test(raw) ? raw : undefined;
   } catch {
     // cuerpo no-JSON (p. ej. un 502 HTML): alcanza con el status
   }
@@ -84,8 +96,9 @@ export function createOpenAiClient(opts: { apiKey: string; model?: string; fetch
   return {
     model,
     async generateJson(req) {
+      const ms = req.timeoutMs ?? timeoutMs;
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      const timer = setTimeout(() => controller.abort(), ms);
       try {
         const res = await doFetch(CHAT_COMPLETIONS_URL, {
           method: "POST",
@@ -121,7 +134,7 @@ export function createOpenAiClient(opts: { apiKey: string; model?: string; fetch
         return content;
       } catch (e) {
         if (e instanceof AiError) throw e;
-        if (controller.signal.aborted) throw new AiError("timeout", `OpenAI no respondió en ${Math.round(timeoutMs / 1000)} s`);
+        if (controller.signal.aborted) throw new AiError("timeout", `OpenAI no respondió en ${Math.round(ms / 1000)} s`);
         // Sin el texto del error original: un TypeError de cabecera inválida puede traer `Bearer sk-…`.
         throw new AiError("unavailable", "No se pudo conectar con OpenAI");
       } finally {

@@ -26,6 +26,29 @@ describe("isAiEnabled / getAiClient", () => {
 });
 
 describe("createOpenAiClient.generateJson", () => {
+  it("timeoutMs del pedido pisa el del cliente y no viaja a OpenAI", async () => {
+    const hang: typeof fetch = (_u, init) =>
+      new Promise((_, reject) => init!.signal!.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))));
+    const started = Date.now();
+    const e = await rejection(client(hang, 60_000).generateJson({ ...REQ, timeoutMs: 20 }));
+    expect(e).toMatchObject({ code: "timeout" });
+    expect(Date.now() - started).toBeLessThan(5_000);
+
+    const f = vi.fn<typeof fetch>(async () => completion({ content: "{}", refusal: null }));
+    await client(f).generateJson({ ...REQ, timeoutMs: 1_000 });
+    expect(JSON.parse(f.mock.calls[0][1]!.body as string)).not.toHaveProperty("timeoutMs");
+  });
+
+  it("un código de error raro de OpenAI no entra al mensaje (podría repetir lo que le mandamos)", async () => {
+    const echoed = `${"QUJD".repeat(30)}+/=`;
+    const e = await rejection(client(async () => errorResponse(400, echoed)).generateJson(REQ));
+    expect(e).toMatchObject({ code: "bad_request", status: 400 });
+    expect((e as Error).message).toBe("OpenAI rechazó el pedido (400)");
+    expect(await rejection(client(async () => errorResponse(400, "invalid_image_format")).generateJson(REQ))).toMatchObject({
+      message: "OpenAI rechazó el pedido (invalid_image_format)",
+    });
+  });
+
   it("pide salida estructurada estricta y devuelve el contenido", async () => {
     const f = vi.fn<typeof fetch>(async () => completion({ content: '{"ok":true}', refusal: null }));
     expect(await client(f).generateJson(REQ)).toBe('{"ok":true}');
