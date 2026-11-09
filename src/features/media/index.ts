@@ -5,6 +5,6 @@ export { PhotoGrid } from "./PhotoGrid";
 export type { GridPhoto } from "./PhotoGrid";
 export { uploadFile, uploadPendingPhotos } from "./upload";
 export type { UploadedMedia } from "./upload";
-export { compressImage, fitWithin } from "./compress";
+export { compressImage, compressImageForAi, fitWithin } from "./compress";
 export type { CompressedImage } from "./compress";
 export { MAX_ACTIVITY_PHOTOS, type UploadTarget } from "@/src/server/media/keys";

@@ -52,7 +52,8 @@ async function render(
   src: Source,
   maxSide: number,
   quality: number,
-  prefer: CompressedImage["contentType"]
+  prefer: CompressedImage["contentType"],
+  background?: string
 ): Promise<CompressedImage> {
   const { width, height } = fitWithin(src.width, src.height, maxSide);
   const canvas = document.createElement("canvas");
@@ -61,6 +62,11 @@ async function render(
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Tu navegador no permite procesar imágenes.");
   ctx.imageSmoothingQuality = "high";
+  // JPEG no tiene transparencia: una captura PNG con fondo transparente quedaría negra (y el texto negro, invisible).
+  if (background) {
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, width, height);
+  }
   ctx.drawImage(src.image, 0, 0, width, height);
   let blob = await toBlob(canvas, prefer, quality);
   // Safari no codifica WebP: devuelve PNG. En ese caso usamos JPEG.
@@ -81,6 +87,28 @@ export async function compressImage(file: Blob): Promise<{ main: CompressedImage
     if (main.blob.size > MAX_BYTES) throw new Error("La foto es demasiado pesada, incluso comprimida.");
     const thumb = await render(src, THUMB_MAX_SIDE, THUMB_QUALITY, main.contentType);
     return { main, thumb };
+  } finally {
+    src.close();
+  }
+}
+
+export const AI_MAX_SIDE = 1600;
+export const AI_QUALITY = 0.8;
+
+/**
+ * Foto o captura de una rutina para leerla con IA (fase 3b): JPEG (lo aceptan todos los modelos con visión), lado mayor
+ * ≤ 1600 px y fondo blanco. HEIC: iOS Safari ya entrega JPEG al elegir de la galería; en escritorio solo Safari lo
+ * decodifica (en Chrome, `decode` lanza y la UI pide un JPG).
+ */
+export async function compressImageForAi(file: Blob, maxBytes: number): Promise<Blob> {
+  const src = await decode(file).catch(() => {
+    throw new Error("No pudimos abrir la foto. Probá con una foto JPG o PNG.");
+  });
+  try {
+    let out = await render(src, AI_MAX_SIDE, AI_QUALITY, "image/jpeg", "white");
+    if (out.blob.size > maxBytes) out = await render(src, AI_MAX_SIDE, 0.6, "image/jpeg", "white");
+    if (out.blob.size > maxBytes) throw new Error("La foto es demasiado pesada, incluso achicada.");
+    return out.blob;
   } finally {
     src.close();
   }
