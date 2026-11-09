@@ -40,6 +40,14 @@ describe("pdfPageCountHint", () => {
     const updated = `${pdfText(2)}\n3 0 obj\n<< /Type /Page /Parent 2 0 R /Rotate 90 >>\nendobj\n%%EOF`;
     expect(pdfPageCountHint(new TextEncoder().encode(updated))).toBe(2);
   });
+
+  it("una tirada larga de dígitos no dispara un match cuadrático (tiempo lineal)", () => {
+    const evil = new TextEncoder().encode(`%PDF-1.4\n${"1".repeat(200_000)}/Type /Page endobj`);
+    const t0 = performance.now();
+    const n = pdfPageCountHint(evil);
+    expect(performance.now() - t0).toBeLessThan(200);
+    expect(n).toBeNull(); // sin encabezado "N G obj" válido
+  });
 });
 
 describe("readImportAttachments", () => {

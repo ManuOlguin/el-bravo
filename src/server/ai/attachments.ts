@@ -30,7 +30,7 @@ export function pdfPageCountHint(b: Uint8Array): number | null {
   const pages = new Set<string>();
   for (const chunk of text.split("endobj")) {
     if (!/\/Type\s*\/Page(?![A-Za-z])/.test(chunk)) continue;
-    const num = chunk.match(/(\d+)\s+\d+\s+obj(?![A-Za-z])/);
+    const num = chunk.match(/(\d{1,10})\s+\d{1,5}\s+obj(?![A-Za-z])/);
     if (num) pages.add(num[1]);
   }
   return pages.size > 0 ? pages.size : null;

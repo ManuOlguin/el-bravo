@@ -9,7 +9,7 @@ Cuatro planes, uno por fase. Cada fase se publica sola y en orden (las migracion
 | 1 | [Formato de texto, compartir e importar texto](fase-1-formato-texto.md) | — | — |
 | 2 | [Rutinas públicas y copiar](fase-2-publicas-copiar.md) | 1 | — |
 | 3 | [Importar con IA](fase-3-importar-ia.md) | 1 | `OPENAI_API_KEY` (y opcional `OPENAI_MODEL`) |
-| 3b | [Varias rutinas por importación e importar desde archivos](fase-3b-importar-archivos.md) | 3 | `OPENAI_API_KEY` (fotos/PDF y varias rutinas); Fluid Compute para `maxDuration = 100` |
+| 3b | [Varias rutinas por importación e importar desde archivos](fase-3b-importar-archivos.md) | 3 | `OPENAI_API_KEY` (fotos/PDF y varias rutinas); Fluid Compute (activado) para `maxDuration = 120`; modelo por defecto `gpt-4.1-mini` |
 | 4 | [Curaduría del catálogo](fase-4-curaduria.md) | 1, 3 (cliente OpenAI) | `OPENAI_API_KEY`, `ADMIN_EMAILS` |
 
 ## Convenciones del repo (valen para todas las fases)
