@@ -23,11 +23,17 @@ export function ImportReview({
   onChange,
   onBack,
   onContinue,
+  continueLabel = "Continuar",
+  continuePending = false,
+  usedIn,
 }: {
   draft: ImportDraft;
   onChange(d: ImportDraft): void;
   onBack(): void;
   onContinue(): void;
+  continueLabel?: string;
+  continuePending?: boolean;
+  usedIn?: Record<string, string[]>;
 }) {
   const { catalog, muscles } = useExerciseCatalog();
   const [picking, setPicking] = useState<string | null>(null);
@@ -107,6 +113,7 @@ export function ImportReview({
                 <div className="flex items-start justify-between gap-2">
                   <span className="min-w-0 flex-1 break-words text-xs text-fg-subtle">
                     Decía: «{i.sourceName}» · {i.sets.length} {i.sets.length === 1 ? "serie" : "series"}
+                    {usedIn?.[i.key]?.length ? ` · En: ${usedIn[i.key].join(", ")}` : ""}
                   </span>
                   {match.kind === "found" ? <Pill tone="primary">✓ Encontrado</Pill> : <Pill tone="gold">✨ Nuevo</Pill>}
                 </div>
@@ -201,8 +208,8 @@ export function ImportReview({
         <Button variant="ghost" onClick={onBack}>
           Volver
         </Button>
-        <Button fullWidth size="lg" disabled={hasInvalid} onClick={onContinue}>
-          Continuar
+        <Button fullWidth size="lg" disabled={hasInvalid} pending={continuePending} onClick={onContinue}>
+          {continueLabel}
         </Button>
       </div>
       <ExercisePicker
