@@ -21,7 +21,8 @@ describe("isAiEnabled / getAiClient", () => {
   it("modelo por OPENAI_MODEL, con uno chico por defecto", () => {
     expect(getAiClient({ OPENAI_API_KEY: "sk-x" })?.model).toBe(DEFAULT_OPENAI_MODEL);
     expect(getAiClient({ OPENAI_API_KEY: "sk-x", OPENAI_MODEL: "" })?.model).toBe(DEFAULT_OPENAI_MODEL);
-    expect(getAiClient({ OPENAI_API_KEY: "sk-x", OPENAI_MODEL: "gpt-4.1-mini" })?.model).toBe("gpt-4.1-mini");
+    expect(getAiClient({ OPENAI_API_KEY: "sk-x", OPENAI_MODEL: "gpt-4o" })?.model).toBe("gpt-4o");
+    expect(DEFAULT_OPENAI_MODEL).toBe("gpt-4.1-mini");
   });
 });
 

@@ -66,10 +66,10 @@ if (!env.OPENAI_API_KEY) console.log("· IA (OpenAI): sin configurar (opcional: 
 else if (!/^sk-[A-Za-z0-9_-]{20,}$/.test(env.OPENAI_API_KEY)) {
   failed++;
   console.log("✗ OPENAI_API_KEY: no parece una key de OpenAI (empieza con sk-; platform.openai.com → API keys)");
-} else console.log(`✓ IA (OpenAI, modelo ${env.OPENAI_MODEL || "gpt-4o-mini, por defecto"})`);
+} else console.log(`✓ IA (OpenAI, modelo ${env.OPENAI_MODEL || "gpt-4.1-mini, por defecto"})`);
 if (env.OPENAI_MODEL && !/^[A-Za-z0-9][A-Za-z0-9._:-]{1,79}$/.test(env.OPENAI_MODEL)) {
   failed++;
-  console.log("✗ OPENAI_MODEL: nombre de modelo inválido (p. ej. gpt-4o-mini); o borrala para usar el de por defecto");
+  console.log("✗ OPENAI_MODEL: nombre de modelo inválido (p. ej. gpt-4.1-mini); o borrala para usar el de por defecto");
 }
 if (env.R2_ENDPOINT) {
   failed++;
@@ -117,7 +117,7 @@ if (process.argv.includes("--ping")) {
     console.log(`✗ R2: ${e.name ?? ""} ${e.message ?? ""}`);
   }
   if (env.OPENAI_API_KEY) {
-    const model = env.OPENAI_MODEL || "gpt-4o-mini";
+    const model = env.OPENAI_MODEL || "gpt-4.1-mini";
     try {
       const res = await fetch(`https://api.openai.com/v1/models/${encodeURIComponent(model)}`, {
         headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}` },

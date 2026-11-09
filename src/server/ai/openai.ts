@@ -11,7 +11,7 @@ import "server-only";
 type Env = Record<string, string | undefined>;
 
 /** Chico, barato y con salida estructurada. Se cambia con `OPENAI_MODEL` sin tocar código. */
-export const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
+export const DEFAULT_OPENAI_MODEL = "gpt-4.1-mini";
 export const AI_TIMEOUT_MS = 30_000;
 const CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions";
 
