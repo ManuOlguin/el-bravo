@@ -124,7 +124,14 @@ Decidido con el dueño (9-nov-2026): además de pegar texto, en `/routines/impor
 - **Privacidad:** los archivos no se guardan (ni en la base ni en R2): se procesan en memoria y se mandan a OpenAI; el aviso de privacidad lo dice.
 - Mezclar: o archivos o texto pegado en una misma importación (si hay archivos con texto extraído, se junta en un único texto).
 - Sin `OPENAI_API_KEY`: solo se aceptan los archivos de texto (docx/xlsx/txt/csv) en formato El Bravo; fotos y PDF no aparecen.
-- Timeout de la IA para archivos: 45 s (la página ya tiene `maxDuration = 60`).
+- Timeout de la IA para archivos: 45 s; con varias rutinas, hasta ~90 s (verificar el máximo de duración de funciones del plan de Vercel y subir `maxDuration` de la página en consecuencia).
+
+### Varias rutinas en una importación (decidido 9-nov-2026)
+- Reemplaza la regla anterior de "solo el primer día": la IA devuelve **todas las rutinas** que encuentre en el texto/archivos (días, "Rutina A/B", etc.), **hasta 7** por importación (si hay más, avisa cuántas quedaron afuera).
+- Si hay **una sola**, el flujo es el de siempre (revisión → editor → guardar).
+- Si hay **más de una**: pantalla "Encontramos N rutinas" con nombre, cantidad de ejercicios y una casilla por rutina (todas marcadas) → **una revisión conjunta** de ejercicios (encontrados / nuevos; un ejercicio nuevo que aparece en varias rutinas se revisa **una vez**: mismos músculos/equipo/nombre) → botón **"Crear N rutinas"** que las crea todas **privadas en una sola transacción** (los ejercicios nuevos se crean una vez y se comparten). Para ajustar una rutina después, se abre en el editor normal.
+- Sigue contando como **una** importación del límite diario.
+- El formato de texto El Bravo (sin IA) sigue siendo de una rutina por texto.
 
 ---
 
