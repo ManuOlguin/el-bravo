@@ -90,3 +90,11 @@ describe("checkSelection", () => {
     expect(checkSelection([], [f("a.jpg", "", 31_000_000)], true)).toEqual({ ok: false, error: "«a.jpg» es demasiado pesada." });
   });
 });
+
+describe("checkTotalSize", () => {
+  it("acepta hasta el límite y avisa si se pasa", async () => {
+    const { checkTotalSize } = await import("./attachments");
+    expect(checkTotalSize([2_000_000, 2_000_000])).toBeNull();
+    expect(checkTotalSize([2_000_000, 2_000_001])).toMatch(/pesan demasiado/);
+  });
+});

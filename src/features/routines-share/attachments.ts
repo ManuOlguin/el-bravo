@@ -91,3 +91,10 @@ export function checkSelection<T extends Picked>(current: MediaKind[], picked: T
   if (huge) return { ok: false, error: `«${huge.file.name}» es demasiado pesada.` };
   return { ok: true, kind: "media", files: media };
 }
+
+/** ¿Lo que viaja (fotos ya achicadas o el PDF) entra en el límite del servidor? Devuelve el mensaje si no. */
+export function checkTotalSize(sizes: number[]): string | null {
+  const total = sizes.reduce((n, s) => n + s, 0);
+  if (total <= MAX_TOTAL_BYTES) return null;
+  return `Las fotos pesan demasiado juntas (${formatBytes(total)}): el máximo es ${formatBytes(MAX_TOTAL_BYTES)}. Probá con menos fotos o un PDF más liviano.`;
+}
