@@ -24,7 +24,7 @@ Cargar rutinas a mano da pereza: la gente las tiene en notas, en un mensaje del 
 | R5 | Admins del catálogo | Variable `ADMIN_EMAILS` (lista separada por comas). Sin roles en la DB. |
 | R6 | Análisis de curaduría | **A pedido** (botón), no automático: la LLM sugiere, el admin decide. |
 
-Fuera de alcance (por ahora): importar desde **foto**, nivel de visibilidad "solo amigos", likes/rankings de rutinas, edición colaborativa.
+Fuera de alcance (por ahora): nivel de visibilidad "solo amigos", likes/rankings de rutinas, edición colaborativa.
 
 ---
 
@@ -106,6 +106,25 @@ Toda lectura de rutina ajena pasa por `visibility = public`; las acciones de edi
 ### Componentes
 - `src/server/ai/openai.ts`: cliente mínimo (`fetch` a la API de OpenAI, sin SDK), con timeout y `response_format` de JSON Schema. Inyectable para tests.
 - `src/server/ai/routine-import.ts`: prompt, schema, validación y mapeo a borrador.
+
+---
+
+## Fase 3b — Importar desde archivos (fotos, PDF, Word, Excel, texto)
+
+Decidido con el dueño (9-nov-2026): además de pegar texto, en `/routines/import` se pueden **adjuntar archivos**. Mismo flujo después: revisión → editor → guardar.
+
+| Tipo | Cómo se lee |
+|---|---|
+| Fotos / capturas (JPG, PNG, HEIC/foto del celu, WebP) — **hasta 4 por importación** | En el navegador se achican (lado mayor ≤ 1600 px, JPEG) y van a la IA como imágenes. |
+| PDF (≤ 10 páginas) | Va a la IA como archivo (sirve aunque sea escaneado). |
+| Word (.docx), Excel (.xlsx), texto (.txt, .csv) | Se extrae el texto **en el navegador** y sigue el flujo de texto (formato El Bravo sin IA; si no, IA de texto). |
+
+- Una importación = **un** cupo del límite diario (20/día), tenga 1 o 4 archivos.
+- Tamaño total que viaja al servidor ≤ 4 MB (límite de Vercel 4,5 MB); se avisa claro si se pasa.
+- **Privacidad:** los archivos no se guardan (ni en la base ni en R2): se procesan en memoria y se mandan a OpenAI; el aviso de privacidad lo dice.
+- Mezclar: o archivos o texto pegado en una misma importación (si hay archivos con texto extraído, se junta en un único texto).
+- Sin `OPENAI_API_KEY`: solo se aceptan los archivos de texto (docx/xlsx/txt/csv) en formato El Bravo; fotos y PDF no aparecen.
+- Timeout de la IA para archivos: 45 s (la página ya tiene `maxDuration = 60`).
 
 ---
 
