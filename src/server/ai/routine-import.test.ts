@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 import { AiError, type AiClient } from "./openai";
-import { AiImportError, buildRoutineImportPrompt, importRoutineWithAi, parseRoutineImportResponse, routineImportJsonSchema } from "./routine-import";
+import { AI_IMPORT_TIMEOUT_MS } from "@/src/features/routines-share/import-limits";
+import { AiImportError, buildRoutineImportFilesPrompt, buildRoutineImportPrompt, importRoutineFromFilesWithAi, importRoutineWithAi, parseRoutineImportResponse, routineImportJsonSchema } from "./routine-import";
 
 const MUSCLES = [
   { slug: "pecho", name: "Pecho" }, { slug: "espalda", name: "Espalda" }, { slug: "biceps", name: "Bíceps" },
@@ -297,5 +298,38 @@ describe("importRoutineWithAi", () => {
   it("propaga los AiError del cliente", async () => {
     const client: AiClient = { model: "test", generateJson: async () => { throw new AiError("timeout", "lento"); } };
     await expect(importRoutineWithAi({ text: "x", catalogNames: [], muscles: MUSCLES, client })).rejects.toMatchObject({ code: "timeout" });
+  });
+});
+
+describe("importar desde archivos (3b)", () => {
+  const img = { type: "image" as const, mediaType: "image/jpeg" as const, data: new Uint8Array([0xff, 0xd8, 0xff]) };
+  const pdf = { type: "pdf" as const, filename: "rutina.pdf", data: new TextEncoder().encode("%PDF-1.4") };
+
+  it("mismas reglas que el texto + las de archivos; primero el contexto en texto y después los adjuntos, sin bloque <rutina>", () => {
+    const p = buildRoutineImportFilesPrompt({ files: [img, img], catalogNames: CTX.catalogNames, muscles: MUSCLES });
+    expect(p.system).toContain(buildRoutineImportPrompt({ text: "x", catalogNames: [], muscles: MUSCLES }).system);
+    expect(p.system).toMatch(/archivos adjuntos/);
+    expect(p.system).toMatch(/no repitas un ejercicio porque aparezca en dos fotos/);
+    const [first, ...rest] = p.user;
+    expect(first.type).toBe("text");
+    const text = first.type === "text" ? first.text : "";
+    expect(text).toContain("- Press de Banca");
+    expect(text).toContain("- biceps: Bíceps");
+    expect(text).toContain("las 2 fotos adjuntas");
+    expect(text).not.toContain("<rutina>");
+    expect(rest).toEqual([img, img]);
+  });
+
+  it("con un PDF lo nombra", () => {
+    const p = buildRoutineImportFilesPrompt({ files: [pdf], catalogNames: [], muscles: MUSCLES });
+    expect(p.user[0].type === "text" && p.user[0].text).toContain("el PDF adjunto");
+  });
+
+  it("llama una sola vez con el schema de siempre y el timeout de importación", async () => {
+    const generateJson = vi.fn<AiClient["generateJson"]>(async () => res([ex({})]));
+    const r = await importRoutineFromFilesWithAi({ files: [img, img, img, img], catalogNames: CTX.catalogNames, muscles: MUSCLES, client: { model: "test", generateJson } });
+    expect(r.routines[0].parsed.exercises[0].name).toBe("Press de Banca");
+    expect(generateJson).toHaveBeenCalledTimes(1);
+    expect(generateJson.mock.calls[0][0]).toMatchObject({ schemaName: "routine_import", schema: routineImportJsonSchema(CTX.muscleSlugs), timeoutMs: AI_IMPORT_TIMEOUT_MS });
   });
 });
