@@ -18,7 +18,7 @@ vi.mock("@/src/server/auth/dal", async () => {
 });
 
 // El cliente de OpenAI se simula: nunca sale a la red.
-const ai = vi.hoisted(() => ({ client: null as null | { model: string; generateJson: (req: { user: string }) => Promise<string> } }));
+const ai = vi.hoisted(() => ({ client: null as null | { model: string; generateJson: (req: { user: string; timeoutMs?: number }) => Promise<string> } }));
 vi.mock("@/src/server/ai/openai", async (orig) => ({
   ...(await orig<typeof import("@/src/server/ai/openai")>()),
   getAiClient: () => ai.client,
@@ -27,6 +27,7 @@ vi.mock("@/src/server/ai/openai", async (orig) => ({
 import { importRoutineWithAiAction } from "./routine-import";
 import { createRoutineAction } from "./routines";
 import { getExerciseCatalogAction } from "./exercises";
+import { AI_IMPORT_TIMEOUT_MS } from "@/src/features/routines-share/import-limits";
 import { AiError } from "@/src/server/ai/openai";
 import { __clearRateLimits } from "@/src/server/account/rate-limit";
 import { aiImportToDraft } from "@/src/features/routines-share/ai-draft";
@@ -34,10 +35,9 @@ import { importDraftToRoutine, pendingExercises } from "@/src/features/routines-
 import type { RoutineInput } from "@/src/schemas/routine";
 
 const s = (count: number, reps: number | null, weightKg: number | null = null) => ({ count, kind: "normal", reps, durationSeconds: null, weightKg });
-const AI_JSON = JSON.stringify({
+const AI_JSON = JSON.stringify({ routines: [{
   name: "Espalda del profe",
   notes: "Bajar lento",
-  daysInText: 1,
   exercises: [
     { name: "Banco plano", sourceText: "banco plano", catalogName: "press de banca", measureType: "reps", restSeconds: 90, setGroups: [s(2, 8, 60)], newExercise: null },
     {
@@ -46,10 +46,10 @@ const AI_JSON = JSON.stringify({
     },
     { name: "Pullover Fantasma", sourceText: "pullover fantasma", catalogName: "Pullover Fantasma", measureType: "reps", restSeconds: null, setGroups: [s(1, 10, 20)], newExercise: null },
   ],
-});
+}], routinesInText: 1 });
 
 function fakeAi(content: string | Error) {
-  const generateJson = vi.fn(async (req: { user: string }) => {
+  const generateJson = vi.fn(async (req: { user: string; timeoutMs?: number }) => {
     void req;
     if (content instanceof Error) throw content;
     return content;
@@ -93,9 +93,9 @@ describe("importRoutineWithAiAction", () => {
     const r = await importRoutineWithAiAction("Lunes espalda: banco plano 2x8 60kg, remo hammer 3x12, pullover 10 con 20");
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(r.data.parsed.exercises.map((e) => e.name)).toEqual(["Press de Banca", "Remo Hammer", "Pullover Fantasma"]);
-    expect(r.data.hints["remo hammer"]).toMatchObject({ source: "ai", equipment: "machine", muscles: [{ muscleSlug: "espalda", percentage: 80 }, { muscleSlug: "biceps", percentage: 20 }] });
-    expect(r.data.hints["pullover fantasma"]).toMatchObject({ source: "ai", muscles: [] });
+    expect(r.data.routines[0].parsed.exercises.map((e) => e.name)).toEqual(["Press de Banca", "Remo Hammer", "Pullover Fantasma"]);
+    expect(r.data.routines[0].hints["remo hammer"]).toMatchObject({ source: "ai", equipment: "machine", muscles: [{ muscleSlug: "espalda", percentage: 80 }, { muscleSlug: "biceps", percentage: 20 }] });
+    expect(r.data.routines[0].hints["pullover fantasma"]).toMatchObject({ source: "ai", muscles: [] });
     const prompt = call.mock.calls[0][0].user;
     expect(prompt).toContain("- Press de Banca");
     expect(prompt).toContain("- espalda: Espalda");
@@ -167,7 +167,7 @@ describe("importRoutineWithAiAction", () => {
     expect(await importRoutineWithAiAction("banco plano 4x8")).toEqual({ ok: false, error: "La IA tardó demasiado. Si la rutina es larga o tiene varios días, pegá un día por vez." });
     fakeAi("{ roto");
     expect(await importRoutineWithAiAction("banco plano 4x8")).toEqual({ ok: false, error: "La IA no pudo entender la rutina. Revisá el texto y probá de nuevo." });
-    fakeAi(JSON.stringify({ name: "X", notes: null, exercises: [] }));
+    fakeAi(JSON.stringify({ routines: [{ name: "X", notes: null, exercises: [] }], routinesInText: 1 }));
     expect(await importRoutineWithAiAction("hola")).toEqual({ ok: false, error: "No encontramos ejercicios en ese texto. ¿Pegaste una rutina?" });
   });
 
@@ -177,7 +177,7 @@ describe("importRoutineWithAiAction", () => {
     const r = await importRoutineWithAiAction("cualquier texto");
     const cat = await getExerciseCatalogAction();
     if (!r.ok || !cat.ok) throw new Error("esperaba ok");
-    const draft = aiImportToDraft(r.data, cat.data.exercises);
+    const draft = aiImportToDraft(r.data.routines[0], cat.data.exercises);
     const routine = importDraftToRoutine(draft);
     const newExercises = pendingExercises(draft);
     const input: RoutineInput = {
@@ -200,5 +200,16 @@ describe("importRoutineWithAiAction", () => {
     expect(mine[1].muscles.map((m) => [m.muscle.slug, m.percentage]).sort()).toEqual([["biceps", 20], ["espalda", 80]]);
     const saved = await prisma.routineExercise.findMany({ orderBy: { position: "asc" }, select: { exerciseId: true } });
     expect(saved[0].exerciseId).toBe(bench.id); // "Banco plano" → el del catálogo, sin duplicar
+  });
+
+  it("varias rutinas en un texto: vuelven todas en una sola llamada (un cupo)", async () => {
+    await fixtures();
+    const day = (name: string) => ({ name, notes: null, exercises: [{ name: "Banco plano", sourceText: "banco", catalogName: "Press de Banca", measureType: "reps", restSeconds: null, setGroups: [s(3, 8)], newExercise: null }] });
+    const call = fakeAi(JSON.stringify({ routines: [day("Día 1"), day("Día 2"), day("Día 3")], routinesInText: 3 }));
+    const r = await importRoutineWithAiAction("Día 1: banco 3x8\nDía 2: banco 3x8\nDía 3: banco 3x8");
+    expect(r.ok && r.data.routines.map((x) => x.parsed.name)).toEqual(["Día 1", "Día 2", "Día 3"]);
+    expect(r.ok && r.data.omittedCount).toBe(0);
+    expect(call).toHaveBeenCalledTimes(1);
+    expect(call.mock.calls[0][0]).toMatchObject({ timeoutMs: AI_IMPORT_TIMEOUT_MS });
   });
 });

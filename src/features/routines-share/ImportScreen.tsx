@@ -8,7 +8,7 @@ import { aiImportToDraft } from "./ai-draft";
 import { looksLikeBravoFormat, parseRoutineText } from "./format";
 import { importDraftToRoutine, matchImport, pendingExercises } from "./match";
 import { ImportReview } from "./ImportReview";
-import { MAX_IMPORT_TEXT_CHARS } from "./import-limits";
+import { AI_IMPORT_TIMEOUT_MS, MAX_IMPORT_TEXT_CHARS } from "./import-limits";
 import type { ImportDraft } from "./types";
 
 const MAX_CHARS = MAX_IMPORT_TEXT_CHARS;
@@ -48,7 +48,9 @@ export function ImportScreen({ aiEnabled = false }: { aiEnabled?: boolean }) {
       const r = await importRoutineWithAiAction(text);
       if (!r.ok) return void toast.error(r.error); // el texto queda en el campo para reintentar
       setOfferAi(false);
-      setDraft(aiImportToDraft(r.data, catalog));
+      const [first] = r.data.routines;
+      if (r.data.routines.length > 1) toast.info(`Encontramos ${r.data.routines.length} rutinas: por ahora importamos la primera.`);
+      setDraft(aiImportToDraft(first, catalog));
     });
 
   return (
@@ -89,7 +91,7 @@ export function ImportScreen({ aiEnabled = false }: { aiEnabled?: boolean }) {
           </Button>
           {aiPending && (
             <p className="text-center text-xs text-fg-subtle" aria-live="polite">
-              Leyendo la rutina… puede tardar hasta 30 segundos.
+              {`Leyendo la rutina… puede tardar hasta ${Math.round(AI_IMPORT_TIMEOUT_MS / 1000)} segundos.`}
             </p>
           )}
         </Card>

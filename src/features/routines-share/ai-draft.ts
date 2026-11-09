@@ -16,6 +16,9 @@ export type AiRoutineImport = {
   sourceNames: string[];
 };
 
+/** Resultado de importar con IA (fase 3b): todas las rutinas que encontró (hasta 7) y cuántas quedaron afuera. */
+export type AiImportResult = { routines: AiRoutineImport[]; omittedCount: number };
+
 /** ¿El nombre (ya normalizado) coincide exacto con el ejercicio del catálogo (nombre, inglés o alias)? */
 function isExact(entry: CatalogEntry | undefined, key: string): boolean {
   if (!entry || !key) return false;

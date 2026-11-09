@@ -14,8 +14,9 @@ const set = (reps: number | null, weightKg: number | null = null, kind = "normal
 /** Un grupo de series iguales, como lo pide el schema: `count` series seguidas con los mismos datos. */
 const g = (count: number, reps: number | null, weightKg: number | null = null, kind = "normal", durationSeconds: number | null = null) => ({ count, kind, reps, durationSeconds, weightKg });
 const ex = (o: Record<string, unknown>) => ({ name: "Banco plano", catalogName: "Press de Banca", measureType: "reps", restSeconds: null, setGroups: [g(1, 8, 60)], newExercise: null, ...o });
-const res = (exercises: unknown[], o: Record<string, unknown> = {}) => JSON.stringify({ name: "Pecho y espalda", notes: null, daysInText: 1, exercises, ...o });
-const parse = (content: string) => parseRoutineImportResponse(content, CTX);
+const res = (exercises: unknown[], o: Record<string, unknown> = {}) =>
+  JSON.stringify({ routines: [{ name: "Pecho y espalda", notes: null, exercises, ...o }], routinesInText: 1 });
+const parse = (content: string) => parseRoutineImportResponse(content, CTX).routines[0];
 const errorOf = (fn: () => unknown) => {
   try {
     fn();
@@ -105,7 +106,7 @@ describe("parseRoutineImportResponse", () => {
 
   it("catalogName: gana el primero (el oficial) y una clave vacía nunca verifica", () => {
     const first = parseRoutineImportResponse(res([ex({ catalogName: "PRESS DE BANCA!" })]), { ...CTX, catalogNames: ["Press de Banca", "press de banca"] });
-    expect(first.parsed.exercises[0].name).toBe("Press de Banca");
+    expect(first.routines[0].parsed.exercises[0].name).toBe("Press de Banca");
     // "🔥" existe como nombre visible, pero normaliza a "": no se indexa y el ejercicio queda como nuevo.
     const r = parse(res([ex({ name: "Burpees", catalogName: "🔥", setGroups: [g(1, 10)] })]));
     expect(r.parsed.exercises[0].name).toBe("Burpees");
@@ -169,27 +170,47 @@ describe("series agrupadas (F1)", () => {
   });
 });
 
-describe("textos con varios días (F1b)", () => {
-  const notesOf = (o: Record<string, unknown>) => parse(res([ex({})], o)).parsed.notes;
+describe("varias rutinas (3b)", () => {
+  const routine = (name: string, exercises: unknown[], notes: string | null = null) => ({ name, notes, exercises });
+  const multi = (routines: unknown[], routinesInText = routines.length) => JSON.stringify({ routines, routinesInText });
 
-  it("con más de un día agrega la frase fija y conserva las notas reales", () => {
-    expect(notesOf({ daysInText: 3, notes: null }))
-      .toBe("El texto tenía 3 días/rutinas; importamos la primera. Pegá las otras por separado.");
-    expect(notesOf({ daysInText: 2, notes: "Bajar lento" }))
-      .toBe("El texto tenía 2 días/rutinas; importamos la primera. Pegá las otras por separado.\nBajar lento");
+  it("devuelve cada rutina con sus ejercicios, nombre y notas, en orden", () => {
+    const r = parseRoutineImportResponse(multi([
+      routine("Día 1 — Pecho", [ex({})], "Bajar lento"),
+      routine("Día 2 — Piernas", [ex({ name: "Sentadilla", catalogName: "Sentadillas" }), ex({ name: "Remo Hammer", catalogName: null })]),
+    ]), CTX);
+    expect(r.omittedCount).toBe(0);
+    expect(r.routines.map((x) => [x.parsed.name, x.parsed.notes, x.parsed.exercises.map((e) => e.name)])).toEqual([
+      ["Día 1 — Pecho", "Bajar lento", ["Press de Banca"]],
+      ["Día 2 — Piernas", null, ["Sentadillas", "Remo Hammer"]],
+    ]);
+    expect(r.routines[1].hints["remo hammer"]).toMatchObject({ source: "ai" });
+    expect(r.routines[0].hints).toEqual({});
   });
 
-  it("con un día (o un valor inválido) no agrega nada", () => {
-    expect(notesOf({ daysInText: 1, notes: "Bajar lento" })).toBe("Bajar lento");
-    expect(notesOf({ daysInText: 1, notes: null })).toBeNull();
-    expect(notesOf({ daysInText: 0, notes: null })).toBeNull();
-    expect(notesOf({ daysInText: "tres", notes: null })).toBeNull();
-    expect(parse(JSON.stringify({ name: "X", notes: null, exercises: [ex({})] })).parsed.notes).toBeNull();
+  it("máximo 7: las de más se cuentan como afuera (también si routinesInText dice más)", () => {
+    const nine = Array.from({ length: 9 }, (_, i) => routine(`R${i + 1}`, [ex({})]));
+    const r = parseRoutineImportResponse(multi(nine), CTX);
+    expect(r.routines.map((x) => x.parsed.name)).toEqual(["R1", "R2", "R3", "R4", "R5", "R6", "R7"]);
+    expect(r.omittedCount).toBe(2);
+    expect(parseRoutineImportResponse(multi(nine.slice(0, 7), 12), CTX).omittedCount).toBe(5);
+    expect(parseRoutineImportResponse(multi(nine.slice(0, 2), "muchas" as unknown as number), CTX).omittedCount).toBe(0);
   });
 
-  it("la frase no se la puede inventar la IA en las notas: se escribe en el servidor, y el total se acota", () => {
-    expect(notesOf({ daysInText: 500, notes: null })).toMatch(/^El texto tenía 14 días\/rutinas;/);
-    expect(notesOf({ daysInText: 2.9, notes: null })).toMatch(/^El texto tenía 2 días\/rutinas;/);
+  it("una rutina rota o sin ejercicios válidos se descarta sin tirar las demás", () => {
+    const r = parseRoutineImportResponse(multi([{ foo: 1 }, routine("Vacía", [{ foo: 1 }]), routine("Buena", [ex({})])]), CTX);
+    expect(r.routines.map((x) => x.parsed.name)).toEqual(["Buena"]);
+    expect(r.omittedCount).toBe(0);
+  });
+
+  it("sin ninguna rutina con ejercicios es no_exercises; sin `routines` es invalid_output", () => {
+    expect(errorOf(() => parseRoutineImportResponse(multi([]), CTX))).toMatchObject({ code: "no_exercises" });
+    expect(errorOf(() => parseRoutineImportResponse(JSON.stringify({ name: "X", notes: null, exercises: [ex({})] }), CTX))).toMatchObject({ code: "invalid_output" });
+  });
+
+  it("las notas son las de la IA, sin frases agregadas", () => {
+    expect(parse(res([ex({})], { notes: "Bajar lento" })).parsed.notes).toBe("Bajar lento");
+    expect(parse(res([ex({})], { notes: "   " })).parsed.notes).toBeNull();
   });
 });
 
@@ -224,13 +245,14 @@ describe("prompt y schema", () => {
     expect(p.user).toContain("x  y  z");
   });
 
-  it("el prompt pide grupos de series, la primera rutina de textos con varios días y el texto original", () => {
+  it("el prompt pide grupos de series, todas las rutinas (hasta 7) y el texto original", () => {
     const p = buildRoutineImportPrompt({ text: "x", catalogNames: [], muscles: MUSCLES });
     expect(p.system).toMatch(/setGroups/);
     expect(p.system).toMatch(/4x8 a 60 kg[\s\S]*count 4/);
     expect(p.system).toMatch(/pirámide[\s\S]*un grupo por serie/i);
-    expect(p.system).toMatch(/daysInText/);
-    expect(p.system).toMatch(/SOLO la primera/);
+    expect(p.system).toMatch(/routinesInText/);
+    expect(p.system).toMatch(/cada uno es una rutina/);
+    expect(p.system).toMatch(/Máximo 7/);
     expect(p.system).toMatch(/sourceText[\s\S]*exactamente como está escrito/);
   });
 
@@ -249,9 +271,12 @@ describe("prompt y schema", () => {
       }
     };
     assertStrict(schema);
-    const props = (schema as { properties: Record<string, { items?: { properties: Record<string, unknown>; required: string[] } }> }).properties;
-    expect(Object.keys(props)).toEqual(expect.arrayContaining(["daysInText"]));
-    const exercise = props.exercises.items!;
+    type Node = { properties: Record<string, Node>; items?: Node; required?: string[] };
+    const root = schema as unknown as Node;
+    expect(Object.keys(root.properties).sort()).toEqual(["routines", "routinesInText"]);
+    const routineNode = root.properties.routines.items!;
+    expect(Object.keys(routineNode.properties).sort()).toEqual(["exercises", "name", "notes"]);
+    const exercise = routineNode.properties.exercises.items! as unknown as { properties: Record<string, unknown> };
     expect(exercise.properties).toHaveProperty("setGroups");
     expect(exercise.properties).toHaveProperty("sourceText");
     expect(exercise.properties).not.toHaveProperty("sets");
@@ -265,7 +290,7 @@ describe("importRoutineWithAi", () => {
   it("llama al cliente con el schema y mapea la respuesta", async () => {
     const generateJson = vi.fn<AiClient["generateJson"]>(async () => res([ex({})]));
     const r = await importRoutineWithAi({ text: "banco plano 3x8", catalogNames: CTX.catalogNames, muscles: MUSCLES, client: { model: "test", generateJson } });
-    expect(r.parsed.exercises[0].name).toBe("Press de Banca");
+    expect(r.routines[0].parsed.exercises[0].name).toBe("Press de Banca");
     expect(generateJson.mock.calls[0][0]).toMatchObject({ schemaName: "routine_import", schema: routineImportJsonSchema(CTX.muscleSlugs) });
   });
 

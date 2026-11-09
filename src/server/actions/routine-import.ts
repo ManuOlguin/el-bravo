@@ -13,7 +13,7 @@ import { AI_IMPORT_MAX_CHARS, AiImportError, importRoutineWithAi } from "@/src/s
 import { requireUser } from "@/src/server/auth/dal";
 import { visibleTo } from "@/src/server/exercises/catalog";
 import { fail, ok, parseInput, runAction, type ActionResult } from "@/src/server/http/result";
-import type { AiRoutineImport } from "@/src/features/routines-share/ai-draft";
+import type { AiImportResult } from "@/src/features/routines-share/ai-draft";
 
 const DAILY_LIMIT = { max: 20, windowMs: 24 * 60 * 60_000 };
 /** Tope de nombres en el prompt (catálogo primero, después los propios). */
@@ -43,7 +43,7 @@ const textSchema = z
   .min(1, "Pegá la rutina")
   .max(AI_IMPORT_MAX_CHARS, "El texto es muy largo (máximo 8.000 caracteres).");
 
-export async function importRoutineWithAiAction(text: string): Promise<ActionResult<AiRoutineImport>> {
+export async function importRoutineWithAiAction(text: string): Promise<ActionResult<AiImportResult>> {
   return runAction(async () => {
     const user = await requireUser();
     const parsed = parseInput(textSchema, text);
