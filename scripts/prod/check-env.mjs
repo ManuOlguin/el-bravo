@@ -62,7 +62,7 @@ else if (smtp.length > 0 && smtp.length < 3) {
   console.log("✗ Email: faltan EMAIL_HOST, EMAIL_USER o EMAIL_PASSWORD (correr node scripts/prod/set-email.mjs)");
 } else console.log(`✓ Email (${env.RESEND_API_KEY ? "Resend" : "SMTP"})`);
 // IA (opcional, fases 3–4): sin key la app no muestra "Leer con IA". Si está, tiene que parecer una key de OpenAI.
-if (!env.OPENAI_API_KEY) console.log("· IA (OpenAI): sin configurar (opcional: sin esto no aparece «Leer con IA»)");
+if (!env.OPENAI_API_KEY) console.log("· IA (OpenAI): sin configurar (opcional: sin esto no aparece «Leer con IA» ni se pueden adjuntar fotos o PDF)");
 else if (!/^sk-[A-Za-z0-9_-]{20,}$/.test(env.OPENAI_API_KEY)) {
   failed++;
   console.log("✗ OPENAI_API_KEY: no parece una key de OpenAI (empieza con sk-; platform.openai.com → API keys)");

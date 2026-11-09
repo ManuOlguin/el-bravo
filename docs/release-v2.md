@@ -14,7 +14,7 @@ Los secretos viven en `.env.production.local` (ignorado por git, permisos solo p
   - `/api/cron/seasons` → 03:15 UTC (00:15 en Argentina): cierra temporadas terminadas.
   - `/api/cron/notifications` → 12:30 UTC (09:30 en Argentina).
 - **Email:** SMTP (por ejemplo Gmail con contraseña de aplicación), como usaba el-bravo-prod. Sirve para recuperar contraseña y para las notificaciones por mail, sin dominio propio. Resend queda como opción si algún día hay dominio.
-- **IA (opcional): OpenAI** (spec de rutinas, R1). Chat Completions con salida estructurada (JSON Schema estricto), sin SDK. Modelo por `OPENAI_MODEL` (por defecto `gpt-4o-mini`). Sin `OPENAI_API_KEY` la app anda igual: solo no aparece "Leer con IA". El texto que se importa y los nombres de los ejercicios del usuario se mandan a OpenAI (con `store: false`); el texto no se guarda en la base. Límite: 20 importaciones con IA por usuario por día (en memoria por instancia, como los demás límites).
+- **IA (opcional): OpenAI** (spec de rutinas, R1). Chat Completions con salida estructurada (JSON Schema estricto), sin SDK. Modelo por `OPENAI_MODEL` (por defecto `gpt-4o-mini`). Sin `OPENAI_API_KEY` la app anda igual: solo no aparece "Leer con IA". Se puede importar desde texto pegado o desde archivos: Word/Excel/texto se leen en el navegador (no se suben); fotos (hasta 4, achicadas a 1600 px) o un PDF (≤ 10 páginas) se mandan a OpenAI junto con los nombres de los ejercicios del usuario (con `store: false`). Ni el texto ni los archivos se guardan (ni en la base ni en R2) ni se loguean. La IA devuelve hasta 7 rutinas por importación; se crean juntas, privadas. Límite: 20 importaciones con IA por usuario por día, una por importación aunque tenga 4 fotos o 7 rutinas (en memoria por instancia). Costo: las fotos y el PDF gastan más tokens que el texto; el límite mensual del proyecto en OpenAI (paso 3) lo acota. `OPENAI_MODEL` tiene que aceptar imágenes y PDF (`gpt-4o-mini` sí). Las Server Actions aceptan hasta 4,5 MB (`next.config.ts`).
 
 ## 1. Base de datos — TiDB Cloud (vos)
 
@@ -66,6 +66,7 @@ Hace falta acceso al proyecto de Vercel de el-bravo-prod (si es de la cuenta de 
    - `EMAIL_*`: dejar las que ya estén si funcionan, o cargar las del archivo.
    - `BLOB_READ_WRITE_TOKEN` (Vercel Blob de la versión anterior) ya no se usa: se puede borrar.
    - `OPENAI_API_KEY` (marcarla **Sensitive**) y, si se usa, `OPENAI_MODEL`. Son opcionales: sin ellas no aparece "Leer con IA". Las variables nuevas se toman en el **próximo** deploy.
+   - **Fluid Compute** activado en Settings → Functions (la importación con IA espera hasta 85 s y `/routines/import` tiene `maxDuration = 100`). Sin Fluid Compute en Hobby el límite es 60 s: bajar `maxDuration` a 60 y el timeout de la IA a 50 s (ver el plan de la fase 3b, Task 1).
 3. **Settings → Functions → Function Region**: `Washington, D.C., USA (iad1)` (la misma zona que la base).
 
 ## 7. Publicar (Claude, con tu OK)
@@ -88,7 +89,7 @@ Hace falta acceso al proyecto de Vercel de el-bravo-prod (si es de la cuenta de 
 - **La app no anda:** en Vercel → **Deployments** → el deploy anterior → **Promote to Production**. No hay datos viejos que restaurar (la base es nueva).
 - **Falla una migración:** la base está vacía; se puede borrar y recrear (`DROP DATABASE elbravo; CREATE DATABASE elbravo;`) y volver a correr el paso 5. Si TiDB rechaza alguna migración vieja, el plan B es unificarlas en una sola migración base (`W3-release.md`, Task 4).
 - **Fotos no suben:** casi siempre es CORS del bucket (falta la URL de la app) o `R2_PUBLIC_BASE_URL` mal escrita.
-- **La IA falla o gasta de más:** borrar `OPENAI_API_KEY` en Vercel y redeployar: "Leer con IA" desaparece y el resto sigue igual. Los errores de OpenAI (key, saldo, caída) quedan en los logs de Vercel como `[ai-import]` (sin el texto del usuario).
+- **La IA falla o gasta de más:** borrar `OPENAI_API_KEY` en Vercel y redeployar: "Leer con IA" y adjuntar fotos/PDF desaparecen (Word/Excel/texto siguen andando sin IA) y el resto sigue igual. Los errores de OpenAI (key, saldo, caída) quedan en los logs de Vercel como `[ai-import]` (sin el texto del usuario).
 
 ## Pendientes conocidos
 
