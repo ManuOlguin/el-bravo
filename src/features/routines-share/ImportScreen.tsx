@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { Button, Card, PageHeader, Textarea, toast } from "@/src/components/ui";
 import { refreshCatalogIfLoaded, useExerciseCatalog } from "@/src/features/exercises/useExerciseCatalog";
 import { RoutineEditorScreen } from "@/src/features/workout/RoutineEditorScreen";
@@ -40,11 +40,26 @@ export function ImportScreen({ aiEnabled = false }: { aiEnabled?: boolean }) {
   const busy = aiPending || preparing;
   const [creating, startCreate] = useTransition();
 
+  const aiCardRef = useRef<HTMLDivElement>(null);
+
+  /** En el celu la tarjeta queda bajo el pliegue: la traemos a la vista y le damos foco al botón. */
+  const revealAiCard = () =>
+    requestAnimationFrame(() => {
+      const el = aiCardRef.current;
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.querySelector("button")?.focus({ preventScroll: true });
+    });
+
   const read = () => {
     if (error) return void toast.error(error);
     const parsed = parseRoutineText(text);
     if (!looksLikeBravoFormat(parsed)) {
-      if (aiEnabled) return void setOfferAi(true);
+      if (aiEnabled) {
+        setOfferAi(true);
+        revealAiCard();
+        return;
+      }
       return void toast.error("No pudimos leer la rutina. Pegala en el formato de El Bravo (ej.: «Press de banca — 4×8 @ 60 kg»).");
     }
     setDraft(matchImport(parsed, catalog));
@@ -215,6 +230,7 @@ export function ImportScreen({ aiEnabled = false }: { aiEnabled?: boolean }) {
         )}
       </Card>
       {offerAi && !hasFiles && (
+        <div ref={aiCardRef}>
         <Card as="section" className="space-y-3">
           <h2 className="font-bold">No está en el formato de El Bravo</h2>
           <p className="text-sm text-fg-muted">
@@ -230,6 +246,7 @@ export function ImportScreen({ aiEnabled = false }: { aiEnabled?: boolean }) {
             </p>
           )}
         </Card>
+        </div>
       )}
     </div>
   );
