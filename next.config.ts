@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
   // fijar la raíz evita que Turbopack infiera la equivocada.
   turbopack: { root: path.resolve(__dirname) },
   poweredByHeader: false,
+  experimental: {
+    // Importar rutinas desde fotos o PDF (fase 3b): hasta 4 MB de archivos por Server Action. Vercel corta en 4,5 MB.
+    // Aplica a todas las acciones; todas exigen sesión (auth-coverage.test.ts).
+    serverActions: { bodySizeLimit: "4.5mb" },
+  },
   // Headers de seguridad básicos (W3). Sin CSP todavía: los estilos/scripts inline de Next necesitan
   // nonces y conviene hacerlo con el deploy real (ver docs/security-review.md).
   async headers() {
