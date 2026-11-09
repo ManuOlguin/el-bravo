@@ -87,3 +87,30 @@ Descansá bien entre series.`);
   await expect(page.getByRole("button", { name: "Leer con IA" })).toHaveCount(0);
   await expect(page.getByText(/enviamos el texto y los nombres de tus ejercicios a OpenAI/)).toHaveCount(0);
 });
+
+test("adjuntar un .txt en formato El Bravo lo lee sin IA", async ({ page }) => {
+  const name = `Rutina del archivo ${Date.now()}`;
+  await login(page, "sofi");
+  await page.goto("/routines/import");
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "rutina.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from(`🏋️ ${name}\nPress de banca — 4×8 @ 60 kg\nPlancha — 3×45s\n`),
+  });
+  await expect(page.getByLabel("Rutina en texto")).toHaveValue(new RegExp(name));
+  await page.getByRole("button", { name: "Leer rutina" }).click();
+  const list = page.getByRole("list", { name: "Ejercicios importados" });
+  await expect(list.getByText("✓ Encontrado")).toHaveCount(2);
+});
+
+test("sin OPENAI_API_KEY, adjuntar no ofrece fotos ni PDF (y una foto forzada se rechaza)", async ({ page }) => {
+  await login(page, "sofi");
+  await page.goto("/routines/import");
+  const input = page.locator('input[type="file"]');
+  expect(await input.getAttribute("accept")).not.toMatch(/image|pdf/);
+  await expect(page.getByText(/Fotos o capturas/)).toHaveCount(0);
+  await expect(page.getByText(/con la rutina en formato El Bravo\./)).toBeVisible();
+  await input.setInputFiles("e2e/fixtures/photo.jpg");
+  await expect(page.getByText(/Sin IA solo podemos leer archivos de texto/)).toBeVisible();
+  await expect(page.getByRole("list", { name: "Archivos adjuntos" })).toHaveCount(0);
+});
