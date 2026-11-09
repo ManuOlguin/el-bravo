@@ -21,14 +21,19 @@ export function sniffType(b: Uint8Array): ImageType | "application/pdf" | null {
 }
 
 /**
- * Páginas contables sin parsear el PDF: objetos `/Type /Page` (no `/Pages`). Si las páginas están dentro de objetos
- * comprimidos (PDF 1.5+) no se ven y devuelve null: ahí manda el límite de tamaño. Un PDF editado varias veces puede
- * contar de más (raro en una rutina).
+ * Páginas contables sin parsear el PDF: objetos `/Type /Page` (no `/Pages`), contando cada número de objeto una sola vez
+ * (un PDF actualizado de forma incremental repite el objeto). Si las páginas están dentro de objetos comprimidos
+ * (PDF 1.5+) no se ven y devuelve null: ahí manda el límite de tamaño.
  */
 export function pdfPageCountHint(b: Uint8Array): number | null {
   const text = new TextDecoder("latin1").decode(b);
-  const pages = text.match(/\/Type\s*\/Page(?![A-Za-z])/g)?.length ?? 0;
-  return pages > 0 ? pages : null;
+  const pages = new Set<string>();
+  for (const chunk of text.split("endobj")) {
+    if (!/\/Type\s*\/Page(?![A-Za-z])/.test(chunk)) continue;
+    const num = chunk.match(/(\d+)\s+\d+\s+obj(?![A-Za-z])/);
+    if (num) pages.add(num[1]);
+  }
+  return pages.size > 0 ? pages.size : null;
 }
 
 const bad = (error: string) => ({ ok: false as const, error });

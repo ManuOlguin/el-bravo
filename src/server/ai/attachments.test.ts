@@ -35,6 +35,11 @@ describe("pdfPageCountHint", () => {
     expect(pdfPageCountHint(new TextEncoder().encode(pdfText(3)))).toBe(3);
     expect(pdfPageCountHint(new TextEncoder().encode("%PDF-1.5\n<< /Type /ObjStm /Length 900 >>stream\nx\u0001\u0002endstream"))).toBeNull();
   });
+
+  it("un PDF actualizado de forma incremental (mismo objeto de página dos veces) cuenta la página una sola vez", () => {
+    const updated = `${pdfText(2)}\n3 0 obj\n<< /Type /Page /Parent 2 0 R /Rotate 90 >>\nendobj\n%%EOF`;
+    expect(pdfPageCountHint(new TextEncoder().encode(updated))).toBe(2);
+  });
 });
 
 describe("readImportAttachments", () => {
