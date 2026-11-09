@@ -39,15 +39,43 @@ export class AiError extends Error {
 }
 
 export type JsonSchema = Record<string, unknown>;
+/** Contenido del mensaje del usuario: texto solo (string) o partes (texto + fotos/PDF de una rutina, fase 3b). */
+export type AiUserPart =
+  | { type: "text"; text: string }
+  | { type: "image"; mediaType: "image/jpeg" | "image/png" | "image/webp"; data: Uint8Array }
+  | { type: "pdf"; filename: string; data: Uint8Array };
+
 export type AiJsonRequest = {
   system: string;
-  user: string;
+  user: string | AiUserPart[];
   schemaName: string;
   schema: JsonSchema;
   maxOutputTokens?: number;
   /** Pisa el timeout del cliente para este pedido (importar varias rutinas o archivos tarda más). No viaja a OpenAI. */
   timeoutMs?: number;
 };
+
+type OpenAiPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string; detail: "high" } }
+  | { type: "file"; file: { filename: string; file_data: string } };
+
+const dataUrl = (mediaType: string, data: Uint8Array) => `data:${mediaType};base64,${Buffer.from(data).toString("base64")}`;
+
+/** Formato de Chat Completions. Un string queda igual. Las fotos van en "high": rutinas a mano o capturas chicas se leen mal en "low". */
+function toOpenAiContent(user: string | AiUserPart[]): string | OpenAiPart[] {
+  if (typeof user === "string") return user;
+  return user.map((p): OpenAiPart => {
+    switch (p.type) {
+      case "text":
+        return { type: "text", text: p.text };
+      case "image":
+        return { type: "image_url", image_url: { url: dataUrl(p.mediaType, p.data), detail: "high" } };
+      case "pdf":
+        return { type: "file", file: { filename: p.filename, file_data: dataUrl("application/pdf", p.data) } };
+    }
+  });
+}
 
 export interface AiClient {
   readonly model: string;
@@ -107,7 +135,7 @@ export function createOpenAiClient(opts: { apiKey: string; model?: string; fetch
             model,
             messages: [
               { role: "system", content: req.system },
-              { role: "user", content: req.user },
+              { role: "user", content: toOpenAiContent(req.user) },
             ],
             response_format: { type: "json_schema", json_schema: { name: req.schemaName, strict: true, schema: req.schema } },
             max_completion_tokens: req.maxOutputTokens ?? 4000,

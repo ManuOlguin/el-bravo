@@ -26,6 +26,53 @@ describe("isAiEnabled / getAiClient", () => {
 });
 
 describe("createOpenAiClient.generateJson", () => {
+
+  const IMG = Uint8Array.from({ length: 120 }, (_, i) => (i * 37) % 256); // base64 de 160 caracteres
+  const PDF = new TextEncoder().encode("%PDF-1.4 rutina-secreta-777");
+  const b64 = (u: Uint8Array) => Buffer.from(u).toString("base64");
+  const FILES_REQ = {
+    ...REQ,
+    user: [
+      { type: "text" as const, text: "leé la rutina" },
+      { type: "image" as const, mediaType: "image/jpeg" as const, data: IMG },
+      { type: "pdf" as const, filename: "rutina.pdf", data: PDF },
+    ],
+  };
+
+  it("arma las partes multimodales: texto, imagen como data URL (detail high) y PDF como file_data", async () => {
+    const f = vi.fn<typeof fetch>(async () => completion({ content: "{}", refusal: null }));
+    await client(f).generateJson(FILES_REQ);
+    const body = JSON.parse(f.mock.calls[0][1]!.body as string);
+    expect(body.messages[1]).toEqual({
+      role: "user",
+      content: [
+        { type: "text", text: "leé la rutina" },
+        { type: "image_url", image_url: { url: `data:image/jpeg;base64,${b64(IMG)}`, detail: "high" } },
+        { type: "file", file: { filename: "rutina.pdf", file_data: `data:application/pdf;base64,${b64(PDF)}` } },
+      ],
+    });
+  });
+
+  it("ningún error lleva el base64 ni el texto de los archivos", async () => {
+    const leaks = [b64(IMG), b64(PDF), "rutina-secreta-777", "leé la rutina"];
+    const echo400 = async () =>
+      new Response(JSON.stringify({ error: { message: `bad image ${b64(IMG)} leé la rutina`, code: b64(IMG) } }), { status: 400 });
+    const boom = async (): Promise<Response> => {
+      throw new TypeError(`fetch failed ${b64(PDF)} rutina-secreta-777`);
+    };
+    const hang: typeof fetch = (_u, init) =>
+      new Promise((_, reject) => init!.signal!.addEventListener("abort", () => reject(new DOMException(b64(IMG), "AbortError"))));
+    const errors = [
+      await rejection(client(echo400).generateJson(FILES_REQ)),
+      await rejection(client(boom).generateJson(FILES_REQ)),
+      await rejection(client(hang).generateJson({ ...FILES_REQ, timeoutMs: 20 })),
+    ];
+    expect(errors.map((e) => (e as AiError).code)).toEqual(["bad_request", "unavailable", "timeout"]);
+    for (const e of errors) {
+      const seen = `${(e as Error).message} ${JSON.stringify(e)} ${String((e as Error).stack)}`;
+      for (const leak of leaks) expect(seen).not.toContain(leak);
+    }
+  });
   it("timeoutMs del pedido pisa el del cliente y no viaja a OpenAI", async () => {
     const hang: typeof fetch = (_u, init) =>
       new Promise((_, reject) => init!.signal!.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))));
