@@ -320,6 +320,17 @@ describe("importar desde archivos (3b)", () => {
     expect(rest).toEqual([img, img]);
   });
 
+  it("ambos prompts (texto y archivos) exigen reusar el catálogo solo si es el mismo ejercicio", () => {
+    const text = buildRoutineImportPrompt({ text: "x", catalogNames: [], muscles: MUSCLES }).system;
+    const files = buildRoutineImportFilesPrompt({ files: [img], catalogNames: [], muscles: MUSCLES }).system;
+    for (const system of [text, files]) {
+      expect(system).toContain("mismo músculo principal");
+      expect(system).toContain("NUNCA elijas");
+      expect(system).toContain("catalogName null");
+      expect(system).toContain("nombre natural en español de ESE ejercicio");
+    }
+  });
+
   it("con un PDF lo nombra", () => {
     const p = buildRoutineImportFilesPrompt({ files: [pdf], catalogNames: [], muscles: MUSCLES });
     expect(p.user[0].type === "text" && p.user[0].text).toContain("el PDF adjunto");
