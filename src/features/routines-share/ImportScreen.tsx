@@ -8,9 +8,10 @@ import { aiImportToDraft } from "./ai-draft";
 import { looksLikeBravoFormat, parseRoutineText } from "./format";
 import { importDraftToRoutine, matchImport, pendingExercises } from "./match";
 import { ImportReview } from "./ImportReview";
+import { MAX_IMPORT_TEXT_CHARS } from "./import-limits";
 import type { ImportDraft } from "./types";
 
-const MAX_CHARS = 8000;
+const MAX_CHARS = MAX_IMPORT_TEXT_CHARS;
 
 /**
  * Importar: pegar texto → revisar ejercicios (encontrados / nuevos) → editor.
