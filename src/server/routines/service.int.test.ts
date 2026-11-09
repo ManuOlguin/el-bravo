@@ -6,6 +6,7 @@ vi.mock("server-only", () => ({}));
 import {
   copyRoutine,
   createRoutine,
+  createRoutines,
   deleteRoutine,
   getPublicRoutine,
   getRoutineForEditor,
@@ -508,5 +509,50 @@ describe("copiar rutinas (fase 2)", () => {
     const { routineId } = await copyRoutine(user.id, publicId);
     await deleteRoutine(other.id, publicId);
     expect(await prisma.routine.findUniqueOrThrow({ where: { id: routineId } })).toMatchObject({ copiedFromRoutineId: null, copiedFromUserName: "B" });
+  });
+
+  describe("createRoutines (varias rutinas importadas, 3b)", () => {
+    const oneSet = { kind: "normal" as const, targetReps: 8, targetDurationSeconds: null, targetWeightKg: null, restSeconds: null };
+    const def = (over: Partial<NewExerciseInput> = {}): NewExerciseInput => ({
+      tempId: "t1", name: "Remo Hammer", nameEn: null, measureType: "reps", equipment: "machine", tracksWeight: true, muscles: [], source: "ai", ...over,
+    });
+    const routine = (name: string, exerciseIds: string[], newExercises?: NewExerciseInput[]): RoutineInput => ({
+      name, notes: null,
+      exercises: exerciseIds.map((exerciseId) => ({ exerciseId, restSeconds: null, notes: null, sets: [oneSet] })),
+      ...(newExercises ? { newExercises } : {}),
+    });
+
+    it("crea todas privadas y en orden; un ejercicio nuevo que está en varias se crea una sola vez", async () => {
+      const { user, bench } = await fixtures();
+      const { routineIds } = await createRoutines(user.id, [
+        { ...routine("Día 1", [bench.id, "new:t1"], [def()]), visibility: "public" },
+        routine("Día 2", ["new:t1"], [def()]),
+      ]);
+      expect(routineIds).toHaveLength(2);
+      const rows = await prisma.routine.findMany({ where: { id: { in: routineIds } }, select: { id: true, name: true, visibility: true, userId: true } });
+      expect(routineIds.map((id) => rows.find((r) => r.id === id)?.name)).toEqual(["Día 1", "Día 2"]);
+      expect(rows.every((r) => r.visibility === "private" && r.userId === user.id)).toBe(true);
+      const mine = await prisma.exercise.findMany({ where: { createdByUserId: user.id }, select: { id: true, name: true, source: true } });
+      expect(mine.map((e) => [e.name, e.source])).toEqual([["Remo Hammer", "ai"]]);
+      const uses = await prisma.routineExercise.findMany({ where: { exerciseId: mine[0].id }, select: { routineId: true } });
+      expect(new Set(uses.map((u) => u.routineId))).toEqual(new Set(routineIds));
+    });
+
+    it("es atómico: si una falla (ejercicio privado de otro), no queda ninguna rutina ni ejercicio nuevo", async () => {
+      const { user, bench, privateOfOther } = await fixtures();
+      await expect(
+        createRoutines(user.id, [routine("Día 1", [bench.id, "new:t1"], [def()]), routine("Día 2", [privateOfOther.id])])
+      ).rejects.toBeInstanceOf(RoutineError);
+      expect(await prisma.routine.count()).toBe(0);
+      expect(await prisma.exercise.count({ where: { createdByUserId: user.id } })).toBe(0);
+    });
+
+    it("acepta de 1 a 7 rutinas", async () => {
+      const { user, bench } = await fixtures();
+      await expect(createRoutines(user.id, [])).rejects.toThrow();
+      await expect(createRoutines(user.id, Array.from({ length: 8 }, (_, i) => routine(`R${i}`, [bench.id])))).rejects.toThrow();
+      expect(await prisma.routine.count()).toBe(0);
+      expect((await createRoutines(user.id, [routine("Sola", [bench.id])])).routineIds).toHaveLength(1);
+    });
   });
 });

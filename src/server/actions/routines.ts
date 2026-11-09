@@ -4,12 +4,13 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/src/server/auth/dal";
 import { fail, ok, parseInput, runAction, type ActionResult } from "@/src/server/http/result";
-import { routineInputSchema, type RoutineForEditor, type RoutineInput } from "@/src/schemas/routine";
+import { routineInputSchema, routinesBatchSchema, type RoutineForEditor, type RoutineInput } from "@/src/schemas/routine";
 import { activityInputSchema, type ActivityInput } from "@/src/schemas/workout";
 import {
   RoutineError,
   copyRoutine,
   createRoutine,
+  createRoutines,
   deleteRoutine,
   getRoutineForEditor,
   updateRoutine,
@@ -49,6 +50,18 @@ export async function createRoutineAction(input: RoutineInput): Promise<ActionRe
     const { routineId } = await createRoutine(user.id, parsed.data);
     revalidateRoutines();
     return ok({ routineId }, "Rutina creada");
+  });
+}
+
+/** "Crear N rutinas" de una importación con varias (fase 3b). Todas privadas, en una transacción. */
+export async function createRoutinesAction(inputs: RoutineInput[]): Promise<ActionResult<{ routineIds: string[] }>> {
+  return guard(async () => {
+    const user = await requireUser();
+    const parsed = parseInput(routinesBatchSchema, inputs);
+    if (!parsed.ok) return parsed.result;
+    const { routineIds } = await createRoutines(user.id, parsed.data);
+    revalidateRoutines();
+    return ok({ routineIds }, routineIds.length === 1 ? "Rutina creada" : `${routineIds.length} rutinas creadas`);
   });
 }
 

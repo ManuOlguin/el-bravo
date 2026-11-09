@@ -12,6 +12,7 @@ import { GROUP_KEYS, type ExerciseSummary } from "@/src/features/exercises/types
 import {
   FALLBACK_AUTHOR_NAME,
   routineInputSchema,
+  routinesBatchSchema,
   type RoutineForEditor,
   type RoutineInput,
   type RoutineView,
@@ -174,19 +175,41 @@ async function writeExercises(tx: Tx, routineId: string, input: RoutineInput) {
   }
 }
 
+/** Crea una rutina ya validada dentro de una transacción abierta. */
+async function createInTx(tx: Tx, userId: string, parsed: RoutineInput): Promise<string> {
+  const input = await resolvePendingExercises(tx, userId, parsed);
+  await assertExercisesVisible(tx, userId, input);
+  const r = await tx.routine.create({
+    data: { userId, name: input.name, notes: input.notes ?? null, visibility: input.visibility ?? "private" },
+    select: { id: true },
+  });
+  await writeExercises(tx, r.id, input);
+  return r.id;
+}
+
 export async function createRoutine(userId: string, raw: RoutineInput): Promise<{ routineId: string }> {
   const parsed = routineInputSchema.parse(raw);
-  const routineId = await prisma.$transaction(async (tx) => {
-    const input = await resolvePendingExercises(tx, userId, parsed);
-    await assertExercisesVisible(tx, userId, input);
-    const r = await tx.routine.create({
-      data: { userId, name: input.name, notes: input.notes ?? null, visibility: input.visibility ?? "private" },
-      select: { id: true },
-    });
-    await writeExercises(tx, r.id, input);
-    return r.id;
-  });
+  const routineId = await prisma.$transaction((tx) => createInTx(tx, userId, parsed));
   return { routineId };
+}
+
+/**
+ * Varias rutinas importadas de una vez (fase 3b): todas PRIVADAS, en orden y en UNA transacción (si una falla, no queda
+ * ninguna ni ningún ejercicio nuevo). Un ejercicio nuevo que aparece en varias se crea con la primera y las siguientes
+ * lo reusan: `resolvePendingExercises` vuelve a leer los visibles dentro de la transacción.
+ */
+export async function createRoutines(userId: string, raws: RoutineInput[]): Promise<{ routineIds: string[] }> {
+  const parsed = routinesBatchSchema.parse(raws).map((r) => ({ ...r, visibility: "private" as const }));
+  const routineIds = await prisma.$transaction(
+    async (tx) => {
+      const ids: string[] = [];
+      for (const input of parsed) ids.push(await createInTx(tx, userId, input));
+      return ids;
+    },
+    // Hasta 7 × 40 ejercicios contra TiDB: el default de 5 s de Prisma no alcanza.
+    { timeout: 30_000, maxWait: 5_000 }
+  );
+  return { routineIds };
 }
 
 /** Reemplaza nombre, notas, ejercicios y series en una transacción (borrar y recrear). `visibility` solo si viene. */

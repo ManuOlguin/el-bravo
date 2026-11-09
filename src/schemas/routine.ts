@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { setKindSchema } from "./workout";
+import { MAX_ROUTINES_PER_IMPORT } from "@/src/features/routines-share/import-limits";
 import { EQUIPMENT, type ExerciseSummary } from "@/src/features/exercises/types";
 
 /** Número opcional: `""`, `null` o ausente → `null`. */
@@ -54,6 +55,12 @@ export const routineInputSchema = z.object({
   /** Definiciones de los ejercicios con id `new:<tempId>` de `exercises`. */
   newExercises: z.array(newExerciseInputSchema).max(40).optional(),
 });
+
+/** Varias rutinas importadas de una vez (fase 3b). Cada una se valida como cualquier rutina. */
+export const routinesBatchSchema = z
+  .array(routineInputSchema)
+  .min(1, "Elegí al menos una rutina")
+  .max(MAX_ROUTINES_PER_IMPORT, `Máximo ${MAX_ROUTINES_PER_IMPORT} rutinas por vez`);
 
 export type RoutineSetInput = z.infer<typeof routineSetInputSchema>;
 export type RoutineExerciseInput = z.infer<typeof routineExerciseInputSchema>;
