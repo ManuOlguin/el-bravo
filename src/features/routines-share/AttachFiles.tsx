@@ -32,16 +32,23 @@ export function AttachFiles({
   onFilesChange,
   onText,
   disabled = false,
+  onPreparingChange,
 }: {
   aiEnabled: boolean;
   files: PreparedFile[];
   onFilesChange(files: PreparedFile[]): void;
   onText(text: string, truncated: boolean): void;
   disabled?: boolean;
+  /** Avisa cuando empieza/termina de achicar fotos o leer archivos (para frenar "Leer rutina" y "Leer con IA"). */
+  onPreparingChange?: (preparing: boolean) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const nextId = useRef(1);
-  const [preparing, setPreparing] = useState(false);
+  const [preparing, setPreparingState] = useState(false);
+  const setPreparing = (value: boolean) => {
+    setPreparingState(value);
+    onPreparingChange?.(value);
+  };
   const total = files.reduce((n, f) => n + f.blob.size, 0);
 
   const add = async (picked: File[]) => {

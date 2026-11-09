@@ -35,7 +35,9 @@ export function ImportScreen({ aiEnabled = false }: { aiEnabled?: boolean }) {
   const [found, setFound] = useState<{ result: AiImportResult; selected: boolean[] } | null>(null);
   const [multi, setMulti] = useState<MultiImportDraft | null>(null);
   const [created, setCreated] = useState(false);
+  const [preparing, setPreparing] = useState(false); // AttachFiles comprimiendo o leyendo archivos
   const [aiPending, startAi] = useTransition();
+  const busy = aiPending || preparing;
   const [creating, startCreate] = useTransition();
 
   const read = () => {
@@ -57,9 +59,14 @@ export function ImportScreen({ aiEnabled = false }: { aiEnabled?: boolean }) {
   const readWithAi = () =>
     startAi(async () => {
       if (error) return void toast.error(error);
-      const r = await importRoutineWithAiAction(text);
-      if (!r.ok) return void toast.error(r.error); // el texto queda en el campo para reintentar
-      showAiResult(r.data);
+      try {
+        const r = await importRoutineWithAiAction(text);
+        if (!r.ok) return void toast.error(r.error); // el texto queda en el campo para reintentar
+        showAiResult(r.data);
+      } catch {
+        // Red caída o función cortada por tiempo: el texto queda en el campo.
+        toast.error("Se cortó la conexión o la IA tardó demasiado. Probá de nuevo; si la rutina es larga, pegá un día por vez.");
+      }
     });
 
   const readFilesWithAi = () =>
@@ -75,7 +82,7 @@ export function ImportScreen({ aiEnabled = false }: { aiEnabled?: boolean }) {
         showAiResult(r.data);
       } catch {
         // Body rechazado antes de llegar a la acción (413 de Vercel) o red caída.
-        toast.error("Los archivos son demasiado pesados o se cortó la conexión. Probá con menos fotos o un PDF más liviano.");
+        toast.error("No pudimos enviar los archivos (se cortó la conexión, tardó demasiado o pesan mucho). Probá de nuevo o con menos fotos.");
       }
     });
 
@@ -163,7 +170,7 @@ export function ImportScreen({ aiEnabled = false }: { aiEnabled?: boolean }) {
             <Textarea
               rows={12}
               value={text}
-              disabled={aiPending}
+              disabled={busy}
               onChange={(e) => {
                 setText(e.target.value.slice(0, MAX_CHARS));
                 setOfferAi(false);
@@ -185,13 +192,14 @@ export function ImportScreen({ aiEnabled = false }: { aiEnabled?: boolean }) {
           }}
           onText={onText}
           disabled={aiPending}
+          onPreparingChange={setPreparing}
         />
         {hasFiles ? (
           <>
             <p className="text-xs text-fg-subtle">
               🔒 Para leerla, enviamos los archivos y los nombres de tus ejercicios a OpenAI. Los archivos no se guardan: ni en El Bravo ni en tu perfil.
             </p>
-            <Button fullWidth size="lg" pending={aiPending} disabled={loading} onClick={readFilesWithAi}>
+            <Button fullWidth size="lg" pending={aiPending} disabled={loading || preparing} onClick={readFilesWithAi}>
               Leer con IA
             </Button>
             {aiPending && (
@@ -201,7 +209,7 @@ export function ImportScreen({ aiEnabled = false }: { aiEnabled?: boolean }) {
             )}
           </>
         ) : (
-          <Button fullWidth size="lg" disabled={!text.trim() || loading || aiPending} onClick={read}>
+          <Button fullWidth size="lg" disabled={!text.trim() || loading || busy} onClick={read}>
             Leer rutina
           </Button>
         )}
@@ -213,7 +221,7 @@ export function ImportScreen({ aiEnabled = false }: { aiEnabled?: boolean }) {
             Podemos leerla con IA: entiende rutinas escritas de cualquier forma (también varios días) y propone los ejercicios que falten. Vas a poder revisar todo antes de guardar.
           </p>
           <p className="text-xs text-fg-subtle">🔒 Para leerla, enviamos el texto y los nombres de tus ejercicios a OpenAI. En El Bravo no guardamos el texto.</p>
-          <Button fullWidth size="lg" pending={aiPending} disabled={loading} onClick={readWithAi}>
+          <Button fullWidth size="lg" pending={aiPending} disabled={loading || preparing} onClick={readWithAi}>
             Leer con IA
           </Button>
           {aiPending && (
