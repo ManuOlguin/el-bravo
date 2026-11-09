@@ -7,8 +7,9 @@ const nextConfig: NextConfig = {
   turbopack: { root: path.resolve(__dirname) },
   poweredByHeader: false,
   experimental: {
-    // Importar rutinas desde fotos o PDF (fase 3b): hasta 4 MB de archivos por Server Action. Vercel corta en 4,5 MB.
-    // Aplica a todas las acciones; todas exigen sesión (auth-coverage.test.ts).
+    // Límite subido para /routines/import (fase 3b): hasta 4 MB de fotos/PDF; Vercel corta en 4,5 MB.
+    // Aplica a TODAS las acciones y Next lee el body antes de correrlas (requireUser no lo protege):
+    // proxy.ts devuelve 413 a las que superen 1 MiB fuera de /routines/import.
     serverActions: { bodySizeLimit: "4.5mb" },
   },
   // Headers de seguridad básicos (W3). Sin CSP todavía: los estilos/scripts inline de Next necesitan

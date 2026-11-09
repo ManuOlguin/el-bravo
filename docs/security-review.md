@@ -71,3 +71,4 @@ Arreglos funcionales que encontraron los E2E (no son de seguridad): `b9f7aa9` (e
 - **Emails.** Escapan todo lo interpolado.
 - **CSRF.** Las Server Actions tienen el chequeo de Origin de Next y no hay GET que muten.
 - **Path traversal en keys de fotos.** Bloqueado por el regex de segmentos y el chequeo de `..`.
+- **Tamaño del body de las Server Actions.** Para importar fotos/PDF, `serverActions.bodySizeLimit` es 4,5 MB (Vercel corta ahí). Es global y Next lee el body completo antes de correr la acción, así que `requireUser()` no lo limita (login, registro y reset son públicos). `proxy.ts` responde 413 a todo POST con `next-action` y `content-length` > 1 MiB fuera de `/routines/import`; en esa ruta el proxy ya exige sesión.

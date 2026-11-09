@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
+import { isOversizedServerAction } from "@/src/server/http/action-body-limit";
 
 // Chequeo optimista (solo firma del JWT, sin DB). La autorización real está en src/server/auth/dal.ts.
 const PUBLIC = [
@@ -28,6 +29,10 @@ async function isLoggedIn(req: NextRequest) {
 
 export async function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
+  // Antes de todo: Next lee el body de la acción entero antes de correrla (ver action-body-limit.ts).
+  if (isOversizedServerAction({ method: req.method, pathname, headers: req.headers })) {
+    return new NextResponse("Request too large", { status: 413 });
+  }
   const loggedIn = await isLoggedIn(req);
   const reqHeaders = new Headers(req.headers);
   reqHeaders.set("x-pathname", pathname + search);
